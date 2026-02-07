@@ -2,12 +2,24 @@ export const messages = {
   // ── App Shell ─────────────────────────────────────
   title: { en: "Red Envelope", zh: "红包" },
   subtitle: { en: "Lucky red packets on Neo", zh: "Neo 链上幸运红包" },
+  searchTab: { en: "🔍 Search", zh: "🔍 搜索" },
   createTab: { en: "🎁 Create", zh: "🎁 创建" },
   myTab: { en: "🧧 My Envelopes", zh: "🧧 我的红包" },
   connectWallet: { en: "Connect Wallet", zh: "连接钱包" },
 
   // ── Create Form ───────────────────────────────────
   createEnvelope: { en: "Create Envelope", zh: "创建红包" },
+  envelopeTypeSection: { en: "🎁 Envelope Type", zh: "🎁 红包类型" },
+  typePool: { en: "🎁 Red Envelope Pool", zh: "🎁 红包池" },
+  typeNft: { en: "🎫 Lucky NFT", zh: "🎫 幸运 NFT" },
+  typePoolDesc: {
+    en: "Split GAS among multiple packets — recipients open for random amounts",
+    zh: "将 GAS 分成多个红包 — 领取者随机获得金额",
+  },
+  typeNftDesc: {
+    en: "Mint a single NFT envelope — holder opens to claim all GAS",
+    zh: "铸造单个 NFT 红包 — 持有者打开领取全部 GAS",
+  },
   flowBanner: {
     en: "Send GAS → Mint NFT → Pass Along → Open for GAS → Auto-burn",
     zh: "发送 GAS → 铸造 NFT → 传递 → 打开领 GAS → 自动销毁",
@@ -23,7 +35,7 @@ export const messages = {
   labelMessage: { en: "Blessing message", zh: "祝福语" },
   totalGasPlaceholder: { en: "e.g. 10", zh: "例如 10" },
   packetsPlaceholder: { en: "1–100", zh: "1–100" },
-  expiryPlaceholder: { en: "168", zh: "168" },
+  expiryPlaceholder: { en: "24", zh: "24" },
   messagePlaceholder: { en: "Best wishes!", zh: "大吉大利！" },
   minNeoPlaceholder: { en: "100", zh: "100" },
   minHoldDaysPlaceholder: { en: "2", zh: "2" },
@@ -77,6 +89,41 @@ export const messages = {
   holdNotMet: { en: "Hold duration not met", zh: "持有时间不足" },
   neoBalance: { en: "NEO Balance", zh: "NEO 余额" },
   holdingDays: { en: "Holding Days", zh: "持有天数" },
+
+  // ── Search & Claim ──────────────────────────────────
+  searchPlaceholder: { en: "Enter envelope ID...", zh: "输入红包 ID..." },
+  searchButton: { en: "Search", zh: "搜索" },
+  searchPrompt: { en: "Enter an envelope ID to view details and claim", zh: "输入红包 ID 查看详情并领取" },
+  searchPromptIcon: { en: "🔍", zh: "🔍" },
+  notFound: { en: "Envelope not found", zh: "未找到红包" },
+  notFoundHint: { en: "Check the ID and try again", zh: "请检查 ID 后重试" },
+  claimButton: { en: "🧧 Claim", zh: "🧧 领取" },
+  claiming: { en: "Claiming...", zh: "领取中..." },
+  searching: { en: "Searching...", zh: "搜索中..." },
+
+  // ── Envelope Detail Panel ───────────────────────────
+  detailEnvelopeId: { en: "Envelope #{0}", zh: "红包 #{0}" },
+  detailCreator: { en: "Creator", zh: "创建者" },
+  detailType: { en: "Type", zh: "类型" },
+  detailTypePool: { en: "Pool", zh: "红包池" },
+  detailTypeNft: { en: "NFT", zh: "NFT" },
+  detailTypeSpreading: { en: "Spreading", zh: "传播型" },
+  detailMessage: { en: "Message", zh: "祝福语" },
+  detailGasTotal: { en: "Total GAS", zh: "GAS 总量" },
+  detailGasRemaining: { en: "Remaining", zh: "剩余" },
+  detailProgress: { en: "Progress", zh: "进度" },
+  detailExpiry: { en: "Expires", zh: "过期时间" },
+  detailNeoGate: { en: "NEO Gate", zh: "NEO 门槛" },
+  detailNeoGateValue: { en: "≥{0} NEO, ≥{1}d hold", zh: "≥{0} NEO, 持有 ≥{1} 天" },
+  detailNoGate: { en: "None", zh: "无" },
+  detailStatus: { en: "Status", zh: "状态" },
+
+  // ── Create Form (two-column) ────────────────────────
+  createFlowTitle: { en: "How it works", zh: "流程说明" },
+  createFlowStep1: { en: "1. Choose type & set amount", zh: "1. 选择类型并设置金额" },
+  createFlowStep2: { en: "2. Configure NEO gate & expiry", zh: "2. 配置 NEO 门槛和过期时间" },
+  createFlowStep3: { en: "3. Send to mint envelope NFT", zh: "3. 发送以铸造红包 NFT" },
+  createFlowStep4: { en: "4. Share ID for others to claim", zh: "4. 分享 ID 供他人领取" },
 };
 
 export type MessageKey = keyof typeof messages;

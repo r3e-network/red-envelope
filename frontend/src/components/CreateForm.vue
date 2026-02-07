@@ -11,10 +11,11 @@ const { createEnvelope, isLoading } = useRedEnvelope();
 
 const amount = ref("");
 const count = ref("");
-const expiryHours = ref("168");
+const expiryHours = ref("24");
 const message = ref("");
 const minNeo = ref("100");
 const minHoldDays = ref("2");
+const envelopeType = ref(0); // 0=spreading/pool, 1=pool
 const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 
 const canSubmit = computed(() => {
@@ -40,10 +41,11 @@ const handleSubmit = async () => {
     const txid = await createEnvelope({
       totalGas: Number(amount.value),
       packetCount: Number(count.value),
-      expiryHours: Number(expiryHours.value) || 168,
+      expiryHours: Number(expiryHours.value) || 24,
       message: message.value || t("defaultBlessing"),
       minNeo: Number(minNeo.value) || 100,
       minHoldDays: Number(minHoldDays.value) || 2,
+      envelopeType: envelopeType.value,
     });
     status.value = { msg: `TX: ${txid.slice(0, 12)}...`, type: "success" };
     amount.value = "";
@@ -56,92 +58,120 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="create-form">
-    <h2>{{ t("createEnvelope") }}</h2>
+  <div class="create-form layout-two-col">
+    <!-- LEFT PANEL: Flow explanation + Summary -->
+    <div class="panel-left">
+      <h3 class="detail-title" style="margin-bottom: 1rem">{{ t("createFlowTitle") }}</h3>
 
-    <!-- Flow explanation banner -->
-    <div class="flow-banner">{{ t("flowBanner") }}</div>
+      <div class="flow-banner">{{ t("flowBanner") }}</div>
 
-    <!-- 💰 Amount Section -->
-    <div class="form-section">
-      <div class="form-section-title">{{ t("amountSection") }}</div>
+      <ul class="flow-steps">
+        <li>{{ t("createFlowStep1") }}</li>
+        <li>{{ t("createFlowStep2") }}</li>
+        <li>{{ t("createFlowStep3") }}</li>
+        <li>{{ t("createFlowStep4") }}</li>
+      </ul>
 
-      <div class="form-group">
-        <label class="form-label">{{ t("labelGasAmount") }}</label>
-        <input
-          v-model="amount"
-          type="number"
-          step="0.1"
-          min="0.1"
-          :placeholder="t('totalGasPlaceholder')"
-          class="input"
-        />
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">{{ t("labelPacketCount") }}</label>
-        <input v-model="count" type="number" min="1" max="100" :placeholder="t('packetsPlaceholder')" class="input" />
-      </div>
-    </div>
-
-    <!-- 🔒 NEO Gate Section -->
-    <div class="form-section">
-      <div class="form-section-title">{{ t("neoGateSection") }}</div>
-
-      <div class="form-row">
-        <div class="input-half">
-          <label class="form-label">{{ t("labelMinNeo") }}</label>
-          <input v-model="minNeo" type="number" min="0" :placeholder="t('minNeoPlaceholder')" class="input" />
+      <!-- Summary card (shows when form is valid) -->
+      <div v-if="canSubmit" class="summary-card" style="margin-top: 1.25rem">
+        <div class="summary-title">{{ t("summaryTitle") }}</div>
+        <div class="summary-row">
+          <span>{{ t("summaryTotal") }}</span>
+          <span class="summary-value">{{ amount }} GAS</span>
         </div>
-        <div class="input-half">
-          <label class="form-label">{{ t("labelHoldDays") }}</label>
-          <input v-model="minHoldDays" type="number" min="0" :placeholder="t('minHoldDaysPlaceholder')" class="input" />
+        <div class="summary-row">
+          <span>{{ t("summaryPerPacket") }}</span>
+          <span class="summary-value">~{{ perPacket }} GAS</span>
+        </div>
+        <div class="summary-row">
+          <span>{{ t("summaryExpiry") }}</span>
+          <span class="summary-value">{{ t("summaryHours", expiryHours) }}</span>
+        </div>
+        <div class="summary-row">
+          <span>{{ t("summaryNeoGate") }}</span>
+          <span class="summary-value">≥{{ minNeo }} NEO, ≥{{ minHoldDays }}d</span>
         </div>
       </div>
     </div>
 
-    <!-- ⏰ Settings Section -->
-    <div class="form-section">
-      <div class="form-section-title">{{ t("settingsSection") }}</div>
-
-      <div class="form-group">
-        <label class="form-label">{{ t("labelExpiry") }}</label>
-        <input v-model="expiryHours" type="number" min="1" :placeholder="t('expiryPlaceholder')" class="input" />
+    <!-- RIGHT PANEL: Form inputs -->
+    <div class="panel-right">
+      <!-- 🎁 Envelope Type Selector -->
+      <div class="form-section">
+        <div class="form-section-title">{{ t("envelopeTypeSection") }}</div>
+        <div class="type-selector">
+          <div :class="['type-option', { 'type-active': envelopeType === 0 }]" @click="envelopeType = 0">
+            <div class="type-label">{{ t("typePool") }}</div>
+            <div class="type-desc">{{ t("typePoolDesc") }}</div>
+          </div>
+          <div :class="['type-option', { 'type-active': envelopeType === 1 }]" @click="envelopeType = 1">
+            <div class="type-label">{{ t("typeNft") }}</div>
+            <div class="type-desc">{{ t("typeNftDesc") }}</div>
+          </div>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">{{ t("labelMessage") }}</label>
-        <input v-model="message" type="text" :placeholder="t('messagePlaceholder')" class="input" />
+      <!-- 💰 Amount Section -->
+      <div class="form-section">
+        <div class="form-section-title">{{ t("amountSection") }}</div>
+        <div class="form-group">
+          <label class="form-label">{{ t("labelGasAmount") }}</label>
+          <input
+            v-model="amount"
+            type="number"
+            step="0.1"
+            min="0.1"
+            :placeholder="t('totalGasPlaceholder')"
+            class="input"
+          />
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ t("labelPacketCount") }}</label>
+          <input v-model="count" type="number" min="1" max="100" :placeholder="t('packetsPlaceholder')" class="input" />
+        </div>
       </div>
-    </div>
 
-    <!-- Summary card -->
-    <div v-if="canSubmit" class="summary-card">
-      <div class="summary-title">{{ t("summaryTitle") }}</div>
-      <div class="summary-row">
-        <span>{{ t("summaryTotal") }}</span>
-        <span class="summary-value">{{ amount }} GAS</span>
+      <!-- 🔒 NEO Gate Section -->
+      <div class="form-section">
+        <div class="form-section-title">{{ t("neoGateSection") }}</div>
+        <div class="form-row">
+          <div class="input-half">
+            <label class="form-label">{{ t("labelMinNeo") }}</label>
+            <input v-model="minNeo" type="number" min="0" :placeholder="t('minNeoPlaceholder')" class="input" />
+          </div>
+          <div class="input-half">
+            <label class="form-label">{{ t("labelHoldDays") }}</label>
+            <input
+              v-model="minHoldDays"
+              type="number"
+              min="0"
+              :placeholder="t('minHoldDaysPlaceholder')"
+              class="input"
+            />
+          </div>
+        </div>
       </div>
-      <div class="summary-row">
-        <span>{{ t("summaryPerPacket") }}</span>
-        <span class="summary-value">~{{ perPacket }} GAS</span>
-      </div>
-      <div class="summary-row">
-        <span>{{ t("summaryExpiry") }}</span>
-        <span class="summary-value">{{ t("summaryHours", expiryHours) }}</span>
-      </div>
-      <div class="summary-row">
-        <span>{{ t("summaryNeoGate") }}</span>
-        <span class="summary-value">≥{{ minNeo }} NEO, ≥{{ minHoldDays }}d</span>
-      </div>
-    </div>
 
-    <button class="btn btn-send" :disabled="!canSubmit || isLoading" @click="handleSubmit">
-      {{ isLoading ? t("creating") : t("sendRedEnvelope") }}
-    </button>
+      <!-- ⏰ Settings Section -->
+      <div class="form-section">
+        <div class="form-section-title">{{ t("settingsSection") }}</div>
+        <div class="form-group">
+          <label class="form-label">{{ t("labelExpiry") }}</label>
+          <input v-model="expiryHours" type="number" min="1" :placeholder="t('expiryPlaceholder')" class="input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ t("labelMessage") }}</label>
+          <input v-model="message" type="text" :placeholder="t('messagePlaceholder')" class="input" />
+        </div>
+      </div>
 
-    <div v-if="status" :class="['status', status.type]">
-      {{ status.msg }}
+      <button class="btn btn-send" :disabled="!canSubmit || isLoading" @click="handleSubmit">
+        {{ isLoading ? t("creating") : t("sendRedEnvelope") }}
+      </button>
+
+      <div v-if="status" :class="['status', status.type]">
+        {{ status.msg }}
+      </div>
     </div>
   </div>
 </template>

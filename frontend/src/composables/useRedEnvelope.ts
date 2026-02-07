@@ -45,6 +45,7 @@ export function useRedEnvelope() {
     message: string;
     minNeo: number;
     minHoldDays: number;
+    envelopeType?: number; // 0=spreading (default), 1=pool
   }): Promise<string> => {
     isLoading.value = true;
     try {
@@ -70,7 +71,7 @@ export function useRedEnvelope() {
               { type: "String", value: params.message },
               { type: "Integer", value: String(params.minNeo) },
               { type: "Integer", value: String(minHoldSeconds) },
-              { type: "Integer", value: "0" }, // envelopeType: spreading
+              { type: "Integer", value: String(params.envelopeType ?? 0) },
             ],
           },
         ],

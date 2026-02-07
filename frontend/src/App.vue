@@ -4,6 +4,7 @@ import { useWallet } from "@/composables/useWallet";
 import { useI18n } from "@/composables/useI18n";
 import { CONTRACT_HASH } from "@/config/contract";
 import { resolveNetwork } from "@/config/networks";
+import SearchClaim from "@/components/SearchClaim.vue";
 import CreateForm from "@/components/CreateForm.vue";
 import MyEnvelopes from "@/components/MyEnvelopes.vue";
 
@@ -11,7 +12,7 @@ const { t, lang, setLang } = useI18n();
 const { address, connected, connect, autoConnect } = useWallet();
 const network = resolveNetwork(import.meta.env.VITE_NETWORK);
 
-const activeTab = ref<"create" | "my">("create");
+const activeTab = ref<"search" | "create" | "my">("search");
 
 const toggleLang = () => setLang(lang.value === "en" ? "zh" : "en");
 
@@ -45,6 +46,9 @@ onMounted(autoConnect);
     </div>
 
     <nav class="tabs">
+      <button :class="['tab', { active: activeTab === 'search' }]" @click="activeTab = 'search'">
+        {{ t("searchTab") }}
+      </button>
       <button :class="['tab', { active: activeTab === 'create' }]" @click="activeTab = 'create'">
         {{ t("createTab") }}
       </button>
@@ -57,7 +61,8 @@ onMounted(autoConnect);
       <div class="flow-banner" style="margin-bottom: 0.75rem">
         Contract: {{ CONTRACT_HASH.slice(0, 10) }}...{{ CONTRACT_HASH.slice(-8) }}
       </div>
-      <CreateForm v-if="activeTab === 'create'" />
+      <SearchClaim v-if="activeTab === 'search'" />
+      <CreateForm v-else-if="activeTab === 'create'" />
       <MyEnvelopes v-else />
     </main>
   </div>
