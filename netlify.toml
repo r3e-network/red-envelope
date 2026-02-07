@@ -1,0 +1,3 @@
+# Root config — delegates to frontend subdirectory
+[build]
+  base = "frontend"

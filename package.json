@@ -1,0 +1,12 @@
+{
+  "name": "miniapp-redenvelope",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview",
+    "test": "cd frontend && npm run test",
+    "contract:build": "cd contracts && dotnet build"
+  }
+}
