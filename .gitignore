@@ -12,6 +12,10 @@ contracts/obj/
 .env.local
 .env.*.local
 
+# Wallet / deployer credentials
+contracts/deployer.json
+contracts/wallet-config.yaml
+
 # IDE
 .vscode/
 .idea/

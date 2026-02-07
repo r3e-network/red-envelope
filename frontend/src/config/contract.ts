@@ -2,7 +2,7 @@ const ZERO_HASH = "0x0000000000000000000000000000000000000000";
 const HASH_RE = /^0x[0-9a-fA-F]{40}$/;
 
 // Existing deployed contract (Neo N3 testnet) used as a safe default.
-export const DEFAULT_CONTRACT_HASH = "0xf2649c2b6312d8c7b4982c0c597c9772a2595b1e";
+export const DEFAULT_CONTRACT_HASH = "0x1d23762ad5dc7e3a980fbacac7b87092360a872a";
 
 export function resolveContractHash(value: string | undefined): string {
   if (!value) {
@@ -18,4 +18,3 @@ export function resolveContractHash(value: string | undefined): string {
 }
 
 export const CONTRACT_HASH = resolveContractHash(import.meta.env.VITE_CONTRACT_HASH);
-

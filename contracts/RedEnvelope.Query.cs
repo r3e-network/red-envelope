@@ -148,7 +148,7 @@ namespace RedEnvelope.Contract
                 return result;
             }
 
-            BigInteger balanceHeight = (BigInteger)state[2];
+            BigInteger balanceHeight = (BigInteger)state[1];
             BigInteger blockTs = (BigInteger)Ledger.GetBlock((uint)balanceHeight).Timestamp;
             BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs;
             BigInteger holdDays = holdDuration / 86400;
@@ -221,6 +221,16 @@ namespace RedEnvelope.Contract
         [Safe]
         public static BigInteger GetTotalDistributed() =>
             (BigInteger)Storage.Get(Storage.CurrentContext, PREFIX_TOTAL_DISTRIBUTED);
+
+        #endregion
+
+        #region Pool Claim Index
+
+        [Safe]
+        public static BigInteger GetPoolClaimIdByIndex(BigInteger poolId, BigInteger claimIndex)
+        {
+            return GetPoolClaimId(poolId, claimIndex);
+        }
 
         #endregion
     }

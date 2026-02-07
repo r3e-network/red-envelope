@@ -2,6 +2,7 @@ export type NetworkConfig = {
   key: string;
   label: string;
   defaultRpc: string;
+  explorerBase: string;
 };
 
 export const NETWORKS: Record<string, NetworkConfig> = {
@@ -9,11 +10,13 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     key: "testnet",
     label: "Neo N3 TestNet",
     defaultRpc: "https://testnet1.neo.coz.io:443",
+    explorerBase: "https://testnet.neotube.io",
   },
   mainnet: {
     key: "mainnet",
     label: "Neo N3 MainNet",
     defaultRpc: "https://mainnet1.neo.coz.io:443",
+    explorerBase: "https://neotube.io",
   },
 };
 

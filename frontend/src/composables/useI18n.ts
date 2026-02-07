@@ -3,7 +3,7 @@ import { messages, type MessageKey } from "@/locale/messages";
 
 type Lang = "en" | "zh";
 
-const lang = ref<Lang>((navigator.language.startsWith("zh") ? "zh" : "en") as Lang);
+const lang = ref<Lang>("en");
 
 export function useI18n() {
   const t = (key: MessageKey, ...args: (string | number)[]): string => {

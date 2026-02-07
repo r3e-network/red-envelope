@@ -360,7 +360,7 @@ namespace RedEnvelope.Contract
                 new object[] { account });
             ExecutionEngine.Assert(state != null, "no NEO state");
 
-            BigInteger balanceHeight = (BigInteger)state[2];
+            BigInteger balanceHeight = (BigInteger)state[1];
             BigInteger blockTs = (BigInteger)Ledger.GetBlock((uint)balanceHeight).Timestamp;
             BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs;
             ExecutionEngine.Assert(holdDuration >= minHoldSeconds, "hold duration not met");
@@ -447,12 +447,16 @@ namespace RedEnvelope.Contract
 
         private static BigInteger ToPositiveInteger(byte[] bytes)
         {
-            byte[] unsigned = new byte[bytes.Length + 1];
+            // NeoVM limits CONVERT to 32 bytes for integers.
+            // Clear the sign bit (MSB of last byte in little-endian) to guarantee
+            // a positive value while staying within the 32-byte limit.
+            byte[] copy = new byte[bytes.Length];
             for (int i = 0; i < bytes.Length; i++)
             {
-                unsigned[i] = bytes[i];
+                copy[i] = bytes[i];
             }
-            return new BigInteger(unsigned);
+            copy[bytes.Length - 1] = (byte)(copy[bytes.Length - 1] & 0x7F);
+            return new BigInteger(copy);
         }
 
         #endregion

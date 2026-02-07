@@ -6,6 +6,10 @@ export const messages = {
   createTab: { en: "🎁 Create", zh: "🎁 创建" },
   myTab: { en: "🧧 My Envelopes", zh: "🧧 我的红包" },
   connectWallet: { en: "Connect Wallet", zh: "连接钱包" },
+  walletNotDetected: {
+    en: "No Neo wallet detected. Please install OneGate or NeoLine extension.",
+    zh: "未检测到 Neo 钱包，请安装 OneGate 或 NeoLine 扩展。",
+  },
 
   // ── Create Form ───────────────────────────────────
   createEnvelope: { en: "Create Envelope", zh: "创建红包" },
@@ -117,6 +121,23 @@ export const messages = {
   detailNeoGateValue: { en: "≥{0} NEO, ≥{1}d hold", zh: "≥{0} NEO, 持有 ≥{1} 天" },
   detailNoGate: { en: "None", zh: "无" },
   detailStatus: { en: "Status", zh: "状态" },
+
+  // ── History ──────────────────────────────────────────
+  historyTitle: { en: "📜 Claim History", zh: "📜 领取记录" },
+  historyPoolTitle: { en: "📜 Pool Claims", zh: "📜 红包池领取记录" },
+  historyNftTitle: { en: "📜 NFT Info", zh: "📜 NFT 信息" },
+  historyHolder: { en: "Holder", zh: "持有者" },
+  historyAmount: { en: "Amount", zh: "金额" },
+  historyStatus: { en: "Status", zh: "状态" },
+  historyOpened: { en: "Opened", zh: "已打开" },
+  historySealed: { en: "Sealed", zh: "未打开" },
+  historyTotalClaimed: { en: "Total Claimed", zh: "已领取总额" },
+  historyNoClaims: { en: "No claims yet", zh: "暂无领取记录" },
+  historyCurrentHolder: { en: "Current Holder", zh: "当前持有者" },
+  historyClaimedGas: { en: "Claimed GAS", zh: "已领取 GAS" },
+  historyNotOpened: { en: "Not opened yet", zh: "尚未打开" },
+  historyLoading: { en: "Loading history...", zh: "加载记录中..." },
+  historyNoHolder: { en: "No holder (burned)", zh: "无持有者（已销毁）" },
 
   // ── Create Form (two-column) ────────────────────────
   createFlowTitle: { en: "How it works", zh: "流程说明" },

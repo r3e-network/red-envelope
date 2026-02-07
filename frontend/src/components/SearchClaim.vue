@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
+import { useEnvelopeHistory } from "@/composables/useEnvelopeHistory";
 import { useI18n } from "@/composables/useI18n";
 import { extractError } from "@/utils/format";
 import EnvelopeDetail from "./EnvelopeDetail.vue";
+import EnvelopeHistory from "./EnvelopeHistory.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
 
 const { t } = useI18n();
 const { connected, connect } = useWallet();
 const { fetchEnvelopeState, openEnvelope, reclaimEnvelope } = useRedEnvelope();
+const { loading: historyLoading, history, loadHistory, clearHistory } = useEnvelopeHistory();
 
 const searchId = ref("");
 const searching = ref(false);
@@ -30,11 +33,18 @@ const handleSearch = async () => {
   notFound.value = false;
   envelope.value = null;
   status.value = null;
+  clearHistory();
 
   try {
     const result = await fetchEnvelopeState(id);
     if (result) {
       envelope.value = result;
+      // Sync URL so the link is shareable
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", id);
+      window.history.replaceState({}, "", url.toString());
+      // Auto-load claim history for pool envelopes
+      loadHistory(id, result.envelopeType, result.openedCount);
     } else {
       notFound.value = true;
     }
@@ -93,6 +103,16 @@ const onTransferred = async () => {
     if (refreshed) envelope.value = refreshed;
   }
 };
+
+// Auto-search if URL contains ?id=
+onMounted(() => {
+  const params = new URLSearchParams(window.location.search);
+  const urlId = params.get("id")?.trim();
+  if (urlId) {
+    searchId.value = urlId;
+    handleSearch();
+  }
+});
 </script>
 
 <template>
@@ -107,7 +127,10 @@ const onTransferred = async () => {
         <div class="not-found-hint">{{ t("notFoundHint") }}</div>
       </div>
 
-      <EnvelopeDetail v-else-if="envelope" :envelope="envelope" />
+      <template v-else-if="envelope">
+        <EnvelopeDetail :envelope="envelope" />
+        <EnvelopeHistory :envelope="envelope" :history="history" :loading="historyLoading" />
+      </template>
 
       <div v-else class="search-empty">
         <div class="search-empty-icon">🧧</div>

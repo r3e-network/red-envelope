@@ -13,10 +13,26 @@ const { address, connected, connect, autoConnect } = useWallet();
 const network = resolveNetwork(import.meta.env.VITE_NETWORK);
 
 const activeTab = ref<"search" | "create" | "my">("search");
+const walletError = ref("");
 
 const toggleLang = () => setLang(lang.value === "en" ? "zh" : "en");
 
-onMounted(autoConnect);
+const handleConnect = async () => {
+  walletError.value = "";
+  try {
+    await connect();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    walletError.value = msg.includes("No Neo wallet") ? t("walletNotDetected") : msg;
+  }
+};
+
+onMounted(() => {
+  autoConnect();
+  // Force search tab when URL contains ?id=
+  const urlId = new URLSearchParams(window.location.search).get("id");
+  if (urlId) activeTab.value = "search";
+});
 </script>
 
 <template>
@@ -31,10 +47,11 @@ onMounted(autoConnect);
       <p class="app-subtitle">{{ t("subtitle") }}</p>
       <p class="app-subtitle" style="opacity: 0.85">{{ network.label }}</p>
 
-      <button v-if="!connected" class="btn btn-primary" @click="connect">
+      <button v-if="!connected" class="btn btn-primary" @click="handleConnect">
         {{ t("connectWallet") }}
       </button>
       <div v-else class="wallet-pill">{{ address.slice(0, 8) }}...{{ address.slice(-6) }}</div>
+      <div v-if="walletError" class="wallet-error">{{ walletError }}</div>
     </header>
 
     <!-- Lang toggle (top-right) -->
@@ -58,8 +75,16 @@ onMounted(autoConnect);
     </nav>
 
     <main class="app-content">
-      <div class="flow-banner" style="margin-bottom: 0.75rem">
-        Contract: {{ CONTRACT_HASH.slice(0, 10) }}...{{ CONTRACT_HASH.slice(-8) }}
+      <div class="contract-banner">
+        Contract:
+        <a
+          :href="`${network.explorerBase}/contract/${CONTRACT_HASH}`"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="contract-link"
+        >
+          {{ CONTRACT_HASH }}
+        </a>
       </div>
       <SearchClaim v-if="activeTab === 'search'" />
       <CreateForm v-else-if="activeTab === 'create'" />

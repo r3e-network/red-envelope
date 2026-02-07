@@ -146,6 +146,13 @@ body {
   box-shadow: var(--shadow-gold);
 }
 
+.wallet-error {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-error);
+  text-align: center;
+}
+
 // Language toggle
 .lang-toggle {
   position: absolute;
@@ -190,6 +197,36 @@ body {
     background: var(--color-gold);
     border-radius: 50%;
     box-shadow: 0 0 4px var(--color-gold-glow);
+  }
+}
+
+// ── Contract Banner ─────────────────────────────────
+.contract-banner {
+  background: linear-gradient(135deg, rgba(198, 40, 40, 0.15), rgba(255, 215, 0, 0.08));
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 0.625rem 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.contract-link {
+  color: var(--color-gold);
+  text-decoration: none;
+  font-family: monospace;
+  font-size: 0.72rem;
+  transition:
+    color 0.2s,
+    text-shadow 0.2s;
+
+  &:hover {
+    color: var(--color-gold-light);
+    text-shadow: 0 0 8px var(--color-gold-glow);
+    text-decoration: underline;
   }
 }
 
@@ -1026,6 +1063,101 @@ body {
     text-align: center;
     padding: 0.75rem 0;
   }
+}
+
+// ── Envelope History Panel ──────────────────────────
+.history-panel {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.history-header {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-gold);
+  margin-bottom: 0.75rem;
+}
+
+.history-loading {
+  text-align: center;
+  padding: 1rem;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.history-empty {
+  text-align: center;
+  padding: 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.history-table {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.history-table-head {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr 0.6fr;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.history-table-row {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr 0.6fr;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  align-items: center;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+.history-addr {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.history-amount {
+  font-weight: 600;
+  color: var(--color-gold);
+}
+
+.history-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.history-total-value {
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.history-nft-info {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
 }
 
 // ── Create Flow Explanation ──────────────────────────
