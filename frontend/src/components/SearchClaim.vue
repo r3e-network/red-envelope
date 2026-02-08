@@ -35,6 +35,16 @@ const openTargetEnvelope = ref<EnvelopeItem | null>(null);
 
 const currentAddressHash = computed(() => (address.value ? addressToBase64ScriptHash(address.value) : ""));
 
+const isHolder = computed(() => {
+  if (!envelope.value || !currentAddressHash.value) return false;
+  return envelope.value.currentHolder === currentAddressHash.value;
+});
+
+const isCreator = computed(() => {
+  if (!envelope.value || !currentAddressHash.value) return false;
+  return envelope.value.creator === currentAddressHash.value;
+});
+
 const walletSpreadingEnvelopes = computed(() => {
   if (!currentAddressHash.value) return [];
 
@@ -300,8 +310,9 @@ watch(connected, (isConnected) => {
 
       <!-- Action buttons (only when envelope loaded) -->
       <template v-if="envelope">
+        <!-- Pool (type=1): anyone can claim; Spreading/Claim (type=0,2): only holder can open -->
         <button
-          v-if="envelope.active && !envelope.expired && !envelope.depleted"
+          v-if="envelope.active && !envelope.expired && !envelope.depleted && (envelope.envelopeType === 1 || isHolder)"
           class="btn btn-open"
           @click="handleOpen"
         >
@@ -309,7 +320,7 @@ watch(connected, (isConnected) => {
         </button>
 
         <button
-          v-if="envelope.active && !envelope.expired && envelope.envelopeType !== 1"
+          v-if="envelope.active && !envelope.expired && envelope.envelopeType !== 1 && isHolder"
           class="btn btn-transfer"
           @click="handleTransfer"
         >
@@ -317,7 +328,7 @@ watch(connected, (isConnected) => {
         </button>
 
         <button
-          v-if="envelope.active && envelope.expired && envelope.remainingAmount > 0"
+          v-if="envelope.active && envelope.expired && envelope.remainingAmount > 0 && isCreator"
           class="btn btn-reclaim"
           @click="handleReclaim"
         >
