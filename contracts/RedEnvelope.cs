@@ -37,7 +37,7 @@ namespace RedEnvelope.Contract
         private const long MIN_AMOUNT = 100_000_000;            // 1 GAS
         private const int MAX_PACKETS = 100;
         private const long MIN_PER_PACKET = 10_000_000;         // 0.1 GAS
-        private const long DEFAULT_EXPIRY_SECONDS = 604_800;    // 7 days
+        private const long DEFAULT_EXPIRY_MS = 604_800_000;      // 7 days in ms
         private const long DEFAULT_MIN_NEO = 100;
         private const long DEFAULT_MIN_HOLD_SECONDS = 172_800;  // 2 days
 
@@ -155,7 +155,7 @@ namespace RedEnvelope.Contract
         /// - lucky pool envelope (type=1)
         ///
         /// data format:
-        /// object[] { packetCount, expirySeconds, message, minNeoRequired, minHoldSeconds, envelopeType }
+        /// object[] { packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType }
         /// envelopeType defaults to 0 (spreading).
         /// </summary>
         public static void OnNEP17Payment(UInt160 from, BigInteger amount, object data)
@@ -169,7 +169,7 @@ namespace RedEnvelope.Contract
 
             object[] config = data == null ? new object[0] : (object[])data;
             BigInteger packetCount = config.Length > 0 ? (BigInteger)config[0] : 1;
-            BigInteger expirySeconds = config.Length > 1 ? (BigInteger)config[1] : DEFAULT_EXPIRY_SECONDS;
+            BigInteger expiryMs = config.Length > 1 ? (BigInteger)config[1] : DEFAULT_EXPIRY_MS;
             string message = config.Length > 2 ? (string)config[2] : "";
             BigInteger minNeo = config.Length > 3 ? (BigInteger)config[3] : DEFAULT_MIN_NEO;
             BigInteger minHold = config.Length > 4 ? (BigInteger)config[4] : DEFAULT_MIN_HOLD_SECONDS;
@@ -182,7 +182,7 @@ namespace RedEnvelope.Contract
                 "invalid envelope type");
 
             BigInteger envelopeId = AllocateEnvelopeId();
-            BigInteger effectiveExpiry = expirySeconds > 0 ? expirySeconds : DEFAULT_EXPIRY_SECONDS;
+            BigInteger effectiveExpiry = expiryMs > 0 ? expiryMs : DEFAULT_EXPIRY_MS;
             BigInteger effectiveMinNeo = minNeo > 0 ? minNeo : DEFAULT_MIN_NEO;
             BigInteger effectiveMinHold = minHold > 0 ? minHold : DEFAULT_MIN_HOLD_SECONDS;
 

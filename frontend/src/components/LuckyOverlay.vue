@@ -162,4 +162,18 @@ const confetti = Array.from({ length: 20 }, (_, i) => ({
     background-position: 100% 50%;
   }
 }
+
+@keyframes confettiDrop {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(350px) rotate(720deg);
+    opacity: 0;
+  }
+}
 </style>

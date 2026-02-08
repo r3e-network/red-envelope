@@ -26,8 +26,8 @@ namespace RedEnvelope.Contract
 
             BigInteger balanceHeight = (BigInteger)state[1];
             BigInteger blockTs = (BigInteger)Ledger.GetBlock((uint)balanceHeight).Timestamp;
-            BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs;
-            ExecutionEngine.Assert(holdDuration >= minHoldSeconds, "hold duration not met");
+            BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs; // milliseconds
+            ExecutionEngine.Assert(holdDuration >= minHoldSeconds * 1000, "hold duration not met");
         }
 
         #endregion

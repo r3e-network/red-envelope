@@ -161,14 +161,14 @@ namespace RedEnvelope.Contract
 
             BigInteger balanceHeight = (BigInteger)state[1];
             BigInteger blockTs = (BigInteger)Ledger.GetBlock((uint)balanceHeight).Timestamp;
-            BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs;
-            BigInteger holdDays = holdDuration / 86400;
+            BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs; // milliseconds
+            BigInteger holdDays = holdDuration / 86_400_000; // ms → days
 
             result["holdDuration"] = holdDuration;
             result["holdDays"] = holdDays;
             result["minHoldSeconds"] = envelope.MinHoldSeconds;
 
-            if (holdDuration < envelope.MinHoldSeconds)
+            if (holdDuration < envelope.MinHoldSeconds * 1000)
             {
                 result["eligible"] = false;
                 result["reason"] = "hold duration not met";
@@ -235,7 +235,7 @@ namespace RedEnvelope.Contract
             c["minAmount"] = MIN_AMOUNT;
             c["maxPackets"] = MAX_PACKETS;
             c["minPerPacket"] = MIN_PER_PACKET;
-            c["defaultExpirySeconds"] = DEFAULT_EXPIRY_SECONDS;
+            c["defaultExpiryMs"] = DEFAULT_EXPIRY_MS;
             c["defaultMinNeo"] = DEFAULT_MIN_NEO;
             c["defaultMinHoldSeconds"] = DEFAULT_MIN_HOLD_SECONDS;
             c["typeSpreading"] = ENVELOPE_TYPE_SPREADING;
