@@ -5,6 +5,7 @@ import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope"
 import { useI18n } from "@/composables/useI18n";
 import { formatGas, extractError } from "@/utils/format";
 import { msUntilExpiry } from "@/utils/time";
+import { addressToBase64ScriptHash } from "@/utils/neo";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
 
@@ -37,8 +38,11 @@ type EnrichedEnvelope = EnvelopeItem & {
 const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
   envelopes.value.map((env) => {
     const addr = address.value;
-    const holder = addr && env.currentHolder === addr;
-    const creator = addr && env.creator === addr;
+    // Contract returns base64-encoded UInt160 script hash; wallet returns Neo N3 address.
+    // Convert wallet address to base64 script hash for comparison.
+    const addrHash = addr ? addressToBase64ScriptHash(addr) : "";
+    const holder = addrHash && env.currentHolder === addrHash;
+    const creator = addrHash && env.creator === addrHash;
     const active = env.active && !env.expired && !env.depleted;
 
     // Role
@@ -78,7 +82,7 @@ const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
       showReclaim: env.active && env.expired && env.remainingAmount > 0 && !!creator,
       holdDays: Math.floor(env.minHoldSeconds / 86400),
     };
-  })
+  }),
 );
 
 // ── Actions ──

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
+import { useWallet } from "@/composables/useWallet";
 import { useNeoEligibility } from "@/composables/useNeoEligibility";
 import { useI18n } from "@/composables/useI18n";
 import { extractError, formatGas } from "@/utils/format";
 import LuckyOverlay from "./LuckyOverlay.vue";
+import ShareCard from "./ShareCard.vue";
 
 const props = defineProps<{ envelope: EnvelopeItem }>();
 const emit = defineEmits<{
@@ -13,6 +15,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { address } = useWallet();
 const { openEnvelope, getOpenedAmount } = useRedEnvelope();
 const { checking, result: eligibility, checkEligibility } = useNeoEligibility();
 
@@ -20,6 +23,7 @@ const opening = ref(false);
 const opened = ref(false);
 const openResult = ref<number | null>(null);
 const error = ref("");
+const showShare = ref(false);
 
 const isLocked = computed(() => eligibility.value != null && !eligibility.value.eligible);
 const requiredHoldDays = computed(() => (eligibility.value ? Math.floor(eligibility.value.minHoldSeconds / 86400) : 0));
@@ -33,6 +37,10 @@ onMounted(async () => {
 });
 
 const handleOpen = async () => {
+  if (props.envelope.envelopeType === 1) {
+    error.value = "Pool envelopes use Claim, not Open";
+    return;
+  }
   opening.value = true;
   error.value = "";
   try {
@@ -127,10 +135,22 @@ const handleOpen = async () => {
           {{ opening ? t("opening") : t("openEnvelope") }}
         </button>
 
-        <button v-else class="btn btn-primary" style="width: 100%" @click="emit('close')">
-          {{ t("close") }}
-        </button>
+        <div v-else class="modal-actions">
+          <button class="btn btn-open" @click="showShare = true">🎉 {{ t("shareYourLuck") }}</button>
+          <button class="btn btn-primary" @click="emit('close')">
+            {{ t("close") }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Share Card overlay -->
+  <ShareCard
+    v-if="showShare && openResult !== null"
+    :amount="openResult"
+    :envelope-id="props.envelope.id"
+    :address="address"
+    @close="showShare = false"
+  />
 </template>

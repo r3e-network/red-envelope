@@ -15,7 +15,7 @@ const expiryHours = ref("24");
 const message = ref("");
 const minNeo = ref("100");
 const minHoldDays = ref("2");
-const envelopeType = ref(0); // 0=spreading/pool, 1=pool
+const envelopeType = ref(1); // 0=spreading (Lucky NFT), 1=pool (Red Envelope Pool)
 const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 
 const canSubmit = computed(() => {
@@ -63,13 +63,21 @@ const handleSubmit = async () => {
     <div class="panel-left">
       <h3 class="detail-title" style="margin-bottom: 1rem">{{ t("createFlowTitle") }}</h3>
 
-      <div class="flow-banner">{{ t("flowBanner") }}</div>
+      <div class="flow-banner">{{ envelopeType === 1 ? t("flowBannerPool") : t("flowBannerNft") }}</div>
 
       <ul class="flow-steps">
-        <li>{{ t("createFlowStep1") }}</li>
-        <li>{{ t("createFlowStep2") }}</li>
-        <li>{{ t("createFlowStep3") }}</li>
-        <li>{{ t("createFlowStep4") }}</li>
+        <template v-if="envelopeType === 1">
+          <li>{{ t("createFlowPoolStep1") }}</li>
+          <li>{{ t("createFlowPoolStep2") }}</li>
+          <li>{{ t("createFlowPoolStep3") }}</li>
+          <li>{{ t("createFlowPoolStep4") }}</li>
+        </template>
+        <template v-else>
+          <li>{{ t("createFlowNftStep1") }}</li>
+          <li>{{ t("createFlowNftStep2") }}</li>
+          <li>{{ t("createFlowNftStep3") }}</li>
+          <li>{{ t("createFlowNftStep4") }}</li>
+        </template>
       </ul>
 
       <!-- Summary card (shows when form is valid) -->
@@ -80,7 +88,7 @@ const handleSubmit = async () => {
           <span class="summary-value">{{ amount }} GAS</span>
         </div>
         <div class="summary-row">
-          <span>{{ t("summaryPerPacket") }}</span>
+          <span>{{ envelopeType === 1 ? t("summaryPerSlot") : t("summaryPerOpen") }}</span>
           <span class="summary-value">~{{ perPacket }} GAS</span>
         </div>
         <div class="summary-row">
@@ -100,11 +108,11 @@ const handleSubmit = async () => {
       <div class="form-section">
         <div class="form-section-title">{{ t("envelopeTypeSection") }}</div>
         <div class="type-selector">
-          <div :class="['type-option', { 'type-active': envelopeType === 0 }]" @click="envelopeType = 0">
+          <div :class="['type-option', { 'type-active': envelopeType === 1 }]" @click="envelopeType = 1">
             <div class="type-label">{{ t("typePool") }}</div>
             <div class="type-desc">{{ t("typePoolDesc") }}</div>
           </div>
-          <div :class="['type-option', { 'type-active': envelopeType === 1 }]" @click="envelopeType = 1">
+          <div :class="['type-option', { 'type-active': envelopeType === 0 }]" @click="envelopeType = 0">
             <div class="type-label">{{ t("typeNft") }}</div>
             <div class="type-desc">{{ t("typeNftDesc") }}</div>
           </div>
@@ -126,7 +134,7 @@ const handleSubmit = async () => {
           />
         </div>
         <div class="form-group">
-          <label class="form-label">{{ t("labelPacketCount") }}</label>
+          <label class="form-label">{{ envelopeType === 1 ? t("labelClaimSlots") : t("labelOpenCount") }}</label>
           <input v-model="count" type="number" min="1" max="100" :placeholder="t('packetsPlaceholder')" class="input" />
         </div>
       </div>

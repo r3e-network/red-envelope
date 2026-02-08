@@ -17,22 +17,28 @@ export const messages = {
   typePool: { en: "🎁 Red Envelope Pool", zh: "🎁 红包池" },
   typeNft: { en: "🎫 Lucky NFT", zh: "🎫 幸运 NFT" },
   typePoolDesc: {
-    en: "Split GAS among multiple packets — recipients open for random amounts",
-    zh: "将 GAS 分成多个红包 — 领取者随机获得金额",
+    en: "Split GAS into claim slots — each claimer gets one NFT and opens for all GAS in it. Cannot transfer after opening.",
+    zh: "将 GAS 分成多个领取位 — 每位领取者获得一个 NFT，打开后获得该位全部 GAS。打开后不可转让。",
   },
   typeNftDesc: {
-    en: "Mint a single NFT envelope — holder opens to claim all GAS",
-    zh: "铸造单个 NFT 红包 — 持有者打开领取全部 GAS",
+    en: "Single NFT passed around — each holder opens for random GAS, then passes it on. Burns when all opens used.",
+    zh: "单个 NFT 传递 — 每位持有者打开获得随机 GAS，然后传给下一位。所有次数用完后自动销毁。",
   },
-  flowBanner: {
-    en: "Send GAS → Mint NFT → Pass Along → Open for GAS → Auto-burn",
-    zh: "发送 GAS → 铸造 NFT → 传递 → 打开领 GAS → 自动销毁",
+  flowBannerPool: {
+    en: "Send GAS → Create Pool → Others Claim Slots → Open for GAS",
+    zh: "发送 GAS → 创建红包池 → 他人领取位 → 打开领 GAS",
+  },
+  flowBannerNft: {
+    en: "Send GAS → Mint NFT → Pass Along → Open for Random GAS → Auto-burn",
+    zh: "发送 GAS → 铸造 NFT → 传递 → 打开领随机 GAS → 自动销毁",
   },
   amountSection: { en: "💰 Amount", zh: "💰 金额" },
   neoGateSection: { en: "🔒 NEO Gate", zh: "🔒 NEO 门槛" },
   settingsSection: { en: "⏰ Settings", zh: "⏰ 设置" },
   labelGasAmount: { en: "Total GAS to distribute", zh: "分发的 GAS 总量" },
   labelPacketCount: { en: "Number of packets", zh: "红包数量" },
+  labelClaimSlots: { en: "Number of claim slots", zh: "领取位数量" },
+  labelOpenCount: { en: "Number of opens", zh: "可打开次数" },
   labelMinNeo: { en: "Minimum NEO required", zh: "最低 NEO 要求" },
   labelHoldDays: { en: "Minimum holding days", zh: "最低持有天数" },
   labelExpiry: { en: "Expiry (hours)", zh: "过期时长（小时）" },
@@ -46,6 +52,8 @@ export const messages = {
   summaryTitle: { en: "Summary", zh: "摘要" },
   summaryTotal: { en: "Total GAS", zh: "GAS 总量" },
   summaryPerPacket: { en: "~Per packet", zh: "~每个红包" },
+  summaryPerSlot: { en: "~Per slot", zh: "~每个领取位" },
+  summaryPerOpen: { en: "~Per open (avg)", zh: "~每次打开（均值）" },
   summaryExpiry: { en: "Expires in", zh: "过期时间" },
   summaryHours: { en: "{0}h", zh: "{0}小时" },
   summaryNeoGate: { en: "NEO Gate", zh: "NEO 门槛" },
@@ -71,6 +79,18 @@ export const messages = {
   congratulations: { en: "🎉 Congratulations!", zh: "🎉 恭喜发财！" },
   shareYourLuck: { en: "Share your luck!", zh: "分享你的好运！" },
   gas: { en: "GAS", zh: "GAS" },
+
+  // ── Share Card ──────────────────────────────────────
+  shareTitle: { en: "Neo Red Envelope", zh: "Neo 红包" },
+  shareSubtitle: { en: "Lucky red packets on Neo N3", zh: "Neo N3 链上幸运红包" },
+  shareEnvelopeId: { en: "Envelope #{0}", zh: "红包 #{0}" },
+  shareReceived: { en: "I received", zh: "我收到了" },
+  shareAddress: { en: "Address", zh: "地址" },
+  shareTwitter: { en: "Share on X", zh: "分享到 X" },
+  shareCopyImage: { en: "Copy as Image", zh: "复制为图片" },
+  shareSaveImage: { en: "Save Image", zh: "保存图片" },
+  shareCopied: { en: "Copied!", zh: "已复制！" },
+  shareSaved: { en: "Saved!", zh: "已保存！" },
 
   // ── Common ────────────────────────────────────────
   close: { en: "Close", zh: "关闭" },
@@ -141,10 +161,17 @@ export const messages = {
 
   // ── Create Form (two-column) ────────────────────────
   createFlowTitle: { en: "How it works", zh: "流程说明" },
-  createFlowStep1: { en: "1. Choose type & set amount", zh: "1. 选择类型并设置金额" },
-  createFlowStep2: { en: "2. Configure NEO gate & expiry", zh: "2. 配置 NEO 门槛和过期时间" },
-  createFlowStep3: { en: "3. Send to mint envelope NFT", zh: "3. 发送以铸造红包 NFT" },
-  createFlowStep4: { en: "4. Share ID for others to claim", zh: "4. 分享 ID 供他人领取" },
+  createFlowPoolStep1: { en: "1. Choose Pool type & set total GAS", zh: "1. 选择红包池类型并设置 GAS 总量" },
+  createFlowPoolStep2: { en: "2. Set number of claim slots & NEO gate", zh: "2. 设置领取位数量和 NEO 门槛" },
+  createFlowPoolStep3: { en: "3. Send GAS to create the pool", zh: "3. 发送 GAS 创建红包池" },
+  createFlowPoolStep4: { en: "4. Share pool ID — others claim slots", zh: "4. 分享红包池 ID — 他人领取" },
+  createFlowNftStep1: { en: "1. Choose Lucky NFT type & set GAS", zh: "1. 选择幸运 NFT 类型并设置 GAS" },
+  createFlowNftStep2: { en: "2. Set number of opens & NEO gate", zh: "2. 设置可打开次数和 NEO 门槛" },
+  createFlowNftStep3: { en: "3. Send GAS to mint the NFT", zh: "3. 发送 GAS 铸造 NFT" },
+  createFlowNftStep4: {
+    en: "4. Transfer NFT — each holder opens for random GAS",
+    zh: "4. 转让 NFT — 每位持有者打开获得随机 GAS",
+  },
 };
 
 export type MessageKey = keyof typeof messages;

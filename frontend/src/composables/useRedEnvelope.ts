@@ -2,7 +2,7 @@ import { ref } from "vue";
 import { useWallet } from "./useWallet";
 import { CONTRACT_HASH } from "@/config/contract";
 import { fromFixed8, toFixed8 } from "@/utils/format";
-import { parseInvokeResult } from "@/utils/neo";
+import { parseInvokeResult, addressToBase64ScriptHash } from "@/utils/neo";
 
 export const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
 
@@ -83,8 +83,11 @@ export function useRedEnvelope() {
     }
   };
 
-  /** Open a spreading or claim envelope (caller must be NFT holder) */
+  /** Open a spreading (type=0) or claim (type=2) envelope NFT */
   const openEnvelope = async (envelope: EnvelopeItem): Promise<{ txid: string }> => {
+    if (envelope.envelopeType === 1) {
+      throw new Error("Use claimFromPool for pool envelopes");
+    }
     const operation = envelope.envelopeType === 2 ? "openClaim" : "openEnvelope";
 
     return (await invoke({
@@ -92,6 +95,18 @@ export function useRedEnvelope() {
       operation,
       args: [
         { type: "Integer", value: envelope.id },
+        { type: "Hash160", value: address.value },
+      ],
+    })) as { txid: string };
+  };
+
+  /** Claim a slot from a pool envelope (type=1) — mints a claim NFT */
+  const claimFromPool = async (poolId: string): Promise<{ txid: string }> => {
+    return (await invoke({
+      scriptHash: CONTRACT_HASH,
+      operation: "claimFromPool",
+      args: [
+        { type: "Integer", value: poolId },
         { type: "Hash160", value: address.value },
       ],
     })) as { txid: string };
@@ -202,6 +217,7 @@ export function useRedEnvelope() {
     loadingEnvelopes,
     createEnvelope,
     openEnvelope,
+    claimFromPool,
     transferEnvelope,
     reclaimEnvelope,
     getOpenedAmount,

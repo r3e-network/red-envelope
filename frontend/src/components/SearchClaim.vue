@@ -9,10 +9,11 @@ import EnvelopeDetail from "./EnvelopeDetail.vue";
 import EnvelopeHistory from "./EnvelopeHistory.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
+import ShareCard from "./ShareCard.vue";
 
 const { t } = useI18n();
-const { connected, connect } = useWallet();
-const { fetchEnvelopeState, openEnvelope, reclaimEnvelope } = useRedEnvelope();
+const { address, connected, connect } = useWallet();
+const { fetchEnvelopeState, openEnvelope, claimFromPool, reclaimEnvelope } = useRedEnvelope();
 const { loading: historyLoading, history, loadHistory, clearHistory } = useEnvelopeHistory();
 
 const searchId = ref("");
@@ -24,6 +25,8 @@ const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 // Modals
 const showOpenModal = ref(false);
 const showTransferModal = ref(false);
+const showShareCard = ref(false);
+const claimedAmount = ref(0);
 
 const handleSearch = async () => {
   const id = searchId.value.trim();
@@ -60,7 +63,35 @@ const handleOpen = () => {
     connect();
     return;
   }
+  // Pool envelopes use claimFromPool directly (no modal needed for claiming a slot)
+  if (envelope.value?.envelopeType === 1) {
+    handlePoolClaim();
+    return;
+  }
   showOpenModal.value = true;
+};
+
+const handlePoolClaim = async () => {
+  if (!envelope.value) return;
+  status.value = null;
+  // Estimate per-slot amount before claiming
+  const slotsLeft = envelope.value.packetCount - envelope.value.openedCount;
+  const perSlot = slotsLeft > 0 ? envelope.value.remainingAmount / slotsLeft : 0;
+  try {
+    const res = await claimFromPool(envelope.value.id);
+    status.value = { msg: `Claimed! TX: ${res.txid.slice(0, 12)}...`, type: "success" };
+    claimedAmount.value = perSlot;
+    // Refresh envelope state
+    const refreshed = await fetchEnvelopeState(envelope.value.id);
+    if (refreshed) {
+      envelope.value = refreshed;
+      loadHistory(refreshed.id, refreshed.envelopeType, refreshed.openedCount);
+    }
+    // Show celebration share card
+    showShareCard.value = true;
+  } catch (e: unknown) {
+    status.value = { msg: extractError(e), type: "error" };
+  }
 };
 
 const handleTransfer = () => {
@@ -161,7 +192,7 @@ onMounted(() => {
           class="btn btn-open"
           @click="handleOpen"
         >
-          {{ t("claimButton") }}
+          {{ envelope.envelopeType === 1 ? t("claimButton") : t("openEnvelope") }}
         </button>
 
         <button v-if="envelope.active && !envelope.expired" class="btn btn-transfer" @click="handleTransfer">
@@ -197,5 +228,13 @@ onMounted(() => {
     :envelope="envelope"
     @close="showTransferModal = false"
     @transferred="onTransferred"
+  />
+
+  <ShareCard
+    v-if="showShareCard && envelope"
+    :amount="claimedAmount"
+    :envelope-id="envelope.id"
+    :address="address"
+    @close="showShareCard = false"
   />
 </template>

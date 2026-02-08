@@ -1240,3 +1240,130 @@ body {
       0 0 40px rgba(255, 215, 0, 0.15);
   }
 }
+
+// ── Share Card ──────────────────────────────────────
+.share-modal {
+  max-width: 440px;
+}
+
+.share-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.share-card-preview {
+  width: 100%;
+  background: linear-gradient(180deg, var(--color-bg-card), var(--color-bg));
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: var(--radius);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1rem;
+
+  // Red accent bar
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-red), var(--color-red-dark));
+  }
+}
+
+.share-neo-logo {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 0.75rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00e599, #009966);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(0, 229, 153, 0.3);
+}
+
+.share-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-gold);
+  margin-bottom: 0.25rem;
+}
+
+.share-card-subtitle {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.share-divider {
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
+  margin: 0.75rem auto;
+}
+
+.share-received-label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.share-amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.share-amount-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--color-gold);
+  text-shadow: 0 0 16px var(--color-gold-glow);
+}
+
+.share-amount-unit {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.share-address {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: var(--color-text-muted);
+}
+
+.share-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.btn-twitter {
+  flex: 1;
+  background: #000;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+
+  &:hover:not(:disabled) {
+    background: #1a1a1a;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+  }
+}
+
+.btn-copy-img,
+.btn-save-img {
+  flex: 1;
+  background: var(--color-bg-input);
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.8rem;
+}
