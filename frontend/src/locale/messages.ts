@@ -63,6 +63,14 @@ export const messages = {
 
   // ── My Envelopes ──────────────────────────────────
   noEnvelopes: { en: "No envelopes yet", zh: "暂无红包" },
+  mySpreadingNfts: { en: "🎫 My Spreading NFTs", zh: "🎫 我的传播型 NFT" },
+  myOtherEnvelopes: { en: "🧧 My Other Envelopes", zh: "🧧 我的其他红包" },
+  sendToFriend: { en: "📤 Send to Friend", zh: "📤 发送给朋友" },
+  noSpreadingNfts: { en: "No spreading NFTs in your wallet", zh: "钱包中暂无传播型 NFT" },
+  spreadingNftHint: {
+    en: "Spreading NFTs can be opened for GAS, then passed to a friend",
+    zh: "传播型 NFT 可打开领取 GAS，然后转给朋友",
+  },
   youAreCreator: { en: "👑 Creator", zh: "👑 创建者" },
   youAreHolder: { en: "📦 Holder", zh: "📦 持有者" },
   openEnvelope: { en: "🧧 Open", zh: "🧧 打开" },
@@ -74,6 +82,7 @@ export const messages = {
 
   // ── Opening Modal ─────────────────────────────────
   opening: { en: "Opening...", zh: "开启中..." },
+  confirming: { en: "Confirming on chain...", zh: "链上确认中..." },
 
   // ── Lucky Overlay ─────────────────────────────────
   congratulations: { en: "🎉 Congratulations!", zh: "🎉 恭喜发财！" },
@@ -126,8 +135,14 @@ export const messages = {
   claiming: { en: "Claiming...", zh: "领取中..." },
   searching: { en: "Searching...", zh: "搜索中..." },
   searchWalletSpreadingTitle: { en: "My Spreading NFTs", zh: "我的传播型 NFT" },
-  searchWalletSpreadingConnectHint: { en: "Connect wallet to load your spreading NFTs", zh: "连接钱包后可加载你的传播型 NFT" },
-  searchWalletSpreadingEmpty: { en: "No spreading NFT envelopes under current wallet", zh: "当前钱包下暂无传播型红包 NFT" },
+  searchWalletSpreadingConnectHint: {
+    en: "Connect wallet to load your spreading NFTs",
+    zh: "连接钱包后可加载你的传播型 NFT",
+  },
+  searchWalletSpreadingEmpty: {
+    en: "No spreading NFT envelopes under current wallet",
+    zh: "当前钱包下暂无传播型红包 NFT",
+  },
 
   // ── Envelope Detail Panel ───────────────────────────
   detailEnvelopeId: { en: "Envelope #{0}", zh: "红包 #{0}" },
@@ -168,7 +183,10 @@ export const messages = {
   createFlowPoolStep1: { en: "1. Choose Pool type & set total GAS", zh: "1. 选择红包池并设置 GAS 总量" },
   createFlowPoolStep2: { en: "2. Set slots, NEO gate and expiry", zh: "2. 设置份额、NEO 门槛和过期时间" },
   createFlowPoolStep3: { en: "3. Others claim one slot NFT each", zh: "3. 其他用户各自领取一个份额 NFT" },
-  createFlowPoolStep4: { en: "4. Holder must open before expiry to receive GAS", zh: "4. 持有者需在过期前打开才会到账" },
+  createFlowPoolStep4: {
+    en: "4. Holder must open before expiry to receive GAS",
+    zh: "4. 持有者需在过期前打开才会到账",
+  },
   createFlowNftStep1: { en: "1. Choose Lucky NFT type & set GAS", zh: "1. 选择 Lucky NFT 并设置 GAS" },
   createFlowNftStep2: { en: "2. Set open count, NEO gate and expiry", zh: "2. 设置打开次数、NEO 门槛和过期时间" },
   createFlowNftStep3: { en: "3. Current holder opens to get random GAS", zh: "3. 当前持有者先打开领取随机 GAS" },

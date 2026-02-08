@@ -5,6 +5,7 @@ import { useWallet } from "@/composables/useWallet";
 import { useNeoEligibility } from "@/composables/useNeoEligibility";
 import { useI18n } from "@/composables/useI18n";
 import { extractError, formatGas } from "@/utils/format";
+import { waitForConfirmation } from "@/utils/rpc";
 import LuckyOverlay from "./LuckyOverlay.vue";
 import ShareCard from "./ShareCard.vue";
 
@@ -20,6 +21,7 @@ const { openEnvelope, getOpenedAmount } = useRedEnvelope();
 const { checking, result: eligibility, checkEligibility } = useNeoEligibility();
 
 const opening = ref(false);
+const confirming = ref(false);
 const opened = ref(false);
 const openResult = ref<number | null>(null);
 const error = ref("");
@@ -44,11 +46,16 @@ const handleOpen = async () => {
   opening.value = true;
   error.value = "";
   try {
-    await openEnvelope(props.envelope);
+    const { txid } = await openEnvelope(props.envelope);
 
     if (props.envelope.envelopeType === 2) {
+      // Claim envelopes: amount is known upfront, no need to wait
       openResult.value = props.envelope.remainingAmount;
     } else {
+      // Spreading envelopes: wait for TX confirmation before reading amount
+      confirming.value = true;
+      await waitForConfirmation(txid);
+      confirming.value = false;
       openResult.value = await getOpenedAmount(props.envelope.id);
     }
 
@@ -132,7 +139,7 @@ const handleOpen = async () => {
           :disabled="opening || isLocked"
           @click="handleOpen"
         >
-          {{ opening ? t("opening") : t("openEnvelope") }}
+          {{ confirming ? t("confirming") : opening ? t("opening") : t("openEnvelope") }}
         </button>
 
         <div v-else class="modal-actions">

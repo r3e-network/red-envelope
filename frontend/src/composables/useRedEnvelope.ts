@@ -18,6 +18,7 @@ export type EnvelopeItem = {
   totalAmount: number;
   packetCount: number;
   openedCount: number;
+  claimedCount: number;
   remainingAmount: number;
   remainingPackets: number;
   minNeoRequired: number;
@@ -265,11 +266,11 @@ function mapEnvelopeData(id: string, d: Record<string, unknown>): EnvelopeItem {
   const envelopeType = Number(d.envelopeType ?? 0);
   const packetCount = Number(d.packetCount ?? 0);
   const openedCount = Number(d.openedCount ?? 0);
+  const claimedCount = Number(d.claimedCount ?? openedCount);
   const active = Boolean(d.active);
   const expiryTime = Number(d.expiryTime ?? 0);
-  const currentTime = Number(d.currentTime ?? 0);
-  const expired = expiryTime > 0 && currentTime > expiryTime;
-  const depleted = Boolean(d.isDepleted) || openedCount >= packetCount;
+  const expired = Boolean(d.isExpired);
+  const depleted = Boolean(d.isDepleted);
 
   return {
     id,
@@ -279,8 +280,9 @@ function mapEnvelopeData(id: string, d: Record<string, unknown>): EnvelopeItem {
     totalAmount: fromFixed8(Number(d.totalAmount ?? 0)),
     packetCount,
     openedCount,
+    claimedCount,
     remainingAmount: fromFixed8(Number(d.remainingAmount ?? 0)),
-    remainingPackets: Math.max(0, packetCount - openedCount),
+    remainingPackets: Number(d.remainingPackets ?? 0),
     minNeoRequired: Number(d.minNeoRequired ?? 0),
     minHoldSeconds: Number(d.minHoldSeconds ?? 0),
     active,

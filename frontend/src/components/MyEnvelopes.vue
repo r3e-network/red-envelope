@@ -4,6 +4,7 @@ import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
 import { formatGas, extractError } from "@/utils/format";
+import { waitForConfirmation } from "@/utils/rpc";
 import { msUntilExpiry } from "@/utils/time";
 import { addressToBase64ScriptHash } from "@/utils/neo";
 import OpeningModal from "./OpeningModal.vue";
@@ -85,6 +86,28 @@ const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
   }),
 );
 
+// ── Filtered: only envelopes where user is creator or holder ──
+const myEnvelopes = computed(() => enrichedEnvelopes.value.filter((env) => env.role !== null));
+
+// ── Spreading NFTs: type=0, user is holder, sorted active-first then newest ──
+const spreadingNfts = computed(() =>
+  myEnvelopes.value
+    .filter((env) => env.envelopeType === 0 && env.role?.cls === "role-holder")
+    .slice()
+    .sort((a, b) => {
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      return Number(b.id) - Number(a.id);
+    }),
+);
+
+// ── Other envelopes: everything else (pools created, claim NFTs), newest-first ──
+const otherEnvelopes = computed(() =>
+  myEnvelopes.value
+    .filter((env) => !(env.envelopeType === 0 && env.role?.cls === "role-holder"))
+    .slice()
+    .sort((a, b) => Number(b.id) - Number(a.id)),
+);
+
 // ── Actions ──
 const handleOpen = (env: EnvelopeItem) => {
   selectedEnvelope.value = env;
@@ -99,8 +122,10 @@ const handleTransfer = (env: EnvelopeItem) => {
 const handleReclaim = async (env: EnvelopeItem) => {
   actionStatus.value = null;
   try {
-    await reclaimEnvelope(env);
+    const res = await reclaimEnvelope(env);
     actionStatus.value = { msg: t("reclaimSuccess", formatGas(env.remainingAmount)), type: "success" };
+    // Wait for TX confirmation before refreshing state (BUG-4 fix)
+    await waitForConfirmation(res.txid);
     await loadEnvelopes();
   } catch (e: unknown) {
     actionStatus.value = { msg: extractError(e), type: "error" };
@@ -117,69 +142,130 @@ const handleReclaim = async (env: EnvelopeItem) => {
 
     <div v-if="loadingEnvelopes" class="loading">...</div>
 
-    <div v-else-if="envelopes.length === 0" class="empty">
+    <div v-else-if="myEnvelopes.length === 0" class="empty">
       {{ t("noEnvelopes") }}
     </div>
 
-    <div v-else class="envelope-list">
-      <div
-        v-for="env in enrichedEnvelopes"
-        :key="env.id"
-        :class="['envelope-card', { 'card-inactive': !env.isActive }]"
-      >
-        <div class="card-header">
-          <div style="display: flex; align-items: center; gap: 0.5rem">
-            <span class="envelope-id">#{{ env.id }}</span>
-            <span v-if="env.role" :class="['role-badge', env.role.cls]">
-              {{ env.role.text }}
+    <template v-else>
+      <!-- ── Spreading NFTs Section ── -->
+      <div class="section-header">{{ t("mySpreadingNfts") }}</div>
+      <div class="section-hint">{{ t("spreadingNftHint") }}</div>
+
+      <div v-if="spreadingNfts.length === 0" class="section-empty">
+        {{ t("noSpreadingNfts") }}
+      </div>
+
+      <div v-else class="envelope-list">
+        <div
+          v-for="env in spreadingNfts"
+          :key="'s-' + env.id"
+          :class="['envelope-card', 'spreading-card', { 'card-inactive': !env.isActive }]"
+        >
+          <div class="card-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+              <span class="envelope-id">#{{ env.id }}</span>
+              <span v-if="env.role" :class="['role-badge', env.role.cls]">
+                {{ env.role.text }}
+              </span>
+            </div>
+            <span :class="['badge', env.isActive ? 'active' : 'inactive']">
+              {{ env.status }}
             </span>
           </div>
-          <span :class="['badge', env.isActive ? 'active' : 'inactive']">
-            {{ env.status }}
-          </span>
-        </div>
 
-        <div class="card-body">
-          <div class="card-msg">{{ env.message || "🧧" }}</div>
-
-          <!-- GAS remaining prominently -->
-          <div class="card-gas-remaining">
-            {{ t("gasRemaining", formatGas(env.remainingAmount)) }}
+          <div class="card-body">
+            <div class="card-msg">{{ env.message || "🧧" }}</div>
+            <div class="card-gas-remaining">
+              {{ t("gasRemaining", formatGas(env.remainingAmount)) }}
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: env.progress + '%' }"></div>
+            </div>
+            <div class="progress-label">
+              <span>{{ t("packets", env.openedCount, env.packetCount) }}</span>
+              <span>{{ env.progress }}%</span>
+            </div>
+            <div v-if="env.countdown" :class="['countdown', { 'countdown-urgent': env.countdown.urgent }]">
+              {{ env.countdown.text }}
+            </div>
+            <div class="card-meta text-muted">
+              {{ t("neoGate", env.minNeoRequired, env.holdDays) }}
+            </div>
           </div>
 
-          <!-- Progress bar -->
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: env.progress + '%' }"></div>
+          <div class="card-actions">
+            <button v-if="env.showOpen" class="btn btn-open" @click="handleOpen(env)">
+              {{ t("openEnvelope") }}
+            </button>
+            <button v-if="env.showTransfer" class="btn btn-send-friend" @click="handleTransfer(env)">
+              {{ t("sendToFriend") }}
+            </button>
+            <button v-if="env.showReclaim" class="btn btn-reclaim" @click="handleReclaim(env)">
+              {{ t("reclaimEnvelope") }}
+            </button>
           </div>
-          <div class="progress-label">
-            <span>{{ t("packets", env.openedCount, env.packetCount) }}</span>
-            <span>{{ env.progress }}%</span>
-          </div>
-
-          <!-- Expiry countdown -->
-          <div v-if="env.countdown" :class="['countdown', { 'countdown-urgent': env.countdown.urgent }]">
-            {{ env.countdown.text }}
-          </div>
-
-          <!-- NEO gate compact badge -->
-          <div class="card-meta text-muted">
-            {{ t("neoGate", env.minNeoRequired, env.holdDays) }}
-          </div>
-        </div>
-
-        <div class="card-actions">
-          <button v-if="env.showOpen" class="btn btn-open" @click="handleOpen(env)">
-            {{ t("openEnvelope") }}
-          </button>
-          <button v-if="env.showTransfer" class="btn btn-transfer" @click="handleTransfer(env)">
-            {{ t("transferEnvelope") }}
-          </button>
-          <button v-if="env.showReclaim" class="btn btn-reclaim" @click="handleReclaim(env)">
-            {{ t("reclaimEnvelope") }}
-          </button>
         </div>
       </div>
-    </div>
+
+      <!-- ── Other Envelopes Section ── -->
+      <div class="section-header">{{ t("myOtherEnvelopes") }}</div>
+
+      <div v-if="otherEnvelopes.length === 0" class="section-empty">
+        {{ t("noEnvelopes") }}
+      </div>
+
+      <div v-else class="envelope-list">
+        <div
+          v-for="env in otherEnvelopes"
+          :key="'o-' + env.id"
+          :class="['envelope-card', { 'card-inactive': !env.isActive }]"
+        >
+          <div class="card-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+              <span class="envelope-id">#{{ env.id }}</span>
+              <span v-if="env.role" :class="['role-badge', env.role.cls]">
+                {{ env.role.text }}
+              </span>
+            </div>
+            <span :class="['badge', env.isActive ? 'active' : 'inactive']">
+              {{ env.status }}
+            </span>
+          </div>
+
+          <div class="card-body">
+            <div class="card-msg">{{ env.message || "🧧" }}</div>
+            <div class="card-gas-remaining">
+              {{ t("gasRemaining", formatGas(env.remainingAmount)) }}
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: env.progress + '%' }"></div>
+            </div>
+            <div class="progress-label">
+              <span>{{ t("packets", env.openedCount, env.packetCount) }}</span>
+              <span>{{ env.progress }}%</span>
+            </div>
+            <div v-if="env.countdown" :class="['countdown', { 'countdown-urgent': env.countdown.urgent }]">
+              {{ env.countdown.text }}
+            </div>
+            <div class="card-meta text-muted">
+              {{ t("neoGate", env.minNeoRequired, env.holdDays) }}
+            </div>
+          </div>
+
+          <div class="card-actions">
+            <button v-if="env.showOpen" class="btn btn-open" @click="handleOpen(env)">
+              {{ t("openEnvelope") }}
+            </button>
+            <button v-if="env.showTransfer" class="btn btn-transfer" @click="handleTransfer(env)">
+              {{ t("transferEnvelope") }}
+            </button>
+            <button v-if="env.showReclaim" class="btn btn-reclaim" @click="handleReclaim(env)">
+              {{ t("reclaimEnvelope") }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <div v-if="actionStatus" :class="['status', actionStatus.type]">
       {{ actionStatus.msg }}

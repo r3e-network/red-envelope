@@ -26,5 +26,17 @@ export function formatGas(amount: number): string {
 export function extractError(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
+  // Wallet dAPI errors are plain objects: { type, description, message, ... }
+  if (e && typeof e === "object") {
+    const obj = e as Record<string, unknown>;
+    const msg = obj.description ?? obj.message ?? obj.error;
+    if (typeof msg === "string" && msg) return msg;
+    // Last resort: try JSON for debugging
+    try {
+      return JSON.stringify(e);
+    } catch {
+      // fall through
+    }
+  }
   return String(e);
 }

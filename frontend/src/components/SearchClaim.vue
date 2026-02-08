@@ -6,6 +6,7 @@ import { useEnvelopeHistory } from "@/composables/useEnvelopeHistory";
 import { useI18n } from "@/composables/useI18n";
 import { extractError, formatGas } from "@/utils/format";
 import { addressToBase64ScriptHash } from "@/utils/neo";
+import { waitForConfirmation } from "@/utils/rpc";
 import { msUntilExpiry } from "@/utils/time";
 import EnvelopeDetail from "./EnvelopeDetail.vue";
 import EnvelopeHistory from "./EnvelopeHistory.vue";
@@ -85,8 +86,8 @@ const handleSearch = async () => {
       const url = new URL(window.location.href);
       url.searchParams.set("id", id);
       window.history.replaceState({}, "", url.toString());
-      // Auto-load claim history for pool envelopes
-      loadHistory(id, result.envelopeType, result.openedCount);
+      // Auto-load claim history for pool envelopes (use claimedCount, not openedCount)
+      loadHistory(id, result.envelopeType, result.claimedCount);
     } else {
       notFound.value = true;
     }
@@ -125,18 +126,19 @@ const handleWalletSpreadingClaim = async (target: EnvelopeItem) => {
 const handlePoolClaim = async () => {
   if (!envelope.value) return;
   status.value = null;
-  // Estimate per-slot amount before claiming
-  const slotsLeft = envelope.value.packetCount - envelope.value.openedCount;
+  // Estimate per-slot amount using contract's remainingPackets (BUG-5 fix)
+  const slotsLeft = envelope.value.remainingPackets;
   const perSlot = slotsLeft > 0 ? envelope.value.remainingAmount / slotsLeft : 0;
   try {
     const res = await claimFromPool(envelope.value.id);
     status.value = { msg: `Claimed! TX: ${res.txid.slice(0, 12)}...`, type: "success" };
     claimedAmount.value = perSlot;
-    // Refresh envelope state
+    // Wait for TX confirmation before refreshing state (BUG-4 fix)
+    await waitForConfirmation(res.txid);
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) {
       envelope.value = refreshed;
-      loadHistory(refreshed.id, refreshed.envelopeType, refreshed.openedCount);
+      loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
     }
     // Show celebration share card
     showShareCard.value = true;
@@ -160,9 +162,10 @@ const handleReclaim = async () => {
   }
   status.value = null;
   try {
-    await reclaimEnvelope(envelope.value);
+    const res = await reclaimEnvelope(envelope.value);
     status.value = { msg: "Reclaimed!", type: "success" };
-    // Refresh envelope state
+    // Wait for TX confirmation before refreshing state (BUG-4 fix)
+    await waitForConfirmation(res.txid);
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) envelope.value = refreshed;
   } catch (e: unknown) {

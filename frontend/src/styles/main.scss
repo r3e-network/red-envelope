@@ -727,6 +727,54 @@ body {
   }
 }
 
+// Section headers for grouped envelope lists
+.section-header {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-gold);
+  padding: 0.5rem 0 0.375rem;
+  margin-top: 0.75rem;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.12);
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.section-hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  padding: 0.375rem 0;
+}
+
+.section-empty {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  padding: 0.75rem 0;
+  text-align: center;
+}
+
+// Prominent send button for spreading NFTs
+.btn-send-friend {
+  background: linear-gradient(135deg, var(--color-gold-dark), var(--color-gold));
+  color: #1a0a0a;
+  font-weight: 700;
+  border: none;
+
+  &:hover:not(:disabled) {
+    box-shadow: var(--shadow-gold);
+  }
+}
+
+// Spreading NFT card highlight
+.spreading-card {
+  border-left-color: var(--color-gold);
+
+  &:hover {
+    box-shadow: 0 2px 12px var(--color-gold-glow);
+  }
+}
+
 // ── Status Messages ─────────────────────────────────
 .status {
   margin-top: 0.75rem;

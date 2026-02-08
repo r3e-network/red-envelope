@@ -24,13 +24,13 @@ export function useEnvelopeHistory() {
   const history = ref<HistoryData | null>(null);
 
   /** Fetch pool claim history by iterating claim indices */
-  const fetchPoolHistory = async (poolId: string, openedCount: number): Promise<HistoryData> => {
+  const fetchPoolHistory = async (poolId: string, claimCount: number): Promise<HistoryData> => {
     const claims: ClaimRecord[] = [];
     let totalClaimed = 0;
 
     // Fetch claim IDs in parallel (batched)
     const claimIdPromises: Promise<string>[] = [];
-    for (let i = 1; i <= openedCount; i++) {
+    for (let i = 1; i <= claimCount; i++) {
       claimIdPromises.push(fetchPoolClaimId(poolId, i));
     }
     const claimIds = await Promise.all(claimIdPromises);
@@ -90,14 +90,14 @@ export function useEnvelopeHistory() {
   };
 
   /** Load history for a given envelope */
-  const loadHistory = async (envelopeId: string, envelopeType: number, openedCount: number) => {
+  const loadHistory = async (envelopeId: string, envelopeType: number, claimCount: number) => {
     loading.value = true;
     history.value = null;
 
     try {
-      if (envelopeType === 1 && openedCount > 0) {
+      if (envelopeType === 1 && claimCount > 0) {
         // Pool type: fetch all claim records
-        history.value = await fetchPoolHistory(envelopeId, openedCount);
+        history.value = await fetchPoolHistory(envelopeId, claimCount);
       }
       // Spreading (type 0) and Claim (type 2) don't have sub-claims
       // Their state is shown via EnvelopeDetail (currentHolder, etc.)
