@@ -53,8 +53,11 @@ export function useRedEnvelope() {
       const amount = toFixed8(params.totalGas);
       validate(amount, params.packetCount, params.expiryHours, params.message);
 
-      const expirySeconds = params.expiryHours * 3600;
-      const minHoldSeconds = params.minHoldDays * 86400;
+      // Contract adds expiry directly to Runtime.Time (milliseconds), so send ms
+      const expiryMs = params.expiryHours * 3_600_000;
+      // Contract defaults 0 → 100 NEO / 172800s hold; send 1 to effectively disable gate
+      const minNeo = params.minNeo > 0 ? params.minNeo : 1;
+      const minHoldSeconds = params.minHoldDays > 0 ? params.minHoldDays * 86400 : 1;
 
       // Send GAS to contract with config data array
       const res = (await invoke({
@@ -68,9 +71,9 @@ export function useRedEnvelope() {
             type: "Array",
             value: [
               { type: "Integer", value: String(params.packetCount) },
-              { type: "Integer", value: String(expirySeconds) },
+              { type: "Integer", value: String(expiryMs) },
               { type: "String", value: params.message },
-              { type: "Integer", value: String(params.minNeo) },
+              { type: "Integer", value: String(minNeo) },
               { type: "Integer", value: String(minHoldSeconds) },
               { type: "Integer", value: String(params.envelopeType ?? 0) },
             ],
