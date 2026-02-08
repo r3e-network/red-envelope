@@ -17,20 +17,20 @@ export const messages = {
   typePool: { en: "🎁 Red Envelope Pool", zh: "🎁 红包池" },
   typeNft: { en: "🎫 Lucky NFT", zh: "🎫 幸运 NFT" },
   typePoolDesc: {
-    en: "Split GAS into claim slots — each claimer gets one NFT and opens for all GAS in it. Cannot transfer after opening.",
-    zh: "将 GAS 分成多个领取位 — 每位领取者获得一个 NFT，打开后获得该位全部 GAS。打开后不可转让。",
+    en: "Split GAS into claim slots — each claimer gets one Claim NFT. Reward is received only after opening, before expiry.",
+    zh: "将 GAS 分成多个领取位 — 每位领取者获得一个 Claim NFT。必须在过期前打开后才会到账。",
   },
   typeNftDesc: {
-    en: "Single NFT passed around — each holder opens for random GAS, then passes it on. Burns when all opens used.",
-    zh: "单个 NFT 传递 — 每位持有者打开获得随机 GAS，然后传给下一位。所有次数用完后自动销毁。",
+    en: "One single Lucky NFT passed around — each holder must open to receive reward, then can pass it on. Expires and can be reclaimed by issuer.",
+    zh: "单个 Lucky NFT 传递 — 持有者必须先打开才会获得奖励，然后可继续转给他人。到期后仅发行者可回收。",
   },
   flowBannerPool: {
-    en: "Send GAS → Create Pool → Others Claim Slots → Open for GAS",
-    zh: "发送 GAS → 创建红包池 → 他人领取位 → 打开领 GAS",
+    en: "Send GAS → Create Pool → Claim NFT Slot → Open Before Expiry → Receive GAS",
+    zh: "发送 GAS → 创建红包池 → 领取 Claim NFT → 过期前打开 → 获得 GAS",
   },
   flowBannerNft: {
-    en: "Send GAS → Mint NFT → Pass Along → Open for Random GAS → Auto-burn",
-    zh: "发送 GAS → 铸造 NFT → 传递 → 打开领随机 GAS → 自动销毁",
+    en: "Send GAS → Mint Single Lucky NFT → Open Then Transfer → Expire/Reclaim",
+    zh: "发送 GAS → 铸造单个 Lucky NFT → 先打开再转让 → 过期/回收",
   },
   amountSection: { en: "💰 Amount", zh: "💰 金额" },
   neoGateSection: { en: "🔒 NEO Gate", zh: "🔒 NEO 门槛" },
@@ -102,6 +102,7 @@ export const messages = {
   expired: { en: "Expired", zh: "已过期" },
   depleted: { en: "All opened", zh: "已领完" },
   active: { en: "Active", zh: "进行中" },
+  expiringSoon: { en: "Expiring Soon", zh: "即将过期" },
   neoGate: { en: "🔒 {0} NEO, {1}d hold", zh: "🔒 {0} NEO, 持有 {1} 天" },
   packets: { en: "{0}/{1} opened", zh: "已打开 {0}/{1}" },
   invalidAddress: { en: "Invalid Neo N3 address", zh: "无效的 Neo N3 地址" },
@@ -124,6 +125,9 @@ export const messages = {
   claimButton: { en: "🧧 Claim", zh: "🧧 领取" },
   claiming: { en: "Claiming...", zh: "领取中..." },
   searching: { en: "Searching...", zh: "搜索中..." },
+  searchWalletSpreadingTitle: { en: "My Spreading NFTs", zh: "我的传播型 NFT" },
+  searchWalletSpreadingConnectHint: { en: "Connect wallet to load your spreading NFTs", zh: "连接钱包后可加载你的传播型 NFT" },
+  searchWalletSpreadingEmpty: { en: "No spreading NFT envelopes under current wallet", zh: "当前钱包下暂无传播型红包 NFT" },
 
   // ── Envelope Detail Panel ───────────────────────────
   detailEnvelopeId: { en: "Envelope #{0}", zh: "红包 #{0}" },
@@ -161,16 +165,16 @@ export const messages = {
 
   // ── Create Form (two-column) ────────────────────────
   createFlowTitle: { en: "How it works", zh: "流程说明" },
-  createFlowPoolStep1: { en: "1. Choose Pool type & set total GAS", zh: "1. 选择红包池类型并设置 GAS 总量" },
-  createFlowPoolStep2: { en: "2. Set number of claim slots & NEO gate", zh: "2. 设置领取位数量和 NEO 门槛" },
-  createFlowPoolStep3: { en: "3. Send GAS to create the pool", zh: "3. 发送 GAS 创建红包池" },
-  createFlowPoolStep4: { en: "4. Share pool ID — others claim slots", zh: "4. 分享红包池 ID — 他人领取" },
-  createFlowNftStep1: { en: "1. Choose Lucky NFT type & set GAS", zh: "1. 选择幸运 NFT 类型并设置 GAS" },
-  createFlowNftStep2: { en: "2. Set number of opens & NEO gate", zh: "2. 设置可打开次数和 NEO 门槛" },
-  createFlowNftStep3: { en: "3. Send GAS to mint the NFT", zh: "3. 发送 GAS 铸造 NFT" },
+  createFlowPoolStep1: { en: "1. Choose Pool type & set total GAS", zh: "1. 选择红包池并设置 GAS 总量" },
+  createFlowPoolStep2: { en: "2. Set slots, NEO gate and expiry", zh: "2. 设置份额、NEO 门槛和过期时间" },
+  createFlowPoolStep3: { en: "3. Others claim one slot NFT each", zh: "3. 其他用户各自领取一个份额 NFT" },
+  createFlowPoolStep4: { en: "4. Holder must open before expiry to receive GAS", zh: "4. 持有者需在过期前打开才会到账" },
+  createFlowNftStep1: { en: "1. Choose Lucky NFT type & set GAS", zh: "1. 选择 Lucky NFT 并设置 GAS" },
+  createFlowNftStep2: { en: "2. Set open count, NEO gate and expiry", zh: "2. 设置打开次数、NEO 门槛和过期时间" },
+  createFlowNftStep3: { en: "3. Current holder opens to get random GAS", zh: "3. 当前持有者先打开领取随机 GAS" },
   createFlowNftStep4: {
-    en: "4. Transfer NFT — each holder opens for random GAS",
-    zh: "4. 转让 NFT — 每位持有者打开获得随机 GAS",
+    en: "4. Then transfer to others to continue; no open means no reward",
+    zh: "4. 再转给他人继续；不打开就没有奖励",
   },
 };
 

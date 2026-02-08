@@ -65,7 +65,14 @@ export function parseStackItem(item: unknown): unknown {
       return Boolean(value);
     case "ByteString":
     case "Buffer":
-      return value ? String(value) : "";
+      if (!value) return "";
+      try {
+        const binary = atob(String(value));
+        const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+        return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      } catch {
+        return String(value);
+      }
     case "Array":
       return Array.isArray(value) ? value.map(parseStackItem) : [];
     case "Map": {

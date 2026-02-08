@@ -101,32 +101,42 @@ Contract artifacts are generated at:
 
 ## Usage
 
-### Sending Red Envelopes
+### Red Envelope Pool (multi-claimer)
 
-1. **Connect Wallet**: Link your Neo N3 wallet to the application
-2. **Create Envelope**: Choose total amount and number of recipients
-3. **Select Distribution**: Pick equal split or random (lucky draw) distribution
-4. **Add Message**: Include a greeting or occasion message
-5. **Send**: Confirm and distribute the red envelope
+1. Creator sends GAS and configures packet count, NEO gate, and expiry time.
+2. Users claim one slot from the pool; each claim mints one **Claim NFT**.
+3. **Claiming is not the same as receiving GAS** — the holder must call `OpenClaim` to receive reward.
+4. Before opening, the Claim NFT can be transferred to another user.
+5. If a user never opens the Claim NFT before expiry, they receive **0 GAS**.
+6. After expiry, only the pool issuer can reclaim unclaimed pool balance and unopened claim balances.
 
-### Receiving Red Envelopes
+### Lucky NFT (single spreading envelope)
 
-1. Receive a red envelope link or QR code from sender
-2. Connect your wallet and open the envelope
-3. Claim your share of the GAS (amount depends on distribution type)
-4. View received amount and sender's message
-5. Send thank you or reciprocate with your own envelope
+1. Creator sends GAS and mints **one single Lucky NFT** with open-count and expiry.
+2. The current holder can choose to open once for random GAS, then transfer to next holder.
+3. If a holder only transfers without opening, that holder gets **no reward**.
+4. Each address can open that envelope only once.
+5. When all open-count is used, the NFT is burned.
+6. After expiry, only the original issuer can reclaim remaining GAS.
+
+## Core Rules
+
+- **Only real users can open/claim**: contract accounts are rejected for open/claim actions.
+- **Contract owner cannot touch envelopes**: owner cannot create/open/claim/transfer/reclaim envelopes.
+- **Open is required to receive GAS**: holding or claiming NFT alone does not transfer GAS.
+- **Expiry is enforced**: open/claim operations are blocked after expiry.
+- **Minimum amounts**: total per envelope is at least `1 GAS`, and each packet/slot is at least `0.1 GAS`.
 
 ## How It Works
 
 Red Envelope brings traditional gifting to the blockchain:
 
 1. **Cultural Tradition**: Based on the Chinese tradition of hongbao (lucky money)
-2. **Smart Contract Escrow**: Sender's GAS is held in the contract until claimed
-3. **Random Distribution**: "Lucky draw" mode assigns random amounts using verifiable RNG
-4. **Equal Distribution**: "Equal split" mode gives all recipients the same amount
-5. **Time Limits**: Unclaimed envelopes return to sender after expiry
-6. **Social Sharing**: Envelopes can be shared via links or QR codes
+2. **Smart Contract Escrow**: Issuer's GAS stays in contract until users open claims
+3. **Runtime Randomness**: Packet amounts are assigned with Neo runtime randomness syscall
+4. **Two Modes**: Pool mode (claim NFT per slot) and Lucky NFT mode (single transferable envelope)
+5. **Open-to-Earn**: Users receive GAS only when they execute open operation
+6. **Expiry + Reclaim**: After expiry, only issuer can reclaim unopened/remaining GAS
 
 ## Assets
 

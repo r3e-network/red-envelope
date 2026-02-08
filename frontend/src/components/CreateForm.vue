@@ -21,7 +21,7 @@ const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 const canSubmit = computed(() => {
   const a = Number(amount.value);
   const c = Number(count.value);
-  return a >= 0.1 && c >= 1 && c <= 100 && a >= c * 0.01;
+  return a >= 1 && c >= 1 && c <= 100 && a >= c * 0.1;
 });
 
 const perPacket = computed(() => {
@@ -128,7 +128,7 @@ const handleSubmit = async () => {
             v-model="amount"
             type="number"
             step="0.1"
-            min="0.1"
+            min="1"
             :placeholder="t('totalGasPlaceholder')"
             class="input"
           />

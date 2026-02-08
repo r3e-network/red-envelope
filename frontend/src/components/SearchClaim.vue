@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useEnvelopeHistory } from "@/composables/useEnvelopeHistory";
 import { useI18n } from "@/composables/useI18n";
-import { extractError } from "@/utils/format";
+import { extractError, formatGas } from "@/utils/format";
+import { addressToBase64ScriptHash } from "@/utils/neo";
+import { msUntilExpiry } from "@/utils/time";
 import EnvelopeDetail from "./EnvelopeDetail.vue";
 import EnvelopeHistory from "./EnvelopeHistory.vue";
 import OpeningModal from "./OpeningModal.vue";
@@ -13,7 +15,8 @@ import ShareCard from "./ShareCard.vue";
 
 const { t } = useI18n();
 const { address, connected, connect } = useWallet();
-const { fetchEnvelopeState, openEnvelope, claimFromPool, reclaimEnvelope } = useRedEnvelope();
+const { envelopes, loadingEnvelopes, loadEnvelopes, fetchEnvelopeState, claimFromPool, reclaimEnvelope } =
+  useRedEnvelope();
 const { loading: historyLoading, history, loadHistory, clearHistory } = useEnvelopeHistory();
 
 const searchId = ref("");
@@ -27,6 +30,42 @@ const showOpenModal = ref(false);
 const showTransferModal = ref(false);
 const showShareCard = ref(false);
 const claimedAmount = ref(0);
+const openTargetEnvelope = ref<EnvelopeItem | null>(null);
+
+const currentAddressHash = computed(() => (address.value ? addressToBase64ScriptHash(address.value) : ""));
+
+const walletSpreadingEnvelopes = computed(() => {
+  if (!currentAddressHash.value) return [];
+
+  return envelopes.value
+    .filter((env) => env.envelopeType === 0 && env.currentHolder === currentAddressHash.value)
+    .slice()
+    .sort((a, b) => {
+      const aClaimable = a.active && !a.expired && !a.depleted;
+      const bClaimable = b.active && !b.expired && !b.depleted;
+
+      if (aClaimable !== bClaimable) return aClaimable ? -1 : 1;
+
+      if (aClaimable && bClaimable) {
+        const aExpiry = a.expiryTime > 0 ? a.expiryTime : Number.MAX_SAFE_INTEGER;
+        const bExpiry = b.expiryTime > 0 ? b.expiryTime : Number.MAX_SAFE_INTEGER;
+        if (aExpiry !== bExpiry) return aExpiry - bExpiry;
+      }
+
+      return Number(b.id) - Number(a.id);
+    });
+});
+
+const refreshWalletSpreadingList = async () => {
+  if (!connected.value) return;
+  await loadEnvelopes();
+};
+
+const isExpiringSoon = (env: EnvelopeItem): boolean => {
+  if (!env.active || env.expired || env.depleted) return false;
+  const remainingMs = msUntilExpiry(env.expiryTime);
+  return remainingMs > 0 && remainingMs <= 6 * 60 * 60 * 1000;
+};
 
 const handleSearch = async () => {
   const id = searchId.value.trim();
@@ -68,6 +107,18 @@ const handleOpen = () => {
     handlePoolClaim();
     return;
   }
+  openTargetEnvelope.value = envelope.value;
+  showOpenModal.value = true;
+};
+
+const handleWalletSpreadingClaim = async (target: EnvelopeItem) => {
+  if (!connected.value) {
+    await connect();
+    await refreshWalletSpreadingList();
+    return;
+  }
+
+  openTargetEnvelope.value = target;
   showOpenModal.value = true;
 };
 
@@ -121,10 +172,12 @@ const handleReclaim = async () => {
 
 const onOpened = async () => {
   showOpenModal.value = false;
+  openTargetEnvelope.value = null;
   if (envelope.value) {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) envelope.value = refreshed;
   }
+  await refreshWalletSpreadingList();
 };
 
 const onTransferred = async () => {
@@ -142,6 +195,16 @@ onMounted(() => {
   if (urlId) {
     searchId.value = urlId;
     handleSearch();
+  }
+
+  if (connected.value) {
+    refreshWalletSpreadingList();
+  }
+});
+
+watch(connected, (isConnected) => {
+  if (isConnected) {
+    refreshWalletSpreadingList();
   }
 });
 </script>
@@ -185,6 +248,53 @@ onMounted(() => {
         </button>
       </div>
 
+      <div class="wallet-spreading-card">
+        <div class="wallet-spreading-header">
+          <span>{{ t("searchWalletSpreadingTitle") }}</span>
+          <button class="btn btn-sm" @click="refreshWalletSpreadingList">↻</button>
+        </div>
+
+        <div v-if="!connected" class="text-muted wallet-spreading-empty">
+          {{ t("searchWalletSpreadingConnectHint") }}
+        </div>
+
+        <div v-else-if="loadingEnvelopes" class="text-muted wallet-spreading-empty">
+          {{ t("searching") }}
+        </div>
+
+        <div v-else-if="walletSpreadingEnvelopes.length === 0" class="text-muted wallet-spreading-empty">
+          {{ t("searchWalletSpreadingEmpty") }}
+        </div>
+
+        <div v-else class="wallet-spreading-list">
+          <div
+            v-for="env in walletSpreadingEnvelopes"
+            :key="env.id"
+            :class="['wallet-spreading-item', { 'wallet-spreading-item-urgent': isExpiringSoon(env) }]"
+          >
+            <div class="wallet-spreading-meta">
+              <div class="wallet-spreading-id-row">
+                <div class="wallet-spreading-id">#{{ env.id }}</div>
+                <span v-if="isExpiringSoon(env)" class="wallet-spreading-badge-urgent">
+                  {{ t("expiringSoon") }}
+                </span>
+              </div>
+              <div class="wallet-spreading-info">
+                {{ t("packets", env.openedCount, env.packetCount) }} · {{ formatGas(env.remainingAmount) }} GAS
+              </div>
+            </div>
+
+            <button
+              class="btn btn-open wallet-spreading-open"
+              :disabled="!env.active || env.expired || env.depleted"
+              @click="handleWalletSpreadingClaim(env)"
+            >
+              {{ t("claimButton") }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Action buttons (only when envelope loaded) -->
       <template v-if="envelope">
         <button
@@ -195,7 +305,11 @@ onMounted(() => {
           {{ envelope.envelopeType === 1 ? t("claimButton") : t("openEnvelope") }}
         </button>
 
-        <button v-if="envelope.active && !envelope.expired" class="btn btn-transfer" @click="handleTransfer">
+        <button
+          v-if="envelope.active && !envelope.expired && envelope.envelopeType !== 1"
+          class="btn btn-transfer"
+          @click="handleTransfer"
+        >
           {{ t("transferEnvelope") }}
         </button>
 
@@ -217,9 +331,12 @@ onMounted(() => {
 
   <!-- Modals -->
   <OpeningModal
-    v-if="showOpenModal && envelope"
-    :envelope="envelope"
-    @close="showOpenModal = false"
+    v-if="showOpenModal && openTargetEnvelope"
+    :envelope="openTargetEnvelope"
+    @close="
+      showOpenModal = false;
+      openTargetEnvelope = null;
+    "
     @opened="onOpened"
   />
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useI18n } from "@/composables/useI18n";
 import { formatGas, formatHash } from "@/utils/format";
+import { useRedEnvelope } from "@/composables/useRedEnvelope";
 
 const props = defineProps<{
   amount: number;
@@ -11,9 +12,33 @@ const props = defineProps<{
 
 const emit = defineEmits<{ close: [] }>();
 const { t } = useI18n();
+const { getTokenURI } = useRedEnvelope();
 
 const copyStatus = ref("");
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const nftSvgDataUri = ref("");
+
+onMounted(async () => {
+  try {
+    const uri = await getTokenURI(props.envelopeId);
+    if (!uri.startsWith("data:application/json;base64,")) return;
+
+    const jsonBase64 = uri.slice("data:application/json;base64,".length);
+    const jsonText = decodeBase64Utf8(jsonBase64);
+    const obj = JSON.parse(jsonText) as { image?: string };
+    if (obj?.image?.startsWith("data:image/svg+xml;base64,")) {
+      nftSvgDataUri.value = obj.image;
+    }
+  } catch {
+    // fallback to local rendering if tokenURI unavailable
+  }
+});
+
+function decodeBase64Utf8(value: string): string {
+  const binary = atob(value);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
 
 // ── Canvas share image generator ──
 function drawShareImage(canvas: HTMLCanvasElement): void {
@@ -130,6 +155,33 @@ function drawShareImage(canvas: HTMLCanvasElement): void {
   ctx.fillText("neo.org", W / 2, H - 16);
 }
 
+async function drawShareImageFromSvg(canvas: HTMLCanvasElement, svgDataUri: string): Promise<void> {
+  const W = 600;
+  const H = 400;
+  const dpr = 2;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = `${W}px`;
+  canvas.style.height = `${H}px`;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = "#120606";
+  roundRect(ctx, 0, 0, W, H, 16);
+  ctx.fill();
+
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("failed to load nft svg"));
+    img.src = svgDataUri;
+  });
+
+  const pad = 16;
+  ctx.drawImage(img, pad, pad, W - pad * 2, H - pad * 2);
+}
+
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -145,15 +197,23 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 // ── Actions ──
-function getCanvas(): HTMLCanvasElement {
+async function getCanvas(): Promise<HTMLCanvasElement> {
   const c = canvasRef.value!;
-  drawShareImage(c);
+  if (nftSvgDataUri.value) {
+    try {
+      await drawShareImageFromSvg(c, nftSvgDataUri.value);
+    } catch {
+      drawShareImage(c);
+    }
+  } else {
+    drawShareImage(c);
+  }
   return c;
 }
 
 async function copyAsImage() {
   try {
-    const canvas = getCanvas();
+    const canvas = await getCanvas();
     const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
     if (!blob) return;
     await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
@@ -161,12 +221,12 @@ async function copyAsImage() {
     setTimeout(() => (copyStatus.value = ""), 2000);
   } catch {
     // Fallback: save instead
-    saveImage();
+    await saveImage();
   }
 }
 
-function saveImage() {
-  const canvas = getCanvas();
+async function saveImage() {
+  const canvas = await getCanvas();
   const link = document.createElement("a");
   link.download = `neo-red-envelope-${props.envelopeId}.png`;
   link.href = canvas.toDataURL("image/png");
@@ -193,7 +253,11 @@ function shareOnTwitter() {
 
       <div class="modal-body share-body">
         <!-- Visual card preview -->
-        <div class="share-card-preview">
+        <div v-if="nftSvgDataUri" class="share-card-preview">
+          <img :src="nftSvgDataUri" alt="NFT SVG" style="width: 100%; border-radius: 12px" />
+        </div>
+
+        <div v-else class="share-card-preview">
           <div class="share-neo-logo">N</div>
           <div class="share-card-title">{{ t("shareTitle") }}</div>
           <div class="share-card-subtitle">{{ t("shareEnvelopeId", props.envelopeId) }}</div>

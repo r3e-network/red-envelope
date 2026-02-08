@@ -50,7 +50,7 @@ onMounted(() => {
       <button v-if="!connected" class="btn btn-primary" @click="handleConnect">
         {{ t("connectWallet") }}
       </button>
-      <div v-else class="wallet-pill">{{ address.slice(0, 8) }}...{{ address.slice(-6) }}</div>
+      <div v-else class="wallet-pill">{{ address }}</div>
       <div v-if="walletError" class="wallet-error">{{ walletError }}</div>
     </header>
 

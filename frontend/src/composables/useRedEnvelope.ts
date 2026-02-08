@@ -2,13 +2,13 @@ import { ref } from "vue";
 import { useWallet } from "./useWallet";
 import { CONTRACT_HASH } from "@/config/contract";
 import { fromFixed8, toFixed8 } from "@/utils/format";
-import { parseInvokeResult, addressToBase64ScriptHash } from "@/utils/neo";
+import { parseInvokeResult } from "@/utils/neo";
 
 export const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
 
-export const MIN_AMOUNT = 10_000_000; // 0.1 GAS fixed8
+export const MIN_AMOUNT = 100_000_000; // 1 GAS fixed8
 export const MAX_PACKETS = 100;
-export const MIN_PER_PACKET = 1_000_000; // 0.01 GAS fixed8
+export const MIN_PER_PACKET = 10_000_000; // 0.1 GAS fixed8
 
 export type EnvelopeItem = {
   id: string;
@@ -112,6 +112,19 @@ export function useRedEnvelope() {
     })) as { txid: string };
   };
 
+  /** Check if current wallet has already claimed from a pool envelope */
+  const hasClaimedFromPool = async (poolId: string): Promise<boolean> => {
+    const res = await invokeRead({
+      scriptHash: CONTRACT_HASH,
+      operation: "hasClaimedFromPool",
+      args: [
+        { type: "Integer", value: poolId },
+        { type: "Hash160", value: address.value },
+      ],
+    });
+    return Boolean(parseInvokeResult(res));
+  };
+
   /** Read exact amount opened by current wallet for spreading envelopes */
   const getOpenedAmount = async (envelopeId: string): Promise<number> => {
     const res = await invokeRead({
@@ -181,6 +194,18 @@ export function useRedEnvelope() {
     }
   };
 
+  /** Fetch NFT tokenURI (data:application/json;base64,...) for sharing */
+  const getTokenURI = async (tokenId: string): Promise<string> => {
+    const res = await invokeRead({
+      scriptHash: CONTRACT_HASH,
+      operation: "tokenURI",
+      args: [{ type: "Integer", value: tokenId }],
+    });
+
+    const parsed = parseInvokeResult(res);
+    return typeof parsed === "string" ? parsed : "";
+  };
+
   /** Load envelopes by scanning recent IDs */
   const loadEnvelopes = async () => {
     if (loadingEnvelopes.value) return; // prevent concurrent calls
@@ -197,7 +222,7 @@ export function useRedEnvelope() {
         return;
       }
 
-      const start = Math.max(1, total - 24);
+      const start = Math.max(1, total - 49);
       const promises: Promise<EnvelopeItem | null>[] = [];
       for (let i = total; i >= start; i--) {
         promises.push(fetchEnvelopeState(String(i)));
@@ -218,18 +243,20 @@ export function useRedEnvelope() {
     createEnvelope,
     openEnvelope,
     claimFromPool,
+    hasClaimedFromPool,
     transferEnvelope,
     reclaimEnvelope,
     getOpenedAmount,
+    getTokenURI,
     fetchEnvelopeState,
     loadEnvelopes,
   };
 }
 
 function validate(amount: number, packets: number, expiryHours?: number, message?: string) {
-  if (amount < MIN_AMOUNT) throw new Error("min 0.1 GAS");
+  if (amount < MIN_AMOUNT) throw new Error("min 1 GAS");
   if (packets < 1 || packets > MAX_PACKETS) throw new Error("1-100 packets");
-  if (amount < packets * MIN_PER_PACKET) throw new Error("min 0.01 GAS/packet");
+  if (amount < packets * MIN_PER_PACKET) throw new Error("min 0.1 GAS/packet");
   if (expiryHours !== undefined && expiryHours <= 0) throw new Error("expiry must be positive");
   if (message !== undefined && message.length > 256) throw new Error("message max 256 chars");
 }

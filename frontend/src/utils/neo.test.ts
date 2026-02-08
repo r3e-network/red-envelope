@@ -30,6 +30,12 @@ describe("parseStackItem", () => {
     expect(parseStackItem({ type: "Buffer", value: "data" })).toBe("data");
   });
 
+  it("parses ByteString unicode payloads as UTF-8 text", () => {
+    const unicode = "红包✨";
+    const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(unicode)));
+    expect(parseStackItem({ type: "ByteString", value: b64 })).toBe(unicode);
+  });
+
   it("parses Array recursively", () => {
     const item = {
       type: "Array",

@@ -1,3 +1,4 @@
+#nullable disable
 using System.Numerics;
 using Neo;
 using Neo.SmartContract.Framework;

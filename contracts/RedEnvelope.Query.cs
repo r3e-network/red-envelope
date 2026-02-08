@@ -1,3 +1,4 @@
+#nullable disable
 using System.Numerics;
 using Neo;
 using Neo.SmartContract.Framework;
@@ -59,12 +60,6 @@ namespace RedEnvelope.Contract
             return result;
         }
 
-        [Safe]
-        public static Map<string, object> GetEnvelopeStateForFrontend(BigInteger envelopeId)
-        {
-            return GetEnvelopeState(envelopeId);
-        }
-
         #endregion
 
         #region Claim NFT Query
@@ -104,6 +99,22 @@ namespace RedEnvelope.Contract
         public static Map<string, object> CheckEligibility(BigInteger envelopeId, UInt160 user)
         {
             Map<string, object> result = new Map<string, object>();
+
+            if (IsContractAccount(user))
+            {
+                result["eligible"] = false;
+                result["reason"] = "contracts cannot open/claim";
+                return result;
+            }
+
+            UInt160 owner = GetOwner();
+            if (owner != null && owner.IsValid && user == owner)
+            {
+                result["eligible"] = false;
+                result["reason"] = "owner cannot touch envelopes";
+                return result;
+            }
+
             EnvelopeData envelope = GetEnvelopeData(envelopeId);
 
             if (!EnvelopeExists(envelope))
@@ -189,6 +200,26 @@ namespace RedEnvelope.Contract
                 Helper.Concat((ByteString)PREFIX_OPENER, (ByteString)envelopeId.ToByteArray()),
                 (ByteString)(byte[])opener);
             ByteString data = Storage.Get(Storage.CurrentContext, key);
+            if (data == null) return 0;
+            return (BigInteger)data;
+        }
+
+        [Safe]
+        public static bool HasClaimedFromPool(BigInteger poolId, UInt160 claimer)
+        {
+            ByteString claimerKey = Helper.Concat(
+                Helper.Concat((ByteString)PREFIX_POOL_CLAIMER, (ByteString)poolId.ToByteArray()),
+                (ByteString)(byte[])claimer);
+            return Storage.Get(Storage.CurrentContext, claimerKey) != null;
+        }
+
+        [Safe]
+        public static BigInteger GetPoolClaimedAmount(BigInteger poolId, UInt160 claimer)
+        {
+            ByteString claimerKey = Helper.Concat(
+                Helper.Concat((ByteString)PREFIX_POOL_CLAIMER, (ByteString)poolId.ToByteArray()),
+                (ByteString)(byte[])claimer);
+            ByteString data = Storage.Get(Storage.CurrentContext, claimerKey);
             if (data == null) return 0;
             return (BigInteger)data;
         }
