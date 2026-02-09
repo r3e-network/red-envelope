@@ -83,7 +83,14 @@ async function sendTx(account, scriptHex, label) {
   tx.sign(account, NETWORK_MAGIC);
 
   // 5. Send
-  const result = await rpcClient.sendRawTransaction(tx);
+  let result;
+  try {
+    result = await rpcClient.sendRawTransaction(tx);
+  } catch (e) {
+    console.log(`  ${FAIL} ${label} send failed: ${e.message || e}`);
+    failed++;
+    return null;
+  }
   const txHash = result.hash || result;
   console.log(`  ${INFO} ${label} sent: ${txHash}`);
 
@@ -106,6 +113,26 @@ async function sendTx(account, scriptHex, label) {
   console.log(`  ${PASS} ${label} confirmed (HALT)`);
   passed++;
   return appLog;
+}
+
+/** Top up Key1 from Key2 if GAS is below threshold. */
+async function ensureKey1Gas(minGas = 2) {
+  const bal = await getGasBalance(key1.address);
+  if (bal < minGas) {
+    console.log(`  ⚠️  Key1 GAS low (${bal.toFixed(4)}) — topping up 10 GAS from Key2...`);
+    const sc = Neon.sc;
+    const topUpScript = sc.createScript({
+      scriptHash: GAS_HASH,
+      operation: "transfer",
+      args: [
+        sc.ContractParam.hash160(key2.scriptHash),
+        sc.ContractParam.hash160(key1.scriptHash),
+        sc.ContractParam.integer(1000000000), // 10 GAS
+        sc.ContractParam.any(null),
+      ],
+    });
+    await sendTx(key2, topUpScript, "MidTestTopUp");
+  }
 }
 
 /** Build GAS transfer script to create an envelope via onNEP17Payment. */
@@ -362,6 +389,7 @@ async function main() {
 
   // ── Test 4: Claim from Pool (Key1) ──
   console.log("\n[6/12] Claim from Pool (Key1)");
+  await ensureKey1Gas();
   let claimId1 = null;
   if (poolId) {
     const claimScript = buildInvokeScript("claimFromPool", [
@@ -400,6 +428,7 @@ async function main() {
 
   // ── Test 5: Open Claim NFT (Key1) ──
   console.log("\n[7/12] Open Claim NFT (Key1)");
+  await ensureKey1Gas();
   if (claimId1) {
     const openClaimScript = buildInvokeScript("openClaim", [
       sc.ContractParam.integer(claimId1),
@@ -464,6 +493,7 @@ async function main() {
 
       // Key1 opens the transferred claim
       console.log("  Opening transferred claim (Key1)...");
+      await ensureKey1Gas();
       const ocScript2 = buildInvokeScript("openClaim", [
         sc.ContractParam.integer(claimId2),
         sc.ContractParam.hash160(key1.scriptHash),
@@ -513,6 +543,7 @@ async function main() {
 
       // Key1 opens the transferred envelope
       console.log("  Key1 opening transferred envelope...");
+      await ensureKey1Gas();
       const oeScript = buildInvokeScript("openEnvelope", [
         sc.ContractParam.integer(spread2Id),
         sc.ContractParam.hash160(key1.scriptHash),
