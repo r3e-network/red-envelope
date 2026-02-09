@@ -33,9 +33,9 @@
 
 | 属性           | 值                                                                                                |
 | -------------- | ------------------------------------------------------------------------------------------------- |
-| **合约地址**   | `0xf2649c2b6312d8c7b4982c0c597c9772a2595b1e`                                                      |
+| **合约地址**   | `0x36a46aa95413029e340e57365cdadd3ae29244ff`                                                      |
 | **RPC 节点**   | `https://testnet1.neo.coz.io:443`                                                                 |
-| **区块浏览器** | [在 NeoTube 查看](https://testnet.neotube.io/contract/0xf2649c2b6312d8c7b4982c0c597c9772a2595b1e) |
+| **区块浏览器** | [在 NeoTube 查看](https://testnet.neotube.io/contract/0x36a46aa95413029e340e57365cdadd3ae29244ff) |
 | **网络魔数**   | `894710606`                                                                                       |
 
 ### 主网 (Mainnet)
@@ -121,6 +121,70 @@ npm run contract:build
 - **必须打开才会到账**：仅持有或领取 NFT 不会自动转出 GAS。
 - **过期严格生效**：红包过期后不能再打开或领取。
 - **最小金额限制**：每个红包总额至少 `1 GAS`，每个份额至少 `0.1 GAS`。
+
+## 合约 API
+
+以下所有函数已在 Neo N3 测试网通过端到端验证（56/56 测试通过）。
+
+### 入口
+
+| 方法             | 参数                     | 返回值 | 说明                                                                                                       |
+| ---------------- | ------------------------ | ------ | ---------------------------------------------------------------------------------------------------------- |
+| `OnNEP17Payment` | `from`, `amount`, `data` | —      | 接收 GAS 并创建红包。`data` 为数组：`[packetCount, expiryMs, message, minNeo, minHoldSec, envelopeType]`。 |
+
+### 传播红包（Lucky NFT）
+
+| 方法               | 参数                               | 返回值                   | 说明                         |
+| ------------------ | ---------------------------------- | ------------------------ | ---------------------------- |
+| `OpenEnvelope`     | `envelopeId`, `opener`             | `BigInteger`（GAS 金额） | 当前持有者打开领取随机 GAS。 |
+| `TransferEnvelope` | `envelopeId`, `from`, `to`, `data` | —                        | 将 Lucky NFT 转给其他用户。  |
+| `ReclaimEnvelope`  | `envelopeId`, `creator`            | `BigInteger`（退款）     | 过期后创建者回收剩余 GAS。   |
+
+### 红包池
+
+| 方法            | 参数                    | 返回值                       | 说明                         |
+| --------------- | ----------------------- | ---------------------------- | ---------------------------- |
+| `ClaimFromPool` | `poolId`, `claimer`     | `BigInteger`（Claim NFT id） | 领取名额，铸造 Claim NFT。   |
+| `OpenClaim`     | `claimId`, `opener`     | `BigInteger`（GAS 金额）     | 打开 Claim NFT 领取 GAS。    |
+| `TransferClaim` | `claimId`, `from`, `to` | —                            | 转让未打开的 Claim NFT。     |
+| `ReclaimPool`   | `poolId`, `creator`     | `BigInteger`（退款）         | 过期后创建者回收未领取 GAS。 |
+
+### 查询（只读）
+
+| 方法                      | 参数                   | 返回值       | 说明                      |
+| ------------------------- | ---------------------- | ------------ | ------------------------- |
+| `GetEnvelopeState`        | `envelopeId`           | `Map`        | 红包完整元数据。          |
+| `GetClaimState`           | `claimId`              | `Map`        | Claim NFT 元数据。        |
+| `CheckEligibility`        | `envelopeId`, `user`   | `Map`        | 用户是否可打开/领取。     |
+| `HasOpened`               | `envelopeId`, `opener` | `bool`       | 地址是否已打开。          |
+| `GetOpenedAmount`         | `envelopeId`, `opener` | `BigInteger` | 打开者获得的 GAS。        |
+| `HasClaimedFromPool`      | `poolId`, `claimer`    | `bool`       | 地址是否已领取。          |
+| `GetPoolClaimedAmount`    | `poolId`, `claimer`    | `BigInteger` | 领取的 GAS 金额。         |
+| `GetPoolClaimIdByIndex`   | `poolId`, `claimIndex` | `BigInteger` | 按索引获取 Claim NFT id。 |
+| `GetTotalEnvelopes`       | —                      | `BigInteger` | 全局红包计数器。          |
+| `GetTotalDistributed`     | —                      | `BigInteger` | 已分发 GAS 总量。         |
+| `GetCalculationConstants` | —                      | `Map`        | 最小金额、最大上限。      |
+
+### 管理
+
+| 方法               | 参数              | 返回值    | 说明                     |
+| ------------------ | ----------------- | --------- | ------------------------ |
+| `GetOwner`         | —                 | `UInt160` | 当前合约所有者。         |
+| `SetOwner`         | `newOwner`        | —         | 转移所有权。             |
+| `IsOwner`          | —                 | `bool`    | 检查调用者是否为所有者。 |
+| `Pause` / `Resume` | —                 | —         | 紧急熔断开关。           |
+| `IsPaused`         | —                 | `bool`    | 暂停状态。               |
+| `Update`           | `nef`, `manifest` | —         | 链上升级合约。           |
+| `Destroy`          | —                 | —         | 永久销毁合约。           |
+
+### 事件
+
+| 事件               | 字段                                     | 触发条件              |
+| ------------------ | ---------------------------------------- | --------------------- |
+| `EnvelopeCreated`  | `id, creator, amount, packetCount, type` | 红包或 Claim NFT 铸造 |
+| `EnvelopeOpened`   | `id, opener, amount`                     | GAS 分发给打开者      |
+| `EnvelopeBurned`   | `id`                                     | NFT 完全消耗          |
+| `EnvelopeRefunded` | `id, creator, amount`                    | 过期后创建者回收      |
 
 ## 资产配置
 

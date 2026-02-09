@@ -3,6 +3,7 @@ import { useWallet } from "./useWallet";
 import { CONTRACT_HASH } from "@/config/contract";
 import { parseInvokeResult } from "@/utils/neo";
 import { fromFixed8 } from "@/utils/format";
+import { pAll } from "@/utils/concurrency";
 
 export type ClaimRecord = {
   claimId: string;
@@ -28,16 +29,17 @@ export function useEnvelopeHistory() {
     const claims: ClaimRecord[] = [];
     let totalClaimed = 0;
 
-    // Fetch claim IDs in parallel (batched)
-    const claimIdPromises: Promise<string>[] = [];
+    // Fetch claim IDs with bounded concurrency
+    const idTasks: (() => Promise<string>)[] = [];
     for (let i = 1; i <= claimCount; i++) {
-      claimIdPromises.push(fetchPoolClaimId(poolId, i));
+      const idx = i;
+      idTasks.push(() => fetchPoolClaimId(poolId, idx));
     }
-    const claimIds = await Promise.all(claimIdPromises);
+    const claimIds = await pAll(idTasks, 6);
 
-    // Fetch claim states in parallel
-    const statePromises = claimIds.filter((id) => id !== "0").map((id) => fetchClaimState(id));
-    const states = await Promise.all(statePromises);
+    // Fetch claim states with bounded concurrency
+    const stateTasks = claimIds.filter((id) => id !== "0").map((id) => () => fetchClaimState(id));
+    const states = await pAll(stateTasks, 6);
 
     for (const state of states) {
       if (!state) continue;

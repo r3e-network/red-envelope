@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import type { EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
 import { formatGas } from "@/utils/format";
@@ -7,6 +7,18 @@ import { msUntilExpiry } from "@/utils/time";
 
 const props = defineProps<{ envelope: EnvelopeItem }>();
 const { t } = useI18n();
+
+// Reactive clock — ticks every second so countdown stays live
+const now = ref(Date.now());
+let tickTimer: ReturnType<typeof setInterval> | null = null;
+onMounted(() => {
+  tickTimer = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
+});
+onUnmounted(() => {
+  if (tickTimer) clearInterval(tickTimer);
+});
 
 const progress = computed(() => {
   const { packetCount, openedCount } = props.envelope;
@@ -29,11 +41,14 @@ const countdown = computed(() => {
   const env = props.envelope;
   if (env.expired) return { text: t("expiredLabel"), urgent: true };
   if (!env.expiryTime) return null;
-  const diff = msUntilExpiry(env.expiryTime);
+  const diff = msUntilExpiry(env.expiryTime, now.value);
   if (diff <= 0) return { text: t("expiredLabel"), urgent: true };
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
-  return { text: t("daysRemaining", days, hours), urgent: days === 0 && hours < 6 };
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (days > 0) return { text: t("daysRemaining", days, hours), urgent: false };
+  if (hours > 0) return { text: `${hours}h ${mins}m`, urgent: hours < 6 };
+  return { text: `${mins}m`, urgent: true };
 });
 
 const typeLabel = computed(() => {

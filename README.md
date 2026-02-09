@@ -33,9 +33,9 @@ Send lucky GAS gifts to friends
 
 | Property          | Value                                                                                             |
 | ----------------- | ------------------------------------------------------------------------------------------------- |
-| **Contract**      | `0xf2649c2b6312d8c7b4982c0c597c9772a2595b1e`                                                      |
+| **Contract**      | `0x36a46aa95413029e340e57365cdadd3ae29244ff`                                                      |
 | **RPC**           | `https://testnet1.neo.coz.io:443`                                                                 |
-| **Explorer**      | [View on NeoTube](https://testnet.neotube.io/contract/0xf2649c2b6312d8c7b4982c0c597c9772a2595b1e) |
+| **Explorer**      | [View on NeoTube](https://testnet.neotube.io/contract/0x36a46aa95413029e340e57365cdadd3ae29244ff) |
 | **Network Magic** | `894710606`                                                                                       |
 
 ### Mainnet
@@ -126,6 +126,70 @@ Contract artifacts are generated at:
 - **Open is required to receive GAS**: holding or claiming NFT alone does not transfer GAS.
 - **Expiry is enforced**: open/claim operations are blocked after expiry.
 - **Minimum amounts**: total per envelope is at least `1 GAS`, and each packet/slot is at least `0.1 GAS`.
+
+## Contract API
+
+All functions below have been evaluated on Neo N3 TestNet (56/56 E2E tests passing).
+
+### Entry Point
+
+| Method           | Params                   | Returns | Description                                                                                                                     |
+| ---------------- | ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `OnNEP17Payment` | `from`, `amount`, `data` | —       | Receives GAS and creates an envelope. `data` is an array: `[packetCount, expiryMs, message, minNeo, minHoldSec, envelopeType]`. |
+
+### Spreading Envelope (Lucky NFT)
+
+| Method             | Params                             | Returns                   | Description                                  |
+| ------------------ | ---------------------------------- | ------------------------- | -------------------------------------------- |
+| `OpenEnvelope`     | `envelopeId`, `opener`             | `BigInteger` (GAS amount) | Current holder opens for random GAS.         |
+| `TransferEnvelope` | `envelopeId`, `from`, `to`, `data` | —                         | Transfer the Lucky NFT to another user.      |
+| `ReclaimEnvelope`  | `envelopeId`, `creator`            | `BigInteger` (refund)     | Creator reclaims remaining GAS after expiry. |
+
+### Pool Envelope
+
+| Method          | Params                  | Returns                     | Description                                  |
+| --------------- | ----------------------- | --------------------------- | -------------------------------------------- |
+| `ClaimFromPool` | `poolId`, `claimer`     | `BigInteger` (claim NFT id) | Claim a slot; mints a Claim NFT.             |
+| `OpenClaim`     | `claimId`, `opener`     | `BigInteger` (GAS amount)   | Open a Claim NFT to receive GAS.             |
+| `TransferClaim` | `claimId`, `from`, `to` | —                           | Transfer an unopened Claim NFT.              |
+| `ReclaimPool`   | `poolId`, `creator`     | `BigInteger` (refund)       | Creator reclaims unclaimed GAS after expiry. |
+
+### Query (read-only)
+
+| Method                    | Params                 | Returns      | Description                  |
+| ------------------------- | ---------------------- | ------------ | ---------------------------- |
+| `GetEnvelopeState`        | `envelopeId`           | `Map`        | Full envelope metadata.      |
+| `GetClaimState`           | `claimId`              | `Map`        | Claim NFT metadata.          |
+| `CheckEligibility`        | `envelopeId`, `user`   | `Map`        | Whether user can open/claim. |
+| `HasOpened`               | `envelopeId`, `opener` | `bool`       | Whether address has opened.  |
+| `GetOpenedAmount`         | `envelopeId`, `opener` | `BigInteger` | GAS received by opener.      |
+| `HasClaimedFromPool`      | `poolId`, `claimer`    | `bool`       | Whether address has claimed. |
+| `GetPoolClaimedAmount`    | `poolId`, `claimer`    | `BigInteger` | GAS amount in claim.         |
+| `GetPoolClaimIdByIndex`   | `poolId`, `claimIndex` | `BigInteger` | Claim NFT id by index.       |
+| `GetTotalEnvelopes`       | —                      | `BigInteger` | Global envelope counter.     |
+| `GetTotalDistributed`     | —                      | `BigInteger` | Total GAS distributed.       |
+| `GetCalculationConstants` | —                      | `Map`        | Min amounts, max caps.       |
+
+### Admin
+
+| Method             | Params            | Returns   | Description                   |
+| ------------------ | ----------------- | --------- | ----------------------------- |
+| `GetOwner`         | —                 | `UInt160` | Current contract owner.       |
+| `SetOwner`         | `newOwner`        | —         | Transfer ownership.           |
+| `IsOwner`          | —                 | `bool`    | Check caller is owner.        |
+| `Pause` / `Resume` | —                 | —         | Emergency circuit breaker.    |
+| `IsPaused`         | —                 | `bool`    | Pause state.                  |
+| `Update`           | `nef`, `manifest` | —         | Upgrade contract on-chain.    |
+| `Destroy`          | —                 | —         | Permanently destroy contract. |
+
+### Events
+
+| Event              | Fields                                   | Trigger                       |
+| ------------------ | ---------------------------------------- | ----------------------------- |
+| `EnvelopeCreated`  | `id, creator, amount, packetCount, type` | Envelope or Claim NFT minted  |
+| `EnvelopeOpened`   | `id, opener, amount`                     | GAS distributed to opener     |
+| `EnvelopeBurned`   | `id`                                     | NFT fully consumed            |
+| `EnvelopeRefunded` | `id, creator, amount`                    | Creator reclaims after expiry |
 
 ## How It Works
 

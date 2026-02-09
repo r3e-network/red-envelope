@@ -5,7 +5,7 @@
 const Neon = require("@cityofzion/neon-js");
 
 const RPC_URL = "https://testnet1.neo.coz.io:443";
-const CONTRACT = "0x1d23762ad5dc7e3a980fbacac7b87092360a872a";
+const CONTRACT = "0x36a46aa95413029e340e57365cdadd3ae29244ff";
 const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
 const NEO_HASH = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5";
 const NETWORK_MAGIC = 894710606; // Neo N3 TestNet

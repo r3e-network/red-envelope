@@ -51,29 +51,35 @@ function waitForDapi(timeoutMs = 2000): Promise<NeoDapi | null> {
   return new Promise((resolve) => {
     let resolved = false;
 
+    const cleanup = () => {
+      clearInterval(interval);
+      window.removeEventListener("NEOLine.NEO.EVENT.READY", onReady);
+    };
+
     // NeoLine fires this event when ready
     const onReady = () => {
       if (resolved) return;
       resolved = true;
+      cleanup();
       resolve(getDapi());
     };
-    window.addEventListener("NEOLine.NEO.EVENT.READY", onReady, { once: true });
+    window.addEventListener("NEOLine.NEO.EVENT.READY", onReady);
 
     // Fallback: poll every 200ms
     const interval = setInterval(() => {
       const d = getDapi();
       if (d) {
         resolved = true;
-        clearInterval(interval);
+        cleanup();
         resolve(d);
       }
     }, 200);
 
     // Timeout
     setTimeout(() => {
-      clearInterval(interval);
       if (!resolved) {
         resolved = true;
+        cleanup();
         resolve(getDapi());
       }
     }, timeoutMs);

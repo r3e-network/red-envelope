@@ -136,9 +136,21 @@ namespace RedEnvelope.Contract
 
         public static void _deploy(object data, bool update)
         {
-            if (update) return;
-
             var ctx = Storage.CurrentContext;
+
+            if (update)
+            {
+                // Migration safety: restore owner if storage was lost during upgrade
+                // (e.g. storage prefix changed between versions)
+                UInt160 existingOwner = (UInt160)Storage.Get(ctx, PREFIX_OWNER);
+                if (existingOwner == null)
+                {
+                    Storage.Put(ctx, PREFIX_OWNER, Runtime.Transaction.Sender);
+                }
+                return;
+            }
+
+            // Fresh deploy — initialize all storage
             Storage.Put(ctx, PREFIX_OWNER, Runtime.Transaction.Sender);
             Storage.Put(ctx, PREFIX_ENVELOPE_ID, 0);
             Storage.Put(ctx, PREFIX_TOTAL_ENVELOPES, 0);

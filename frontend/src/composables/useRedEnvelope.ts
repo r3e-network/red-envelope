@@ -3,6 +3,7 @@ import { useWallet } from "./useWallet";
 import { CONTRACT_HASH } from "@/config/contract";
 import { fromFixed8, toFixed8 } from "@/utils/format";
 import { parseInvokeResult } from "@/utils/neo";
+import { pAll } from "@/utils/concurrency";
 
 export const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
 
@@ -227,11 +228,12 @@ export function useRedEnvelope() {
       }
 
       const start = Math.max(1, total - 49);
-      const promises: Promise<EnvelopeItem | null>[] = [];
+      const tasks: (() => Promise<EnvelopeItem | null>)[] = [];
       for (let i = total; i >= start; i--) {
-        promises.push(fetchEnvelopeState(String(i)));
+        const id = String(i);
+        tasks.push(() => fetchEnvelopeState(id));
       }
-      const results = await Promise.all(promises);
+      const results = await pAll(tasks, 6);
       envelopes.value = results.filter(Boolean) as EnvelopeItem[];
     } catch (err) {
       console.warn("[RedEnvelope] loadEnvelopes failed:", err);
