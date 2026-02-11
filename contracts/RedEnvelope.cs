@@ -59,6 +59,7 @@ namespace RedEnvelope.Contract
         private static readonly byte[] PREFIX_ENVELOPE_ID = new byte[] { 0x12 };
         private static readonly byte[] PREFIX_ENVELOPE_DATA = new byte[] { 0x13 };
         private static readonly byte[] PREFIX_OPENER = new byte[] { 0x14 };
+        // 0x15 reserved (previously used, kept to avoid collision)
         private static readonly byte[] PREFIX_TOTAL_ENVELOPES = new byte[] { 0x16 };
         private static readonly byte[] PREFIX_TOTAL_DISTRIBUTED = new byte[] { 0x17 };
         private static readonly byte[] PREFIX_POOL_CLAIMER = new byte[] { 0x18 };
@@ -114,6 +115,10 @@ namespace RedEnvelope.Contract
             UInt160 creator,
             BigInteger refundAmount);
 
+        public delegate void OwnerChangedHandler(UInt160 oldOwner, UInt160 newOwner);
+        public delegate void ContractPausedHandler();
+        public delegate void ContractResumedHandler();
+
         #endregion
 
         #region Events
@@ -129,6 +134,15 @@ namespace RedEnvelope.Contract
 
         [DisplayName("EnvelopeRefunded")]
         public static event EnvelopeRefundedHandler OnEnvelopeRefunded;
+
+        [DisplayName("OwnerChanged")]
+        public static event OwnerChangedHandler OnOwnerChanged;
+
+        [DisplayName("ContractPaused")]
+        public static event ContractPausedHandler OnContractPaused;
+
+        [DisplayName("ContractResumed")]
+        public static event ContractResumedHandler OnContractResumed;
 
         #endregion
 
@@ -331,8 +345,6 @@ namespace RedEnvelope.Contract
         [Safe]
         public override Map<string, object> Properties(ByteString tokenId)
         {
-            ExecutionEngine.Assert(Runtime.EntryScriptHash == Runtime.CallingScriptHash);
-
             RedEnvelopeState token = GetTokenState(tokenId);
             ExecutionEngine.Assert(token != null, "token not found");
 

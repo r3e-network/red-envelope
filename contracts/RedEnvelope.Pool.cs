@@ -133,6 +133,9 @@ namespace RedEnvelope.Contract
                 "GAS transfer failed");
             OnEnvelopeOpened(claimId, opener, amount, 0);
 
+            Burn(tokenId);
+            OnEnvelopeBurned(claimId, opener);
+
             return amount;
         }
 
@@ -184,10 +187,13 @@ namespace RedEnvelope.Contract
             ExecutionEngine.Assert(EnvelopeExists(pool), "pool not found");
             ExecutionEngine.Assert(pool.EnvelopeType == ENVELOPE_TYPE_POOL, "not lucky pool");
             ExecutionEngine.Assert(pool.Creator == creator, "not creator");
+            ExecutionEngine.Assert(pool.Active, "already reclaimed");
             ExecutionEngine.Assert(Runtime.Time > (ulong)pool.ExpiryTime, "not expired");
 
             BigInteger refundAmount = pool.RemainingAmount;
 
+            // NOTE: This loop iterates up to MAX_PACKETS (100) times, each with 2 storage reads.
+            // Gas cost is bounded but significant. If MAX_PACKETS increases, consider batch reclaim.
             for (BigInteger i = 1; i <= pool.OpenedCount; i++)
             {
                 BigInteger claimId = GetPoolClaimId(poolId, i);

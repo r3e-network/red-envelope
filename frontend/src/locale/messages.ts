@@ -100,6 +100,11 @@ export const messages = {
   shareSaveImage: { en: "Save Image", zh: "保存图片" },
   shareCopied: { en: "Copied!", zh: "已复制！" },
   shareSaved: { en: "Saved!", zh: "已保存！" },
+  shareTweetText: {
+    en: "🧧 I just received {0} GAS from Neo Red Envelope #{1}! Lucky me! 🎉",
+    zh: "🧧 我刚从 Neo 红包 #{1} 领到了 {0} GAS！太幸运了！🎉",
+  },
+  refresh: { en: "Refresh", zh: "刷新" },
 
   // ── Common ────────────────────────────────────────
   close: { en: "Close", zh: "关闭" },
@@ -194,6 +199,14 @@ export const messages = {
     en: "4. Then transfer to others to continue; no open means no reward",
     zh: "4. 再转给他人继续；不打开就没有奖励",
   },
+
+  // ── Hardcoded string replacements ─────────────────────
+  poolUseClaimNotOpen: { en: "Pool envelopes use Claim, not Open", zh: "池红包请使用「领取」而非「打开」" },
+  claimedTx: { en: "Claimed! TX: {0}", zh: "已领取！TX: {0}" },
+  reclaimed: { en: "Reclaimed!", zh: "已回收！" },
+  contractLabel: { en: "Contract:", zh: "合约：" },
+  hoursMinutes: { en: "{0}h {1}m", zh: "{0}时{1}分" },
+  minutesOnly: { en: "{0}m", zh: "{0}分" },
 };
 
 export type MessageKey = keyof typeof messages;

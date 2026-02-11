@@ -40,7 +40,7 @@ onMounted(async () => {
 
 const handleOpen = async () => {
   if (props.envelope.envelopeType === 1) {
-    error.value = "Pool envelopes use Claim, not Open";
+    error.value = t("poolUseClaimNotOpen");
     return;
   }
   opening.value = true;
@@ -60,7 +60,7 @@ const handleOpen = async () => {
     }
 
     opened.value = true;
-    emit("opened", openResult.value);
+    emit("opened", openResult.value ?? 0);
   } catch (e: unknown) {
     error.value = extractError(e);
   } finally {
@@ -70,11 +70,11 @@ const handleOpen = async () => {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="emit('close')">
+  <div class="modal-overlay" role="dialog" aria-modal="true" @click.self="emit('close')">
     <div class="modal opening-modal">
       <div class="modal-header">
         <h3>{{ t("openEnvelope") }}</h3>
-        <button class="btn-close" @click="emit('close')">&times;</button>
+        <button class="btn-close" :aria-label="t('close')" @click="emit('close')">&times;</button>
       </div>
 
       <div class="modal-body">
@@ -99,19 +99,25 @@ const handleOpen = async () => {
         </div>
 
         <!-- Eligibility checklist -->
-        <div v-if="checking" class="eligibility-check loading">...</div>
+        <div v-if="checking" class="eligibility-check loading">{{ t("searching") }}</div>
 
         <div v-else-if="eligibility" class="eligibility-check">
           <div class="eligibility-row">
             <span>{{ t("neoBalance") }}</span>
-            <span :class="eligibility.neoBalance >= eligibility.minNeoRequired ? 'text-ok' : 'text-fail'">
+            <span
+              :class="eligibility.neoBalance >= eligibility.minNeoRequired ? 'text-ok' : 'text-fail'"
+              :aria-label="eligibility.neoBalance >= eligibility.minNeoRequired ? t('active') : t('insufficientNeo')"
+            >
               {{ eligibility.neoBalance >= eligibility.minNeoRequired ? "✅" : "❌" }}
               {{ eligibility.neoBalance }} NEO
             </span>
           </div>
           <div class="eligibility-row">
             <span>{{ t("holdingDays") }}</span>
-            <span :class="eligibility.holdDays >= requiredHoldDays ? 'text-ok' : 'text-fail'">
+            <span
+              :class="eligibility.holdDays >= requiredHoldDays ? 'text-ok' : 'text-fail'"
+              :aria-label="eligibility.holdDays >= requiredHoldDays ? t('active') : t('holdNotMet')"
+            >
               {{ eligibility.holdDays >= requiredHoldDays ? "✅" : "❌" }}
               {{ eligibility.holdDays }}d
             </span>

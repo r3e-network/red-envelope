@@ -29,20 +29,29 @@ function base58Decode(str: string): Uint8Array {
 }
 
 /**
- * Convert a Neo N3 address (e.g. "NLtL2v28d7T...") to the base64-encoded
- * UInt160 script hash that the contract returns for creator/currentHolder.
+ * Convert a Neo N3 address (e.g. "NLtL2v28d7T...") to the 0x-prefixed
+ * little-endian hex script hash that parseStackItem returns for 20-byte values.
  */
-export function addressToBase64ScriptHash(address: string): string {
+export function addressToScriptHashHex(address: string): string {
   try {
     const decoded = base58Decode(address);
     // Neo N3 address = 1 version + 20 script-hash + 4 checksum = 25 bytes
     if (decoded.length !== 25) return "";
     const scriptHash = decoded.slice(1, 21);
-    return btoa(String.fromCharCode(...scriptHash));
+    return (
+      "0x" +
+      Array.from(scriptHash)
+        .reverse()
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")
+    );
   } catch {
     return "";
   }
 }
+
+/** @deprecated Use addressToScriptHashHex instead */
+export const addressToBase64ScriptHash = addressToScriptHashHex;
 
 /** Parse a Neo N3 stack item from invokeRead response */
 export function parseStackItem(item: unknown): unknown {
@@ -64,15 +73,27 @@ export function parseStackItem(item: unknown): unknown {
     case "Boolean":
       return Boolean(value);
     case "ByteString":
-    case "Buffer":
+    case "Buffer": {
       if (!value) return "";
       try {
         const binary = atob(String(value));
         const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+        // UInt160 script hashes are exactly 20 bytes and often non-printable
+        if (bytes.length === 20) {
+          // Return as 0x-prefixed little-endian hex (Neo convention)
+          return (
+            "0x" +
+            Array.from(bytes)
+              .reverse()
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join("")
+          );
+        }
         return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
       } catch {
         return String(value);
       }
+    }
     case "Array":
       return Array.isArray(value) ? value.map(parseStackItem) : [];
     case "Map": {

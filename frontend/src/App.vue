@@ -47,7 +47,7 @@ onMounted(() => {
       <p class="app-subtitle">{{ t("subtitle") }}</p>
       <p class="app-subtitle" style="opacity: 0.85">{{ network.label }}</p>
 
-      <button v-if="!connected" class="btn btn-primary" @click="handleConnect">
+      <button v-if="!connected" class="btn btn-primary" :aria-label="t('connectWallet')" @click="handleConnect">
         {{ t("connectWallet") }}
       </button>
       <div v-else class="wallet-pill">{{ address }}</div>
@@ -55,28 +55,49 @@ onMounted(() => {
     </header>
 
     <!-- Lang toggle (top-right) -->
-    <button class="lang-toggle" @click="toggleLang">{{ t("langToggle") }}</button>
+    <button class="lang-toggle" :aria-label="t('langToggle')" @click="toggleLang">{{ t("langToggle") }}</button>
 
     <!-- Gold ornamental divider -->
     <div class="ornament-divider">
       <span class="ornament-dot"></span>
     </div>
 
-    <nav class="tabs">
-      <button :class="['tab', { active: activeTab === 'search' }]" @click="activeTab = 'search'">
+    <nav class="tabs" role="tablist">
+      <button
+        id="tab-search"
+        :class="['tab', { active: activeTab === 'search' }]"
+        role="tab"
+        :aria-selected="activeTab === 'search'"
+        aria-controls="tabpanel-search"
+        @click="activeTab = 'search'"
+      >
         {{ t("searchTab") }}
       </button>
-      <button :class="['tab', { active: activeTab === 'create' }]" @click="activeTab = 'create'">
+      <button
+        id="tab-create"
+        :class="['tab', { active: activeTab === 'create' }]"
+        role="tab"
+        :aria-selected="activeTab === 'create'"
+        aria-controls="tabpanel-create"
+        @click="activeTab = 'create'"
+      >
         {{ t("createTab") }}
       </button>
-      <button :class="['tab', { active: activeTab === 'my' }]" @click="activeTab = 'my'">
+      <button
+        id="tab-my"
+        :class="['tab', { active: activeTab === 'my' }]"
+        role="tab"
+        :aria-selected="activeTab === 'my'"
+        aria-controls="tabpanel-my"
+        @click="activeTab = 'my'"
+      >
         {{ t("myTab") }}
       </button>
     </nav>
 
-    <main class="app-content">
+    <main class="app-content" :id="`tabpanel-${activeTab}`" role="tabpanel" :aria-labelledby="`tab-${activeTab}`">
       <div class="contract-banner">
-        Contract:
+        {{ t("contractLabel") }}
         <a
           :href="`${network.explorerBase}/contract/${CONTRACT_HASH}`"
           target="_blank"

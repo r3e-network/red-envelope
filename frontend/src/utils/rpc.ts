@@ -24,9 +24,20 @@ export async function waitForConfirmation(txid: string, maxWaitMs = DEFAULT_TIME
         }),
       });
       const json = (await res.json()) as Record<string, unknown>;
-      if (json.result && !json.error) return;
-    } catch {
-      // RPC call failed — retry
+      if (json.result && !json.error) {
+        // Check for VM FAULT — TX confirmed but execution failed
+        const executions = (json.result as Record<string, unknown>).executions as
+          | Array<{ vmstate?: string; exception?: string }>
+          | undefined;
+        if (executions?.[0]?.vmstate === "FAULT") {
+          throw new Error(`Transaction FAULT: ${executions[0].exception ?? "unknown"}`);
+        }
+        return;
+      }
+    } catch (e) {
+      // Re-throw VM FAULT errors immediately — don't retry a confirmed failure
+      if (e instanceof Error && e.message.startsWith("Transaction FAULT")) throw e;
+      // RPC call failed (network error, not yet confirmed) — retry
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }

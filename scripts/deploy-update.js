@@ -135,6 +135,7 @@ async function main() {
   console.log(`  Network fee: ${(networkFee / 1e8).toFixed(4)} GAS (estimated)`);
 
   // Sign
+  txn2.sign(key1, NETWORK_MAGIC);
   console.log(`  ✅ Transaction signed`);
 
   // Send

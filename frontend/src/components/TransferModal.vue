@@ -18,7 +18,7 @@ const sending = ref(false);
 const error = ref("");
 const success = ref(false);
 
-const isValidAddress = (addr: string) => /^N[A-Za-z0-9]{33}$/.test(addr);
+const isValidAddress = (addr: string) => /^N[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr);
 const addressValid = computed(() => !recipient.value || isValidAddress(recipient.value));
 const canSubmit = computed(() => recipient.value.length === 34 && addressValid.value && !sending.value);
 
@@ -42,11 +42,11 @@ const handleTransfer = async () => {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="emit('close')">
+  <div class="modal-overlay" role="dialog" aria-modal="true" @click.self="emit('close')">
     <div class="modal transfer-modal">
       <div class="modal-header">
         <h3>{{ t("transferEnvelope") }} #{{ envelope.id }}</h3>
-        <button class="btn-close" @click="emit('close')">&times;</button>
+        <button class="btn-close" :aria-label="t('close')" @click="emit('close')">&times;</button>
       </div>
 
       <div class="modal-body">
@@ -56,8 +56,9 @@ const handleTransfer = async () => {
 
         <template v-else>
           <div class="form-group">
-            <label class="form-label">{{ t("labelRecipient") }}</label>
+            <label class="form-label" for="recipient-address">{{ t("labelRecipient") }}</label>
             <input
+              id="recipient-address"
               v-model="recipient"
               type="text"
               :placeholder="t('recipientAddress')"

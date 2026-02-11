@@ -18,7 +18,7 @@ const isNft = computed(() => props.envelope.envelopeType === 0 || props.envelope
 
 const holderShort = computed(() => {
   const h = props.envelope.currentHolder;
-  if (!h || h === "0".repeat(40) || h === "N" + "0".repeat(33)) return "";
+  if (!h || h === "0x" + "0".repeat(40)) return "";
   return `${h.slice(0, 8)}...${h.slice(-6)}`;
 });
 

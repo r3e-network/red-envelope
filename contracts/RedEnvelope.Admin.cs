@@ -22,7 +22,9 @@ namespace RedEnvelope.Contract
         {
             ValidateOwner();
             ExecutionEngine.Assert(newOwner.IsValid, "invalid address");
+            UInt160 oldOwner = GetOwner();
             Storage.Put(Storage.CurrentContext, PREFIX_OWNER, newOwner);
+            OnOwnerChanged(oldOwner, newOwner);
         }
 
         [Safe]
@@ -45,12 +47,14 @@ namespace RedEnvelope.Contract
         {
             ValidateOwner();
             Storage.Put(Storage.CurrentContext, PREFIX_PAUSED, 1);
+            OnContractPaused();
         }
 
         public static void Resume()
         {
             ValidateOwner();
             Storage.Delete(Storage.CurrentContext, PREFIX_PAUSED);
+            OnContractResumed();
         }
 
         [Safe]

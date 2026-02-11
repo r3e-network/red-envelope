@@ -5,7 +5,7 @@ import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope"
 import { useEnvelopeHistory } from "@/composables/useEnvelopeHistory";
 import { useI18n } from "@/composables/useI18n";
 import { extractError, formatGas } from "@/utils/format";
-import { addressToBase64ScriptHash } from "@/utils/neo";
+import { addressToScriptHashHex } from "@/utils/neo";
 import { waitForConfirmation } from "@/utils/rpc";
 import { msUntilExpiry } from "@/utils/time";
 import EnvelopeDetail from "./EnvelopeDetail.vue";
@@ -31,9 +31,10 @@ const showOpenModal = ref(false);
 const showTransferModal = ref(false);
 const showShareCard = ref(false);
 const claimedAmount = ref(0);
+const claiming = ref(false);
 const openTargetEnvelope = ref<EnvelopeItem | null>(null);
 
-const currentAddressHash = computed(() => (address.value ? addressToBase64ScriptHash(address.value) : ""));
+const currentAddressHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
 
 const isHolder = computed(() => {
   if (!envelope.value || !currentAddressHash.value) return false;
@@ -136,12 +137,13 @@ const handleWalletSpreadingClaim = async (target: EnvelopeItem) => {
 const handlePoolClaim = async () => {
   if (!envelope.value) return;
   status.value = null;
+  claiming.value = true;
   // Estimate per-slot amount using contract's remainingPackets (BUG-5 fix)
   const slotsLeft = envelope.value.remainingPackets;
   const perSlot = slotsLeft > 0 ? envelope.value.remainingAmount / slotsLeft : 0;
   try {
     const res = await claimFromPool(envelope.value.id);
-    status.value = { msg: `Claimed! TX: ${res.txid.slice(0, 12)}...`, type: "success" };
+    status.value = { msg: t("claimedTx", res.txid.slice(0, 12) + "..."), type: "success" };
     claimedAmount.value = perSlot;
     // Wait for TX confirmation before refreshing state (BUG-4 fix)
     await waitForConfirmation(res.txid);
@@ -154,6 +156,8 @@ const handlePoolClaim = async () => {
     showShareCard.value = true;
   } catch (e: unknown) {
     status.value = { msg: extractError(e), type: "error" };
+  } finally {
+    claiming.value = false;
   }
 };
 
@@ -173,7 +177,7 @@ const handleReclaim = async () => {
   status.value = null;
   try {
     const res = await reclaimEnvelope(envelope.value);
-    status.value = { msg: "Reclaimed!", type: "success" };
+    status.value = { msg: t("reclaimed"), type: "success" };
     // Wait for TX confirmation before refreshing state (BUG-4 fix)
     await waitForConfirmation(res.txid);
     const refreshed = await fetchEnvelopeState(envelope.value.id);
@@ -253,6 +257,7 @@ watch(connected, (isConnected) => {
           v-model="searchId"
           type="text"
           :placeholder="t('searchPlaceholder')"
+          :aria-label="t('searchPlaceholder')"
           class="input"
           @keyup.enter="handleSearch"
         />
@@ -264,7 +269,7 @@ watch(connected, (isConnected) => {
       <div class="wallet-spreading-card">
         <div class="wallet-spreading-header">
           <span>{{ t("searchWalletSpreadingTitle") }}</span>
-          <button class="btn btn-sm" @click="refreshWalletSpreadingList">↻</button>
+          <button class="btn btn-sm" :aria-label="t('refresh')" @click="refreshWalletSpreadingList">↻</button>
         </div>
 
         <div v-if="!connected" class="text-muted wallet-spreading-empty">
@@ -302,7 +307,7 @@ watch(connected, (isConnected) => {
               :disabled="!env.active || env.expired || env.depleted"
               @click="handleWalletSpreadingClaim(env)"
             >
-              {{ t("claimButton") }}
+              {{ t("openEnvelope") }}
             </button>
           </div>
         </div>
@@ -314,9 +319,10 @@ watch(connected, (isConnected) => {
         <button
           v-if="envelope.active && !envelope.expired && !envelope.depleted && (envelope.envelopeType === 1 || isHolder)"
           class="btn btn-open"
+          :disabled="claiming"
           @click="handleOpen"
         >
-          {{ envelope.envelopeType === 1 ? t("claimButton") : t("openEnvelope") }}
+          {{ claiming ? t("claiming") : envelope.envelopeType === 1 ? t("claimButton") : t("openEnvelope") }}
         </button>
 
         <button

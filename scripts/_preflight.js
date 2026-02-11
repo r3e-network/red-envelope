@@ -18,7 +18,12 @@ async function main() {
 
   // 3. Owner check
   const ownerRes = await rpcClient.invokeFunction(CONTRACT, "getOwner", []);
-  const ownerHex = Buffer.from(ownerRes.stack[0].value, "base64").toString("hex");
+  const stack = ownerRes?.stack;
+  if (!stack || !stack[0]) {
+    console.error("Failed to read contract owner");
+    process.exit(1);
+  }
+  const ownerHex = Buffer.from(stack[0].value, "base64").toString("hex");
   console.log("Contract owner (hex):", ownerHex);
   console.log("Key1 scriptHash:", key1.scriptHash);
   console.log("Key2 scriptHash:", key2.scriptHash);

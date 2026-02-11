@@ -1,8 +1,15 @@
 const FIXED8_FACTOR = 100_000_000;
 
-/** Convert human-readable amount to fixed8 integer (e.g. 1.5 → 150000000) */
+/** Convert human-readable amount to fixed8 integer (e.g. 1.5 → 150000000). Truncates beyond 8 decimals. */
 export function toFixed8(value: number | string): number {
-  return Math.round(Number(value) * FIXED8_FACTOR);
+  // Normalize to fixed-point string to avoid scientific notation and float multiplication
+  const str = typeof value === "string" ? value : Number(value).toFixed(8);
+  const negative = str.startsWith("-");
+  const abs = negative ? str.slice(1) : str;
+  const [intPart = "0", decPart = ""] = abs.split(".");
+  const padded = (decPart + "00000000").slice(0, 8);
+  const result = Number(intPart) * FIXED8_FACTOR + Number(padded);
+  return negative ? -result : result;
 }
 
 /** Convert fixed8 integer to human-readable (e.g. 150000000 → 1.5) */

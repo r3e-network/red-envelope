@@ -50,7 +50,8 @@ function drawShareImage(canvas: HTMLCanvasElement): void {
   canvas.style.width = `${W}px`;
   canvas.style.height = `${H}px`;
 
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
   ctx.scale(dpr, dpr);
 
   // Background gradient
@@ -93,12 +94,12 @@ function drawShareImage(canvas: HTMLCanvasElement): void {
   // Title
   ctx.fillStyle = "#ffd700";
   ctx.font = "bold 20px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText("Neo Red Envelope", W / 2, 108);
+  ctx.fillText(t("shareTitle"), W / 2, 108);
 
   // Subtitle
   ctx.fillStyle = "#c4a0a0";
   ctx.font = "13px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText(`Envelope #${props.envelopeId}`, W / 2, 132);
+  ctx.fillText(t("shareEnvelopeId", props.envelopeId), W / 2, 132);
 
   // Divider line
   ctx.strokeStyle = "rgba(255, 215, 0, 0.2)";
@@ -121,7 +122,7 @@ function drawShareImage(canvas: HTMLCanvasElement): void {
   // "GAS" unit
   ctx.fillStyle = "#c4a0a0";
   ctx.font = "18px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText("GAS", W / 2, 258);
+  ctx.fillText(t("gas"), W / 2, 258);
 
   // Divider
   ctx.strokeStyle = "rgba(255, 215, 0, 0.2)";
@@ -164,7 +165,8 @@ async function drawShareImageFromSvg(canvas: HTMLCanvasElement, svgDataUri: stri
   canvas.style.width = `${W}px`;
   canvas.style.height = `${H}px`;
 
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
   ctx.scale(dpr, dpr);
 
   ctx.fillStyle = "#120606";
@@ -236,7 +238,7 @@ async function saveImage() {
 }
 
 function shareOnTwitter() {
-  const text = `🧧 I just received ${formatGas(props.amount)} GAS from Neo Red Envelope #${props.envelopeId}! Lucky me! 🎉`;
+  const text = t("shareTweetText", formatGas(props.amount), props.envelopeId);
   const url = `${window.location.origin}${window.location.pathname}?id=${props.envelopeId}`;
   const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
   window.open(twitterUrl, "_blank", "noopener,noreferrer");
@@ -244,11 +246,11 @@ function shareOnTwitter() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="emit('close')">
+  <div class="modal-overlay" role="dialog" aria-modal="true" @click.self="emit('close')">
     <div class="modal share-modal">
       <div class="modal-header">
         <h3>{{ t("congratulations") }}</h3>
-        <button class="btn-close" @click="emit('close')">&times;</button>
+        <button class="btn-close" :aria-label="t('close')" @click="emit('close')">&times;</button>
       </div>
 
       <div class="modal-body share-body">

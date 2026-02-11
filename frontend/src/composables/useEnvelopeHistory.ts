@@ -9,6 +9,8 @@ export type ClaimRecord = {
   claimId: string;
   holder: string;
   amount: number;
+  /** Raw fixed8 integer amount — used for lossless accumulation */
+  amountFixed8: number;
   opened: boolean;
   message: string;
 };
@@ -27,7 +29,7 @@ export function useEnvelopeHistory() {
   /** Fetch pool claim history by iterating claim indices */
   const fetchPoolHistory = async (poolId: string, claimCount: number): Promise<HistoryData> => {
     const claims: ClaimRecord[] = [];
-    let totalClaimed = 0;
+    let totalClaimedFixed8 = 0;
 
     // Fetch claim IDs with bounded concurrency
     const idTasks: (() => Promise<string>)[] = [];
@@ -44,10 +46,11 @@ export function useEnvelopeHistory() {
     for (const state of states) {
       if (!state) continue;
       claims.push(state);
-      totalClaimed += state.amount;
+      // Accumulate raw fixed8 integers directly — no float round-trip
+      totalClaimedFixed8 += state.amountFixed8;
     }
 
-    return { claims, totalClaimed };
+    return { claims, totalClaimed: fromFixed8(totalClaimedFixed8) };
   };
 
   /** Read a single pool claim ID by index */
@@ -79,10 +82,12 @@ export function useEnvelopeHistory() {
       const data = parseInvokeResult(res) as Record<string, unknown>;
       if (!data || !data.id) return null;
 
+      const rawAmount = Number(data.amount ?? 0);
       return {
         claimId: String(data.id ?? claimId),
         holder: String(data.holder ?? ""),
-        amount: fromFixed8(Number(data.amount ?? 0)),
+        amount: fromFixed8(rawAmount),
+        amountFixed8: rawAmount,
         opened: Boolean(data.opened),
         message: String(data.message ?? ""),
       };

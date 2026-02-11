@@ -47,8 +47,8 @@ const countdown = computed(() => {
   const hours = Math.floor((diff % 86400000) / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
   if (days > 0) return { text: t("daysRemaining", days, hours), urgent: false };
-  if (hours > 0) return { text: `${hours}h ${mins}m`, urgent: hours < 6 };
-  return { text: `${mins}m`, urgent: true };
+  if (hours > 0) return { text: t("hoursMinutes", hours, mins), urgent: hours < 6 };
+  return { text: t("minutesOnly", mins), urgent: true };
 });
 
 const typeLabel = computed(() => {

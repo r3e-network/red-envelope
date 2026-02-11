@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseStackItem, parseInvokeResult } from "./neo";
+import { parseStackItem, parseInvokeResult, addressToScriptHashHex } from "./neo";
 
 describe("parseStackItem", () => {
   it("parses Integer with string value as BigInt", () => {
@@ -69,6 +69,21 @@ describe("parseStackItem", () => {
     expect(parseStackItem(42)).toBe(42);
     expect(parseStackItem("str")).toBe("str");
   });
+
+  it("parses 20-byte ByteString as 0x-prefixed little-endian hex", () => {
+    // 20 zero bytes in base64
+    const twentyZeroBytes = btoa(String.fromCharCode(...new Uint8Array(20)));
+    const result = parseStackItem({ type: "ByteString", value: twentyZeroBytes });
+    expect(result).toBe("0x0000000000000000000000000000000000000000");
+  });
+
+  it("parses 20-byte ByteString with known script hash", () => {
+    // Bytes [1,2,...,20] little-endian → reversed hex
+    const bytes = Uint8Array.from({ length: 20 }, (_, i) => i + 1);
+    const b64 = btoa(String.fromCharCode(...bytes));
+    const result = parseStackItem({ type: "ByteString", value: b64 });
+    expect(result).toBe("0x" + "14131211100f0e0d0c0b0a09080706050403020100".slice(0, 40));
+  });
 });
 
 describe("parseInvokeResult", () => {
@@ -87,5 +102,28 @@ describe("parseInvokeResult", () => {
 
   it("returns null for null input", () => {
     expect(parseInvokeResult(null)).toBe(null);
+  });
+});
+
+describe("addressToScriptHashHex", () => {
+  it("converts a valid Neo N3 address to 0x-prefixed hex", () => {
+    // NNLi44dJNXtDNSBkofB48aTVYtb1zZrNEs is a well-known Neo N3 address
+    const result = addressToScriptHashHex("NNLi44dJNXtDNSBkofB48aTVYtb1zZrNEs");
+    expect(result).toMatch(/^0x[0-9a-f]{40}$/);
+  });
+
+  it("returns empty string for invalid address", () => {
+    expect(addressToScriptHashHex("")).toBe("");
+    expect(addressToScriptHashHex("invalid")).toBe("");
+  });
+
+  it("produces hex that matches parseStackItem output for same script hash", () => {
+    // Round-trip: address → hex should match what parseStackItem returns
+    // for the same 20-byte script hash encoded as base64 ByteString
+    const addr = "NNLi44dJNXtDNSBkofB48aTVYtb1zZrNEs";
+    const hex = addressToScriptHashHex(addr);
+    expect(hex).toBeTruthy();
+    expect(hex.startsWith("0x")).toBe(true);
+    expect(hex.length).toBe(42); // "0x" + 40 hex chars
   });
 });

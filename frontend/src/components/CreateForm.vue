@@ -107,12 +107,28 @@ const handleSubmit = async () => {
       <!-- 🎁 Envelope Type Selector -->
       <div class="form-section">
         <div class="form-section-title">{{ t("envelopeTypeSection") }}</div>
-        <div class="type-selector">
-          <div :class="['type-option', { 'type-active': envelopeType === 1 }]" @click="envelopeType = 1">
+        <div id="envelope-type" class="type-selector" role="radiogroup" :aria-label="t('envelopeTypeSection')">
+          <div
+            :class="['type-option', { 'type-active': envelopeType === 1 }]"
+            role="radio"
+            tabindex="0"
+            :aria-checked="envelopeType === 1"
+            @click="envelopeType = 1"
+            @keydown.enter="envelopeType = 1"
+            @keydown.space.prevent="envelopeType = 1"
+          >
             <div class="type-label">{{ t("typePool") }}</div>
             <div class="type-desc">{{ t("typePoolDesc") }}</div>
           </div>
-          <div :class="['type-option', { 'type-active': envelopeType === 0 }]" @click="envelopeType = 0">
+          <div
+            :class="['type-option', { 'type-active': envelopeType === 0 }]"
+            role="radio"
+            tabindex="0"
+            :aria-checked="envelopeType === 0"
+            @click="envelopeType = 0"
+            @keydown.enter="envelopeType = 0"
+            @keydown.space.prevent="envelopeType = 0"
+          >
             <div class="type-label">{{ t("typeNft") }}</div>
             <div class="type-desc">{{ t("typeNftDesc") }}</div>
           </div>
@@ -123,8 +139,9 @@ const handleSubmit = async () => {
       <div class="form-section">
         <div class="form-section-title">{{ t("amountSection") }}</div>
         <div class="form-group">
-          <label class="form-label">{{ t("labelGasAmount") }}</label>
+          <label class="form-label" for="total-gas">{{ t("labelGasAmount") }}</label>
           <input
+            id="total-gas"
             v-model="amount"
             type="number"
             step="0.1"
@@ -134,8 +151,18 @@ const handleSubmit = async () => {
           />
         </div>
         <div class="form-group">
-          <label class="form-label">{{ envelopeType === 1 ? t("labelClaimSlots") : t("labelOpenCount") }}</label>
-          <input v-model="count" type="number" min="1" max="100" :placeholder="t('packetsPlaceholder')" class="input" />
+          <label class="form-label" for="packet-count">{{
+            envelopeType === 1 ? t("labelClaimSlots") : t("labelOpenCount")
+          }}</label>
+          <input
+            id="packet-count"
+            v-model="count"
+            type="number"
+            min="1"
+            max="100"
+            :placeholder="t('packetsPlaceholder')"
+            class="input"
+          />
         </div>
       </div>
 
@@ -144,12 +171,20 @@ const handleSubmit = async () => {
         <div class="form-section-title">{{ t("neoGateSection") }}</div>
         <div class="form-row">
           <div class="input-half">
-            <label class="form-label">{{ t("labelMinNeo") }}</label>
-            <input v-model="minNeo" type="number" min="0" :placeholder="t('minNeoPlaceholder')" class="input" />
+            <label class="form-label" for="min-neo">{{ t("labelMinNeo") }}</label>
+            <input
+              id="min-neo"
+              v-model="minNeo"
+              type="number"
+              min="0"
+              :placeholder="t('minNeoPlaceholder')"
+              class="input"
+            />
           </div>
           <div class="input-half">
-            <label class="form-label">{{ t("labelHoldDays") }}</label>
+            <label class="form-label" for="min-hold-days">{{ t("labelHoldDays") }}</label>
             <input
+              id="min-hold-days"
               v-model="minHoldDays"
               type="number"
               min="0"
@@ -164,12 +199,19 @@ const handleSubmit = async () => {
       <div class="form-section">
         <div class="form-section-title">{{ t("settingsSection") }}</div>
         <div class="form-group">
-          <label class="form-label">{{ t("labelExpiry") }}</label>
-          <input v-model="expiryHours" type="number" min="1" :placeholder="t('expiryPlaceholder')" class="input" />
+          <label class="form-label" for="expiry-hours">{{ t("labelExpiry") }}</label>
+          <input
+            id="expiry-hours"
+            v-model="expiryHours"
+            type="number"
+            min="1"
+            :placeholder="t('expiryPlaceholder')"
+            class="input"
+          />
         </div>
         <div class="form-group">
-          <label class="form-label">{{ t("labelMessage") }}</label>
-          <input v-model="message" type="text" :placeholder="t('messagePlaceholder')" class="input" />
+          <label class="form-label" for="message">{{ t("labelMessage") }}</label>
+          <input id="message" v-model="message" type="text" :placeholder="t('messagePlaceholder')" class="input" />
         </div>
       </div>
 

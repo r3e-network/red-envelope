@@ -36,6 +36,7 @@ export function useRedEnvelope() {
   const { address, invoke, invokeRead } = useWallet();
 
   const isLoading = ref(false);
+  const claimLoading = ref(false);
   const envelopes = ref<EnvelopeItem[]>([]);
   const loadingEnvelopes = ref(false);
 
@@ -61,26 +62,28 @@ export function useRedEnvelope() {
       const minHoldSeconds = params.minHoldDays > 0 ? params.minHoldDays * 86400 : 1;
 
       // Send GAS to contract with config data array
-      const res = (await invoke({
-        scriptHash: GAS_HASH,
-        operation: "transfer",
-        args: [
-          { type: "Hash160", value: address.value },
-          { type: "Hash160", value: CONTRACT_HASH },
-          { type: "Integer", value: String(amount) },
-          {
-            type: "Array",
-            value: [
-              { type: "Integer", value: String(params.packetCount) },
-              { type: "Integer", value: String(expiryMs) },
-              { type: "String", value: params.message },
-              { type: "Integer", value: String(minNeo) },
-              { type: "Integer", value: String(minHoldSeconds) },
-              { type: "Integer", value: String(params.envelopeType ?? 0) },
-            ],
-          },
-        ],
-      })) as { txid: string };
+      const res = assertTxResult(
+        await invoke({
+          scriptHash: GAS_HASH,
+          operation: "transfer",
+          args: [
+            { type: "Hash160", value: address.value },
+            { type: "Hash160", value: CONTRACT_HASH },
+            { type: "Integer", value: String(amount) },
+            {
+              type: "Array",
+              value: [
+                { type: "Integer", value: String(params.packetCount) },
+                { type: "Integer", value: String(expiryMs) },
+                { type: "String", value: params.message },
+                { type: "Integer", value: String(minNeo) },
+                { type: "Integer", value: String(minHoldSeconds) },
+                { type: "Integer", value: String(params.envelopeType ?? 0) },
+              ],
+            },
+          ],
+        }),
+      );
 
       return res.txid;
     } finally {
@@ -95,30 +98,40 @@ export function useRedEnvelope() {
     }
     const operation = envelope.envelopeType === 2 ? "openClaim" : "openEnvelope";
 
-    return (await invoke({
-      scriptHash: CONTRACT_HASH,
-      operation,
-      args: [
-        { type: "Integer", value: envelope.id },
-        { type: "Hash160", value: address.value },
-      ],
-    })) as { txid: string };
+    return assertTxResult(
+      await invoke({
+        scriptHash: CONTRACT_HASH,
+        operation,
+        args: [
+          { type: "Integer", value: envelope.id },
+          { type: "Hash160", value: address.value },
+        ],
+      }),
+    );
   };
 
   /** Claim a slot from a pool envelope (type=1) — mints a claim NFT */
   const claimFromPool = async (poolId: string): Promise<{ txid: string }> => {
-    return (await invoke({
-      scriptHash: CONTRACT_HASH,
-      operation: "claimFromPool",
-      args: [
-        { type: "Integer", value: poolId },
-        { type: "Hash160", value: address.value },
-      ],
-    })) as { txid: string };
+    claimLoading.value = true;
+    try {
+      return assertTxResult(
+        await invoke({
+          scriptHash: CONTRACT_HASH,
+          operation: "claimFromPool",
+          args: [
+            { type: "Integer", value: poolId },
+            { type: "Hash160", value: address.value },
+          ],
+        }),
+      );
+    } finally {
+      claimLoading.value = false;
+    }
   };
 
   /** Check if current wallet has already claimed from a pool envelope */
   const hasClaimedFromPool = async (poolId: string): Promise<boolean> => {
+    if (!address.value) throw new Error("Wallet not connected");
     const res = await invokeRead({
       scriptHash: CONTRACT_HASH,
       operation: "hasClaimedFromPool",
@@ -132,6 +145,7 @@ export function useRedEnvelope() {
 
   /** Read exact amount opened by current wallet for spreading envelopes */
   const getOpenedAmount = async (envelopeId: string): Promise<number> => {
+    if (!address.value) throw new Error("Wallet not connected");
     const res = await invokeRead({
       scriptHash: CONTRACT_HASH,
       operation: "getOpenedAmount",
@@ -162,25 +176,29 @@ export function useRedEnvelope() {
           { type: "Any", value: null },
         ];
 
-    return (await invoke({
-      scriptHash: CONTRACT_HASH,
-      operation,
-      args,
-    })) as { txid: string };
+    return assertTxResult(
+      await invoke({
+        scriptHash: CONTRACT_HASH,
+        operation,
+        args,
+      }),
+    );
   };
 
   /** Reclaim expired spreading envelope or pool GAS */
   const reclaimEnvelope = async (envelope: EnvelopeItem): Promise<{ txid: string }> => {
     const operation = envelope.envelopeType === 1 ? "reclaimPool" : "reclaimEnvelope";
 
-    return (await invoke({
-      scriptHash: CONTRACT_HASH,
-      operation,
-      args: [
-        { type: "Integer", value: envelope.id },
-        { type: "Hash160", value: address.value },
-      ],
-    })) as { txid: string };
+    return assertTxResult(
+      await invoke({
+        scriptHash: CONTRACT_HASH,
+        operation,
+        args: [
+          { type: "Integer", value: envelope.id },
+          { type: "Hash160", value: address.value },
+        ],
+      }),
+    );
   };
 
   /** Fetch single envelope state from contract */
@@ -234,7 +252,7 @@ export function useRedEnvelope() {
         tasks.push(() => fetchEnvelopeState(id));
       }
       const results = await pAll(tasks, 6);
-      envelopes.value = results.filter(Boolean) as EnvelopeItem[];
+      envelopes.value = (results.filter(Boolean) as EnvelopeItem[]).filter((e) => e.envelopeType !== 2);
     } catch (err) {
       console.warn("[RedEnvelope] loadEnvelopes failed:", err);
     } finally {
@@ -244,6 +262,7 @@ export function useRedEnvelope() {
 
   return {
     isLoading,
+    claimLoading,
     envelopes,
     loadingEnvelopes,
     createEnvelope,
@@ -297,4 +316,11 @@ function mapEnvelopeData(id: string, d: Record<string, unknown>): EnvelopeItem {
     message: String(d.message ?? ""),
     expiryTime,
   };
+}
+
+function assertTxResult(res: unknown): { txid: string } {
+  if (res && typeof res === "object" && "txid" in res) {
+    return res as { txid: string };
+  }
+  throw new Error("Unexpected wallet response: missing txid");
 }

@@ -28,6 +28,7 @@ export const DEFAULT_NETWORK = "testnet";
 export function resolveNetwork(value?: string): NetworkConfig {
   const key = (value ?? import.meta.env.VITE_NETWORK ?? DEFAULT_NETWORK).trim().toLowerCase();
   if (!(key in NETWORKS)) {
+    console.warn(`[networks] Unknown network "${key}", falling back to "${DEFAULT_NETWORK}"`);
     return NETWORKS[DEFAULT_NETWORK];
   }
   return NETWORKS[key];

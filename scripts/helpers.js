@@ -10,8 +10,15 @@ const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
 const NEO_HASH = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5";
 const NETWORK_MAGIC = 894710606; // Neo N3 TestNet
 
-const KEY1_WIF = "Kx2BeyUv1dBr99QtjrRsE7xxQqcHHZJmEWXvV8ivyShgWq7BbA4U";
-const KEY2_WIF = "KzjaqMvqzF1uup6KrTKRxTgjcXE7PbKLRH84e6ckyXDt3fu7afUb";
+// SECURITY: Load private keys from environment variables. Never hardcode keys in source.
+// For testnet: export KEY1_WIF=... KEY2_WIF=... before running scripts.
+const KEY1_WIF = process.env.KEY1_WIF;
+const KEY2_WIF = process.env.KEY2_WIF;
+if (!KEY1_WIF || !KEY2_WIF) {
+  console.error("ERROR: KEY1_WIF and KEY2_WIF environment variables are required.");
+  console.error("Export them before running: export KEY1_WIF=... KEY2_WIF=...");
+  process.exit(1);
+}
 
 const key1 = new Neon.wallet.Account(KEY1_WIF);
 const key2 = new Neon.wallet.Account(KEY2_WIF);
@@ -28,7 +35,12 @@ async function waitForTx(txid, maxMs = 90000) {
         console.log(" ✅ confirmed");
         return res;
       }
-    } catch {}
+    } catch (err) {
+      // Log non-404 errors for debugging; 404 means TX not yet confirmed
+      if (err?.response?.status !== 404) {
+        console.debug(`[waitForTx] polling error: ${err.message || err}`);
+      }
+    }
     await sleep(3000);
     process.stdout.write(".");
   }

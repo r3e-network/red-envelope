@@ -54,20 +54,21 @@ namespace RedEnvelope.Contract
 
             envelope.OpenedCount += 1;
             envelope.RemainingAmount -= amount;
+            BigInteger remainingPackets = envelope.PacketCount - envelope.OpenedCount;
+            if (remainingPackets == 0)
+            {
+                envelope.Active = false;
+            }
             StoreEnvelopeData(envelopeId, envelope);
 
             ExecutionEngine.Assert(
                 GAS.Transfer(Runtime.ExecutingScriptHash, opener, amount),
                 "GAS transfer failed");
 
-            BigInteger remainingPackets = envelope.PacketCount - envelope.OpenedCount;
             OnEnvelopeOpened(envelopeId, opener, amount, remainingPackets);
 
             if (remainingPackets == 0)
             {
-                envelope.Active = false;
-                StoreEnvelopeData(envelopeId, envelope);
-
                 Burn(tokenId);
                 OnEnvelopeBurned(envelopeId, opener);
             }
