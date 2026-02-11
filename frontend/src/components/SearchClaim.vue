@@ -16,8 +16,15 @@ import ShareCard from "./ShareCard.vue";
 
 const { t } = useI18n();
 const { address, connected, connect } = useWallet();
-const { envelopes, loadingEnvelopes, loadEnvelopes, fetchEnvelopeState, claimFromPool, reclaimEnvelope } =
-  useRedEnvelope();
+const {
+  envelopes,
+  loadingEnvelopes,
+  loadEnvelopes,
+  fetchEnvelopeState,
+  claimFromPool,
+  getPoolClaimedAmount,
+  reclaimEnvelope,
+} = useRedEnvelope();
 const { loading: historyLoading, history, loadHistory, clearHistory } = useEnvelopeHistory();
 
 const searchId = ref("");
@@ -138,15 +145,18 @@ const handlePoolClaim = async () => {
   if (!envelope.value) return;
   status.value = null;
   claiming.value = true;
-  // Estimate per-slot amount using contract's remainingPackets (BUG-5 fix)
-  const slotsLeft = envelope.value.remainingPackets;
-  const perSlot = slotsLeft > 0 ? envelope.value.remainingAmount / slotsLeft : 0;
   try {
     const res = await claimFromPool(envelope.value.id);
     status.value = { msg: t("claimedTx", res.txid.slice(0, 12) + "..."), type: "success" };
-    claimedAmount.value = perSlot;
     // Wait for TX confirmation before refreshing state (BUG-4 fix)
     await waitForConfirmation(res.txid);
+
+    try {
+      claimedAmount.value = await getPoolClaimedAmount(envelope.value.id);
+    } catch {
+      // Non-critical: claim succeeded but amount query failed; leave claimedAmount unset
+    }
+
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) {
       envelope.value = refreshed;

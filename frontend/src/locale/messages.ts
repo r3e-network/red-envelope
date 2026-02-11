@@ -64,13 +64,20 @@ export const messages = {
   // ── My Envelopes ──────────────────────────────────
   noEnvelopes: { en: "No envelopes yet", zh: "暂无红包" },
   mySpreadingNfts: { en: "🎫 My Spreading NFTs", zh: "🎫 我的传播型 NFT" },
+  myClaimNfts: { en: "🧾 My Claim NFTs", zh: "🧾 我的 Claim NFT" },
   myOtherEnvelopes: { en: "🧧 My Other Envelopes", zh: "🧧 我的其他红包" },
   sendToFriend: { en: "📤 Send to Friend", zh: "📤 发送给朋友" },
   noSpreadingNfts: { en: "No spreading NFTs in your wallet", zh: "钱包中暂无传播型 NFT" },
+  noClaimNfts: { en: "No claim NFTs in your wallet", zh: "钱包中暂无 Claim NFT" },
   spreadingNftHint: {
     en: "Spreading NFTs can be opened for GAS, then passed to a friend",
     zh: "传播型 NFT 可打开领取 GAS，然后转给朋友",
   },
+  claimNftHint: {
+    en: "Claim NFTs come from pool claims and can be opened or transferred before opening",
+    zh: "Claim NFT 来自红包池领取，可在打开前转让，打开后到账",
+  },
+  claimNftReadyToOpen: { en: "{0} ready to open", zh: "{0} 个可立即打开" },
   youAreCreator: { en: "👑 Creator", zh: "👑 创建者" },
   youAreHolder: { en: "📦 Holder", zh: "📦 持有者" },
   openEnvelope: { en: "🧧 Open", zh: "🧧 打开" },

@@ -18,6 +18,16 @@ describe("parseStackItem", () => {
     expect(parseStackItem({ type: "Boolean", value: false })).toBe(false);
   });
 
+  it("parses Boolean string true", () => {
+    expect(parseStackItem({ type: "Boolean", value: "true" })).toBe(true);
+    expect(parseStackItem({ type: "Boolean", value: "1" })).toBe(true);
+  });
+
+  it("parses Boolean string false", () => {
+    expect(parseStackItem({ type: "Boolean", value: "false" })).toBe(false);
+    expect(parseStackItem({ type: "Boolean", value: "0" })).toBe(false);
+  });
+
   it("parses ByteString", () => {
     expect(parseStackItem({ type: "ByteString", value: "abc123" })).toBe("abc123");
   });

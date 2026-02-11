@@ -71,7 +71,14 @@ export function parseStackItem(item: unknown): unknown {
       }
       return Number(value ?? 0);
     case "Boolean":
-      return Boolean(value);
+      if (typeof value === "boolean") return value;
+      if (typeof value === "number") return value !== 0;
+      if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === "true" || normalized === "1") return true;
+        return false; // any other string (including empty, "false", "0") → false
+      }
+      return value != null && value !== 0;
     case "ByteString":
     case "Buffer": {
       if (!value) return "";

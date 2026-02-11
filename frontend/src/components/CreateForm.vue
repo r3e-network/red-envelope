@@ -4,6 +4,7 @@ import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
 import { extractError } from "@/utils/format";
+import { parseOptionalNumber } from "./createForm.logic";
 
 const { t } = useI18n();
 const { connected, connect } = useWallet();
@@ -43,8 +44,8 @@ const handleSubmit = async () => {
       packetCount: Number(count.value),
       expiryHours: Number(expiryHours.value) || 24,
       message: message.value || t("defaultBlessing"),
-      minNeo: Number(minNeo.value) || 100,
-      minHoldDays: Number(minHoldDays.value) || 2,
+      minNeo: parseOptionalNumber(minNeo.value, 100),
+      minHoldDays: parseOptionalNumber(minHoldDays.value, 2),
       envelopeType: envelopeType.value,
     });
     status.value = { msg: `TX: ${txid.slice(0, 12)}...`, type: "success" };

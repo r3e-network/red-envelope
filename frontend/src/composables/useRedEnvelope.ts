@@ -143,6 +143,22 @@ export function useRedEnvelope() {
     return Boolean(parseInvokeResult(res));
   };
 
+  /** Read exact amount claimed by current wallet from a pool envelope */
+  const getPoolClaimedAmount = async (poolId: string): Promise<number> => {
+    if (!address.value) throw new Error("Wallet not connected");
+    const res = await invokeRead({
+      scriptHash: CONTRACT_HASH,
+      operation: "getPoolClaimedAmount",
+      args: [
+        { type: "Integer", value: poolId },
+        { type: "Hash160", value: address.value },
+      ],
+    });
+
+    const amount = Number(parseInvokeResult(res) ?? 0);
+    return fromFixed8(amount);
+  };
+
   /** Read exact amount opened by current wallet for spreading envelopes */
   const getOpenedAmount = async (envelopeId: string): Promise<number> => {
     if (!address.value) throw new Error("Wallet not connected");
@@ -252,7 +268,7 @@ export function useRedEnvelope() {
         tasks.push(() => fetchEnvelopeState(id));
       }
       const results = await pAll(tasks, 6);
-      envelopes.value = (results.filter(Boolean) as EnvelopeItem[]).filter((e) => e.envelopeType !== 2);
+      envelopes.value = results.filter(Boolean) as EnvelopeItem[];
     } catch (err) {
       console.warn("[RedEnvelope] loadEnvelopes failed:", err);
     } finally {
@@ -269,6 +285,7 @@ export function useRedEnvelope() {
     openEnvelope,
     claimFromPool,
     hasClaimedFromPool,
+    getPoolClaimedAmount,
     transferEnvelope,
     reclaimEnvelope,
     getOpenedAmount,

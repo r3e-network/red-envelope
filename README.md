@@ -129,7 +129,8 @@ Contract artifacts are generated at:
 
 ## Contract API
 
-All functions below have been evaluated on Neo N3 TestNet (56/56 E2E tests passing).
+All functions below were evaluated on Neo N3 TestNet in the latest full E2E run (56/56 passing).
+To reproduce that run locally, set `KEY1_WIF` and `KEY2_WIF` and execute `node scripts/test-e2e.js`.
 
 ### Entry Point
 

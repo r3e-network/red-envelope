@@ -11,6 +11,7 @@ import EnvelopeCard from "./EnvelopeCard.vue";
 import type { EnrichedEnvelope } from "./EnvelopeCard.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
+import { countActionableClaimNfts, partitionEnvelopeSections } from "./myEnvelopes.logic";
 
 const { t } = useI18n();
 const { address, connected } = useWallet();
@@ -83,24 +84,11 @@ const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
 // ── Filtered: only envelopes where user is creator or holder ──
 const myEnvelopes = computed(() => enrichedEnvelopes.value.filter((env) => env.role !== null));
 
-// ── Spreading NFTs: type=0, user is holder, sorted active-first then newest ──
-const spreadingNfts = computed(() =>
-  myEnvelopes.value
-    .filter((env) => env.envelopeType === 0 && env.role?.cls === "role-holder")
-    .slice()
-    .sort((a, b) => {
-      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
-      return Number(b.id) - Number(a.id);
-    }),
-);
-
-// ── Other envelopes: everything else (pools created, claim NFTs), newest-first ──
-const otherEnvelopes = computed(() =>
-  myEnvelopes.value
-    .filter((env) => !(env.envelopeType === 0 && env.role?.cls === "role-holder"))
-    .slice()
-    .sort((a, b) => Number(b.id) - Number(a.id)),
-);
+const sections = computed(() => partitionEnvelopeSections(myEnvelopes.value));
+const spreadingNfts = computed(() => sections.value.spreadingNfts);
+const claimNfts = computed(() => sections.value.claimNfts);
+const otherEnvelopes = computed(() => sections.value.otherEnvelopes);
+const actionableClaimCount = computed(() => countActionableClaimNfts(claimNfts.value));
 
 // ── Actions ──
 const handleOpen = (env: EnvelopeItem) => {
@@ -142,7 +130,10 @@ const handleReclaim = async (env: EnvelopeItem) => {
 
     <template v-else>
       <!-- ── Spreading NFTs Section ── -->
-      <div class="section-header">{{ t("mySpreadingNfts") }}</div>
+      <div class="section-header">
+        <span>{{ t("mySpreadingNfts") }}</span>
+        <span class="section-count">{{ spreadingNfts.length }}</span>
+      </div>
       <div class="section-hint">{{ t("spreadingNftHint") }}</div>
 
       <div v-if="spreadingNfts.length === 0" class="section-empty">
@@ -161,8 +152,38 @@ const handleReclaim = async (env: EnvelopeItem) => {
         />
       </div>
 
+      <!-- ── Claim NFTs Section ── -->
+      <div class="section-header">
+        <span>{{ t("myClaimNfts") }}</span>
+        <span :class="['section-count', { 'section-count-hot': actionableClaimCount > 0 }]">{{ claimNfts.length }}</span>
+      </div>
+      <div class="section-hint">
+        {{ t("claimNftHint") }}
+        <span v-if="actionableClaimCount > 0" class="section-hint-hot">
+          · {{ t("claimNftReadyToOpen", actionableClaimCount) }}
+        </span>
+      </div>
+
+      <div v-if="claimNfts.length === 0" class="section-empty">
+        {{ t("noClaimNfts") }}
+      </div>
+
+      <div v-else class="envelope-list">
+        <EnvelopeCard
+          v-for="env in claimNfts"
+          :key="'c-' + env.id"
+          :env="env"
+          @open="handleOpen"
+          @transfer="handleTransfer"
+          @reclaim="handleReclaim"
+        />
+      </div>
+
       <!-- ── Other Envelopes Section ── -->
-      <div class="section-header">{{ t("myOtherEnvelopes") }}</div>
+      <div class="section-header">
+        <span>{{ t("myOtherEnvelopes") }}</span>
+        <span class="section-count">{{ otherEnvelopes.length }}</span>
+      </div>
 
       <div v-if="otherEnvelopes.length === 0" class="section-empty">
         {{ t("noEnvelopes") }}
