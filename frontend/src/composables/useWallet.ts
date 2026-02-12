@@ -1,7 +1,59 @@
 import { ref } from "vue";
+import { addressToScriptHashHex } from "@/utils/neo";
 
 const address = ref("");
 const connected = ref(false);
+
+/** Map dAPI string scopes → NeoLine numeric WitnessScope */
+function neolineScope(scopes: unknown): number {
+  if (typeof scopes === "number") return scopes;
+  switch (String(scopes)) {
+    case "None":
+      return 0;
+    case "CalledByEntry":
+      return 1;
+    case "CustomContracts":
+      return 16;
+    case "CustomGroups":
+      return 32;
+    case "Global":
+      return 128;
+    default:
+      return 1;
+  }
+}
+
+/** Convert N-address → 0x-prefixed script hash; pass through hashes unchanged */
+function toScriptHash(value: string): string {
+  if (!value) return value;
+  if (value.startsWith("0x") || /^[0-9a-fA-F]{40}$/.test(value)) return value;
+  // N-address → 0x-prefixed little-endian hex
+  return addressToScriptHashHex(value) || value;
+}
+
+/** Strip 0x prefix (NeoLine signers need bare hex) */
+function toBareHex(value: string): string {
+  const h = toScriptHash(value);
+  return h.startsWith("0x") ? h.slice(2) : h;
+}
+
+/**
+ * Recursively convert Hash160 arg values from N-address to script hash.
+ * NeoLine's direct invoke() doesn't auto-convert like OneGate's request().
+ */
+function neolineArgs(args: unknown[]): unknown[] {
+  return args.map((arg) => {
+    if (!arg || typeof arg !== "object") return arg;
+    const a = arg as Record<string, unknown>;
+    if (a.type === "Hash160" && typeof a.value === "string") {
+      return { ...a, value: toScriptHash(a.value) };
+    }
+    if (a.type === "Array" && Array.isArray(a.value)) {
+      return { ...a, value: neolineArgs(a.value) };
+    }
+    return arg;
+  });
+}
 
 /** Wrap NeoLine N3 direct-method API into the unified request() pattern */
 function wrapNeoLine(nl: NeoLineN3Instance): NeoDapi {
@@ -10,10 +62,29 @@ function wrapNeoLine(nl: NeoLineN3Instance): NeoDapi {
       switch (p.method) {
         case "getAccount":
           return nl.getAccount();
-        case "invoke":
-          return nl.invoke(p.params ?? {});
-        case "invokeRead":
-          return nl.invokeRead(p.params ?? {});
+        case "invoke": {
+          const params = { ...(p.params ?? {}) };
+          // Convert Hash160 args: N-address → script hash
+          if (Array.isArray(params.args)) {
+            params.args = neolineArgs(params.args as unknown[]);
+          }
+          // Convert signers: bare-hex account + numeric scopes
+          if (Array.isArray(params.signers)) {
+            params.signers = (params.signers as Array<Record<string, unknown>>).map((s) => ({
+              ...s,
+              account: toBareHex(String(s.account ?? "")),
+              scopes: neolineScope(s.scopes),
+            }));
+          }
+          return nl.invoke(params);
+        }
+        case "invokeRead": {
+          const rParams = { ...(p.params ?? {}) };
+          if (Array.isArray(rParams.args)) {
+            rParams.args = neolineArgs(rParams.args as unknown[]);
+          }
+          return nl.invokeRead(rParams);
+        }
         case "getBalance":
           return nl.getBalance(p.params ?? {});
         default:
