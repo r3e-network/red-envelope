@@ -34,7 +34,6 @@ Thumbs.db
 # Claude Code local config
 .claude/
 .mcp.json
-.claude-flow/
 
 # Debug
 npm-debug.log*

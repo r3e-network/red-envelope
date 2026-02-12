@@ -14,6 +14,7 @@ import EnvelopeHistory from "./EnvelopeHistory.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
 import ShareCard from "./ShareCard.vue";
+import { mapWalletConnectError } from "./searchClaim.logic";
 
 const { t } = useI18n();
 const { playCoinSound } = useAudio();
@@ -109,6 +110,17 @@ const isExpiringSoon = (env: EnvelopeItem): boolean => {
 
 const isValidSearchId = (val: string) => /^\d+$/.test(val) && Number(val) > 0;
 
+const ensureConnected = async (): Promise<boolean> => {
+  if (connected.value) return true;
+  try {
+    await connect();
+    return true;
+  } catch (e: unknown) {
+    status.value = { msg: mapWalletConnectError(e, () => t("walletNotDetected")), type: "error" };
+    return false;
+  }
+};
+
 const handleSearch = async () => {
   const id = searchId.value.trim();
   if (!id || !isValidSearchId(id)) return;
@@ -139,14 +151,11 @@ const handleSearch = async () => {
   }
 };
 
-const handleOpen = () => {
-  if (!connected.value) {
-    connect();
-    return;
-  }
+const handleOpen = async () => {
+  if (!(await ensureConnected())) return;
   // Pool envelopes use claimFromPool directly (no modal needed for claiming a slot)
   if (envelope.value?.envelopeType === 1) {
-    handlePoolClaim();
+    await handlePoolClaim();
     return;
   }
   status.value = null;
@@ -155,8 +164,8 @@ const handleOpen = () => {
 };
 
 const handleWalletSpreadingClaim = async (target: EnvelopeItem) => {
+  if (!(await ensureConnected())) return;
   if (!connected.value) {
-    await connect();
     await refreshWalletSpreadingList();
     return;
   }
@@ -199,17 +208,16 @@ const handlePoolClaim = async () => {
   }
 };
 
-const handleTransfer = () => {
-  if (!connected.value) {
-    connect();
-    return;
-  }
+const handleTransfer = async () => {
+  if (!(await ensureConnected())) return;
   showTransferModal.value = true;
 };
 
 const handleReclaim = async () => {
-  if (!envelope.value || !connected.value) {
-    if (!connected.value) await connect();
+  if (!envelope.value) {
+    return;
+  }
+  if (!(await ensureConnected())) {
     return;
   }
   status.value = null;

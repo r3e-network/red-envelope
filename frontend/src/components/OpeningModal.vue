@@ -37,7 +37,7 @@ const eligibilityWarning = ref("");
 const isLocked = computed(() => eligibility.value != null && !eligibility.value.eligible);
 const requiredHoldDays = computed(() => (eligibility.value ? Math.floor(eligibility.value.minHoldSeconds / 86400) : 0));
 const hasGate = computed(
-  () => eligibility.value != null && (eligibility.value.minNeoRequired > 1 || requiredHoldDays.value > 0),
+  () => eligibility.value != null && (eligibility.value.minNeoRequired > 0 || requiredHoldDays.value > 0),
 );
 
 onMounted(async () => {

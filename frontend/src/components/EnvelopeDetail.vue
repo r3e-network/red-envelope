@@ -99,7 +99,7 @@ const holdDays = computed(() => Math.floor(props.envelope.minHoldSeconds / 86400
     <div class="detail-row">
       <span class="detail-label">{{ t("detailNeoGate") }}</span>
       <span class="detail-value">
-        <template v-if="envelope.minNeoRequired > 1 || holdDays > 0">
+        <template v-if="envelope.minNeoRequired > 0 || holdDays > 0">
           {{ t("detailNeoGateValue", envelope.minNeoRequired, holdDays) }}
         </template>
         <template v-else>{{ t("detailNoGate") }}</template>

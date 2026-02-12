@@ -53,11 +53,11 @@ export function useRedEnvelope() {
     isLoading.value = true;
     try {
       const amount = toFixed8(params.totalGas);
-      validate(amount, params.packetCount, params.expiryHours, params.message);
+      validate(amount, params.packetCount, params.expiryHours, params.message, params.minNeo, params.minHoldDays);
 
       // Contract adds expiry directly to Runtime.Time (milliseconds), so send ms
       const expiryMs = params.expiryHours * 3_600_000;
-      // Contract defaults 0 → 100 NEO / 172800s hold; send 1 to effectively disable gate
+      // Contract defaults <=0 to strict defaults (100 NEO / 172800s); send the minimum valid values instead.
       const minNeo = params.minNeo > 0 ? params.minNeo : 1;
       const minHoldSeconds = params.minHoldDays > 0 ? params.minHoldDays * 86400 : 1;
 
@@ -205,18 +205,14 @@ export function useRedEnvelope() {
 
   /** Fetch single envelope state from contract */
   const fetchEnvelopeState = async (envelopeId: string): Promise<EnvelopeItem | null> => {
-    try {
-      const res = await invokeRead({
-        scriptHash: CONTRACT_HASH,
-        operation: "getEnvelopeState",
-        args: [{ type: "Integer", value: envelopeId }],
-      });
-      const data = parseInvokeResult(res) as Record<string, unknown>;
-      if (!data || !data.creator) return null;
-      return mapEnvelopeData(envelopeId, data);
-    } catch {
-      return null;
-    }
+    const res = await invokeRead({
+      scriptHash: CONTRACT_HASH,
+      operation: "getEnvelopeState",
+      args: [{ type: "Integer", value: envelopeId }],
+    });
+    const data = parseInvokeResult(res) as Record<string, unknown>;
+    if (!data || !data.creator) return null;
+    return mapEnvelopeData(envelopeId, data);
   };
 
   /** Fetch NFT tokenURI (data:application/json;base64,...) for sharing */
@@ -247,11 +243,18 @@ export function useRedEnvelope() {
         return;
       }
 
-      const start = Math.max(1, total - 49);
+      const start = 1;
       const tasks: (() => Promise<EnvelopeItem | null>)[] = [];
       for (let i = total; i >= start; i--) {
         const id = String(i);
-        tasks.push(() => fetchEnvelopeState(id));
+        tasks.push(async () => {
+          try {
+            return await fetchEnvelopeState(id);
+          } catch (err) {
+            console.warn(`[RedEnvelope] failed to load envelope #${id}:`, err);
+            return null;
+          }
+        });
       }
       const results = await pAll(tasks, 6);
       envelopes.value = results.filter(Boolean) as EnvelopeItem[];
@@ -280,11 +283,17 @@ export function useRedEnvelope() {
   };
 }
 
-function validate(amount: number, packets: number, expiryHours?: number, message?: string) {
+function validate(amount: number, packets: number, expiryHours?: number, message?: string, minNeo?: number, minHoldDays?: number) {
   if (amount < MIN_AMOUNT) throw new Error("min 1 GAS");
+  if (!Number.isInteger(packets)) throw new Error("packet count must be an integer");
   if (packets < 1 || packets > MAX_PACKETS) throw new Error("1-100 packets");
   if (amount < packets * MIN_PER_PACKET) throw new Error("min 0.1 GAS/packet");
+  if (expiryHours !== undefined && !Number.isInteger(expiryHours)) throw new Error("expiry hours must be an integer");
   if (expiryHours !== undefined && expiryHours <= 0) throw new Error("expiry must be positive");
+  if (minNeo !== undefined && !Number.isInteger(minNeo)) throw new Error("NEO gate values must be integers");
+  if (minHoldDays !== undefined && !Number.isInteger(minHoldDays)) throw new Error("NEO gate values must be integers");
+  if (minNeo !== undefined && minNeo < 0) throw new Error("NEO gate values cannot be negative");
+  if (minHoldDays !== undefined && minHoldDays < 0) throw new Error("NEO gate values cannot be negative");
   if (message !== undefined && message.length > 256) throw new Error("message max 256 chars");
 }
 

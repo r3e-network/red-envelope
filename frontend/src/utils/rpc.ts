@@ -23,17 +23,18 @@ export async function waitForConfirmation(txid: string, maxWaitMs = DEFAULT_TIME
           params: [txid],
         }),
       });
-      if (!res.ok) continue;
-      const json = (await res.json()) as Record<string, unknown>;
-      if (json.result && !json.error) {
-        // Check for VM FAULT — TX confirmed but execution failed
-        const executions = (json.result as Record<string, unknown>).executions as
-          | Array<{ vmstate?: string; exception?: string }>
-          | undefined;
-        if (executions?.[0]?.vmstate === "FAULT") {
-          throw new Error(`Transaction FAULT: ${executions[0].exception ?? "unknown"}`);
+      if (res.ok) {
+        const json = (await res.json()) as Record<string, unknown>;
+        if (json.result && !json.error) {
+          // Check for VM FAULT — TX confirmed but execution failed
+          const executions = (json.result as Record<string, unknown>).executions as
+            | Array<{ vmstate?: string; exception?: string }>
+            | undefined;
+          if (executions?.[0]?.vmstate === "FAULT") {
+            throw new Error(`Transaction FAULT: ${executions[0].exception ?? "unknown"}`);
+          }
+          return;
         }
-        return;
       }
     } catch (e) {
       // Re-throw VM FAULT errors immediately — don't retry a confirmed failure

@@ -62,6 +62,8 @@ export const messages = {
   validationMinGas: { en: "Minimum 1 GAS required", zh: "最少需要 1 GAS" },
   validationPacketRange: { en: "Must be 1–100 packets", zh: "数量需在 1–100 之间" },
   validationMinPerPacket: { en: "Need at least 0.1 GAS per packet", zh: "每个红包至少需要 0.1 GAS" },
+  validationIntegerOnly: { en: "Must be a whole number", zh: "必须是整数" },
+  validationNonNegativeInteger: { en: "Must be an integer ≥ 0", zh: "必须是大于等于 0 的整数" },
   validationExpiryMin: { en: "Expiry must be at least 1 hour", zh: "过期时间至少为 1 小时" },
 
   // ── My Envelopes ──────────────────────────────────

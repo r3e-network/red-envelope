@@ -64,7 +64,7 @@ const { t } = useI18n();
       <div v-if="env.countdown" :class="['countdown', { 'countdown-urgent': env.countdown.urgent }]">
         {{ env.countdown.text }}
       </div>
-      <div v-if="env.minNeoRequired > 1 || env.holdDays > 0" class="card-meta text-muted">
+      <div v-if="env.minNeoRequired > 0 || env.holdDays > 0" class="card-meta text-muted">
         {{ t("neoGate", env.minNeoRequired, env.holdDays) }}
       </div>
     </div>

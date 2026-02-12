@@ -33,7 +33,17 @@ const canSubmit = computed(() => {
   const a = Number(amount.value);
   const c = Number(count.value);
   const e = Number(expiryHours.value);
-  return a >= 1 && c >= 1 && c <= 100 && a >= c * 0.1 && e >= 1;
+  return (
+    a >= 1 &&
+    c >= 1 &&
+    c <= 100 &&
+    Number.isInteger(c) &&
+    a >= c * 0.1 &&
+    e >= 1 &&
+    Number.isInteger(e) &&
+    minNeoInputValid.value &&
+    minHoldDaysInputValid.value
+  );
 });
 
 const perPacket = computed(() => {
@@ -45,6 +55,20 @@ const perPacket = computed(() => {
 
 const parsedMinNeo = computed(() => parseOptionalNumber(minNeo.value, 100));
 const parsedMinHoldDays = computed(() => parseOptionalNumber(minHoldDays.value, 2));
+
+const minNeoInputValid = computed(() => {
+  const raw = minNeo.value.trim();
+  if (!raw) return true;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 0;
+});
+
+const minHoldDaysInputValid = computed(() => {
+  const raw = minHoldDays.value.trim();
+  if (!raw) return true;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 0;
+});
 
 const showMinPerPacketError = computed(() => {
   const a = Number(amount.value);
@@ -202,6 +226,9 @@ const handleSubmit = async () => {
             :placeholder="t('packetsPlaceholder')"
             class="input"
           />
+          <div v-if="count && !Number.isInteger(Number(count))" class="field-hint text-fail">
+            {{ t("validationIntegerOnly") }}
+          </div>
           <div v-if="count && (Number(count) < 1 || Number(count) > 100)" class="field-hint text-fail">
             {{ t("validationPacketRange") }}
           </div>
@@ -225,6 +252,9 @@ const handleSubmit = async () => {
               :placeholder="t('minNeoPlaceholder')"
               class="input"
             />
+            <div v-if="minNeo && !minNeoInputValid" class="field-hint text-fail">
+              {{ t("validationNonNegativeInteger") }}
+            </div>
           </div>
           <div class="input-half">
             <label class="form-label" for="min-hold-days">{{ t("labelHoldDays") }}</label>
@@ -236,6 +266,9 @@ const handleSubmit = async () => {
               :placeholder="t('minHoldDaysPlaceholder')"
               class="input"
             />
+            <div v-if="minHoldDays && !minHoldDaysInputValid" class="field-hint text-fail">
+              {{ t("validationNonNegativeInteger") }}
+            </div>
           </div>
         </div>
       </div>
@@ -253,6 +286,9 @@ const handleSubmit = async () => {
             :placeholder="t('expiryPlaceholder')"
             class="input"
           />
+          <div v-if="expiryHours && !Number.isInteger(Number(expiryHours))" class="field-hint text-fail">
+            {{ t("validationIntegerOnly") }}
+          </div>
           <div v-if="expiryHours && Number(expiryHours) < 1" class="field-hint text-fail">
             {{ t("validationExpiryMin") }}
           </div>
