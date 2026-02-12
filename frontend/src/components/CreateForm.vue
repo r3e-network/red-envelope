@@ -57,14 +57,14 @@ const parsedMinNeo = computed(() => parseOptionalNumber(minNeo.value, 100));
 const parsedMinHoldDays = computed(() => parseOptionalNumber(minHoldDays.value, 2));
 
 const minNeoInputValid = computed(() => {
-  const raw = minNeo.value.trim();
+  const raw = String(minNeo.value).trim();
   if (!raw) return true;
   const parsed = Number(raw);
   return Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 0;
 });
 
 const minHoldDaysInputValid = computed(() => {
-  const raw = minHoldDays.value.trim();
+  const raw = String(minHoldDays.value).trim();
   if (!raw) return true;
   const parsed = Number(raw);
   return Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 0;

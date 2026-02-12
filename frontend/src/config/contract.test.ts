@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { resolveContractHash } from "./contract";
-import { NETWORKS, DEFAULT_NETWORK } from "./networks";
+import { resolveNetwork } from "./networks";
 
-const ACTIVE_NETWORK_HASH = NETWORKS[DEFAULT_NETWORK].contractHash;
+const ACTIVE_NETWORK_HASH = resolveNetwork().contractHash;
 
 describe("contract config", () => {
   it("falls back to active network hash when env is missing", () => {
