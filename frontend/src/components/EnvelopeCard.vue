@@ -2,13 +2,14 @@
 import type { EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
 import { formatGas } from "@/utils/format";
+import type { CountdownDisplay } from "@/utils/time";
 
 export type EnrichedEnvelope = EnvelopeItem & {
   isActive: boolean;
   progress: number;
   status: string;
   role: { text: string; cls: string } | null;
-  countdown: { text: string; urgent: boolean } | null;
+  countdown: CountdownDisplay | null;
   showOpen: boolean;
   showTransfer: boolean;
   showReclaim: boolean;
@@ -18,6 +19,7 @@ export type EnrichedEnvelope = EnvelopeItem & {
 const props = defineProps<{
   env: EnrichedEnvelope;
   spreading?: boolean;
+  reclaiming?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -32,7 +34,7 @@ const { t } = useI18n();
 <template>
   <div :class="['envelope-card', { 'spreading-card': spreading, 'card-inactive': !env.isActive }]">
     <div class="card-header">
-      <div style="display: flex; align-items: center; gap: 0.5rem">
+      <div class="card-header-left">
         <span class="envelope-id">#{{ env.id }}</span>
         <span v-if="env.role" :class="['role-badge', env.role.cls]">
           {{ env.role.text }}
@@ -58,12 +60,12 @@ const { t } = useI18n();
       <div v-if="env.countdown" :class="['countdown', { 'countdown-urgent': env.countdown.urgent }]">
         {{ env.countdown.text }}
       </div>
-      <div class="card-meta text-muted">
+      <div v-if="env.minNeoRequired > 1 || env.holdDays > 0" class="card-meta text-muted">
         {{ t("neoGate", env.minNeoRequired, env.holdDays) }}
       </div>
     </div>
 
-    <div class="card-actions">
+    <div v-if="env.showOpen || env.showTransfer || env.showReclaim" class="card-actions">
       <button v-if="env.showOpen" class="btn btn-open" @click="emit('open', env)">
         {{ t("openEnvelope") }}
       </button>
@@ -74,8 +76,8 @@ const { t } = useI18n();
       >
         {{ spreading ? t("sendToFriend") : t("transferEnvelope") }}
       </button>
-      <button v-if="env.showReclaim" class="btn btn-reclaim" @click="emit('reclaim', env)">
-        {{ t("reclaimEnvelope") }}
+      <button v-if="env.showReclaim" class="btn btn-reclaim" :disabled="reclaiming" @click="emit('reclaim', env)">
+        {{ reclaiming ? t("reclaiming") : t("reclaimEnvelope") }}
       </button>
     </div>
   </div>

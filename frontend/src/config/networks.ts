@@ -12,18 +12,18 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     label: "Neo N3 TestNet",
     defaultRpc: "https://testnet1.neo.coz.io:443",
     explorerBase: "https://testnet.neotube.io",
-    contractHash: "0x36a46aa95413029e340e57365cdadd3ae29244ff",
+    contractHash: "0x78ba71c03c29b3f101ff11824dc8f664cf6d65cd",
   },
   mainnet: {
     key: "mainnet",
     label: "Neo N3 MainNet",
     defaultRpc: "https://mainnet1.neo.coz.io:443",
     explorerBase: "https://neotube.io",
-    contractHash: "0x5f371cc50116bb13d79554d96ccdd6e246cd5d59",
+    contractHash: "0x215099698349ba405400b3b2fe97bb96941c0f9b",
   },
 };
 
-export const DEFAULT_NETWORK = "testnet";
+export const DEFAULT_NETWORK = "mainnet";
 
 export function resolveNetwork(value?: string): NetworkConfig {
   const key = (value ?? import.meta.env.VITE_NETWORK ?? DEFAULT_NETWORK).trim().toLowerCase();

@@ -1,17 +1,17 @@
 /**
- * Shared helpers for end-to-end testnet testing.
+ * Shared helpers for end-to-end mainnet testing.
  * Uses @cityofzion/neon-js v5.
  */
 const Neon = require("@cityofzion/neon-js");
 
-const RPC_URL = "https://testnet1.neo.coz.io:443";
-const CONTRACT = "0x36a46aa95413029e340e57365cdadd3ae29244ff";
+const RPC_URL = "https://mainnet1.neo.coz.io:443";
+const CONTRACT = "0x215099698349ba405400b3b2fe97bb96941c0f9b";
 const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
 const NEO_HASH = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5";
-const NETWORK_MAGIC = 894710606; // Neo N3 TestNet
+const NETWORK_MAGIC = 860833102; // Neo N3 MainNet
 
 // SECURITY: Load private keys from environment variables. Never hardcode keys in source.
-// For testnet: export KEY1_WIF=... KEY2_WIF=... before running scripts.
+// export KEY1_WIF=... KEY2_WIF=... before running scripts.
 const KEY1_WIF = process.env.KEY1_WIF;
 const KEY2_WIF = process.env.KEY2_WIF;
 if (!KEY1_WIF || !KEY2_WIF) {

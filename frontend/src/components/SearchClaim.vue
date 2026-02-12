@@ -4,6 +4,7 @@ import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useEnvelopeHistory } from "@/composables/useEnvelopeHistory";
 import { useI18n } from "@/composables/useI18n";
+import { useAudio } from "@/composables/useAudio";
 import { extractError, formatGas } from "@/utils/format";
 import { addressToScriptHashHex } from "@/utils/neo";
 import { waitForConfirmation } from "@/utils/rpc";
@@ -15,6 +16,7 @@ import TransferModal from "./TransferModal.vue";
 import ShareCard from "./ShareCard.vue";
 
 const { t } = useI18n();
+const { playCoinSound } = useAudio();
 const { address, connected, connect } = useWallet();
 const {
   envelopes,
@@ -39,6 +41,7 @@ const showTransferModal = ref(false);
 const showShareCard = ref(false);
 const claimedAmount = ref(0);
 const claiming = ref(false);
+const reclaimingSearch = ref(false);
 const openTargetEnvelope = ref<EnvelopeItem | null>(null);
 
 const currentAddressHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
@@ -86,9 +89,11 @@ const isExpiringSoon = (env: EnvelopeItem): boolean => {
   return remainingMs > 0 && remainingMs <= 6 * 60 * 60 * 1000;
 };
 
+const isValidSearchId = (val: string) => /^\d+$/.test(val) && Number(val) > 0;
+
 const handleSearch = async () => {
   const id = searchId.value.trim();
-  if (!id) return;
+  if (!id || !isValidSearchId(id)) return;
 
   searching.value = true;
   notFound.value = false;
@@ -126,6 +131,7 @@ const handleOpen = () => {
     handlePoolClaim();
     return;
   }
+  status.value = null;
   openTargetEnvelope.value = envelope.value;
   showOpenModal.value = true;
 };
@@ -145,6 +151,7 @@ const handlePoolClaim = async () => {
   if (!envelope.value) return;
   status.value = null;
   claiming.value = true;
+  claimedAmount.value = 0;
   try {
     const res = await claimFromPool(envelope.value.id);
     status.value = { msg: t("claimedTx", res.txid.slice(0, 12) + "..."), type: "success" };
@@ -154,7 +161,7 @@ const handlePoolClaim = async () => {
     try {
       claimedAmount.value = await getPoolClaimedAmount(envelope.value.id);
     } catch {
-      // Non-critical: claim succeeded but amount query failed; leave claimedAmount unset
+      // Non-critical: claim succeeded but amount query failed; leave claimedAmount at 0
     }
 
     const refreshed = await fetchEnvelopeState(envelope.value.id);
@@ -162,8 +169,11 @@ const handlePoolClaim = async () => {
       envelope.value = refreshed;
       loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
     }
-    // Show celebration share card
-    showShareCard.value = true;
+    // Show celebration share card only if we know the amount
+    playCoinSound();
+    if (claimedAmount.value > 0) {
+      showShareCard.value = true;
+    }
   } catch (e: unknown) {
     status.value = { msg: extractError(e), type: "error" };
   } finally {
@@ -185,15 +195,22 @@ const handleReclaim = async () => {
     return;
   }
   status.value = null;
+  reclaimingSearch.value = true;
   try {
+    const reclaimAmount = formatGas(envelope.value.remainingAmount);
     const res = await reclaimEnvelope(envelope.value);
-    status.value = { msg: t("reclaimed"), type: "success" };
+    status.value = { msg: t("reclaimSuccess", reclaimAmount), type: "success" };
     // Wait for TX confirmation before refreshing state (BUG-4 fix)
     await waitForConfirmation(res.txid);
     const refreshed = await fetchEnvelopeState(envelope.value.id);
-    if (refreshed) envelope.value = refreshed;
+    if (refreshed) {
+      envelope.value = refreshed;
+      loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
+    }
   } catch (e: unknown) {
     status.value = { msg: extractError(e), type: "error" };
+  } finally {
+    reclaimingSearch.value = false;
   }
 };
 
@@ -202,7 +219,10 @@ const onOpened = async () => {
   openTargetEnvelope.value = null;
   if (envelope.value) {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
-    if (refreshed) envelope.value = refreshed;
+    if (refreshed) {
+      envelope.value = refreshed;
+      loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
+    }
   }
   await refreshWalletSpreadingList();
 };
@@ -213,6 +233,7 @@ const onTransferred = async () => {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) envelope.value = refreshed;
   }
+  await refreshWalletSpreadingList();
 };
 
 // Auto-search if URL contains ?id=
@@ -266,12 +287,17 @@ watch(connected, (isConnected) => {
         <input
           v-model="searchId"
           type="text"
+          inputmode="numeric"
           :placeholder="t('searchPlaceholder')"
           :aria-label="t('searchPlaceholder')"
           class="input"
           @keyup.enter="handleSearch"
         />
-        <button class="btn btn-primary" :disabled="!searchId.trim() || searching" @click="handleSearch">
+        <button
+          class="btn btn-primary"
+          :disabled="!searchId.trim() || !isValidSearchId(searchId.trim()) || searching"
+          @click="handleSearch"
+        >
           {{ t("searchButton") }}
         </button>
       </div>
@@ -346,14 +372,15 @@ watch(connected, (isConnected) => {
         <button
           v-if="envelope.active && envelope.expired && envelope.remainingAmount > 0 && isCreator"
           class="btn btn-reclaim"
+          :disabled="reclaimingSearch"
           @click="handleReclaim"
         >
-          {{ t("reclaimEnvelope") }}
+          {{ reclaimingSearch ? t("reclaiming") : t("reclaimEnvelope") }}
         </button>
       </template>
 
       <!-- Status message -->
-      <div v-if="status" :class="['status', status.type]">
+      <div v-if="status" :class="['status', status.type]" role="status">
         {{ status.msg }}
       </div>
     </div>

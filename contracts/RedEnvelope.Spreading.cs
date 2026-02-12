@@ -42,12 +42,13 @@ namespace RedEnvelope.Contract
                 (ByteString)(byte[])opener);
             ExecutionEngine.Assert(Storage.Get(Storage.CurrentContext, openerKey) == null, "already opened");
 
-            ValidateNeoHolding(opener, envelope.MinNeoRequired, envelope.MinHoldSeconds);
+            BigInteger openerNeo = ValidateNeoHolding(opener, envelope.MinNeoRequired, envelope.MinHoldSeconds);
 
             BigInteger remainingPacketsBeforeOpen = envelope.PacketCount - envelope.OpenedCount;
             BigInteger amount = CalculateRuntimeRandomPacketAmount(
                 envelope.RemainingAmount,
-                remainingPacketsBeforeOpen);
+                remainingPacketsBeforeOpen,
+                openerNeo);
             ExecutionEngine.Assert(amount > 0, "invalid amount");
 
             Storage.Put(Storage.CurrentContext, openerKey, amount);

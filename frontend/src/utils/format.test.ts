@@ -43,7 +43,7 @@ describe("fromFixed8", () => {
 
 describe("formatHash", () => {
   it("truncates long hash", () => {
-    expect(formatHash("0x36a46aa95413029e340e57365cdadd3ae29244ff")).toBe("0x36a4...44ff");
+    expect(formatHash("0x36a46aa95413029e340e57365cdadd3ae29244ff")).toBe("0x36a46a...9244ff");
   });
 
   it("returns short strings unchanged", () => {

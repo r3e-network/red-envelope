@@ -129,20 +129,6 @@ export function useRedEnvelope() {
     }
   };
 
-  /** Check if current wallet has already claimed from a pool envelope */
-  const hasClaimedFromPool = async (poolId: string): Promise<boolean> => {
-    if (!address.value) throw new Error("Wallet not connected");
-    const res = await invokeRead({
-      scriptHash: CONTRACT_HASH,
-      operation: "hasClaimedFromPool",
-      args: [
-        { type: "Integer", value: poolId },
-        { type: "Hash160", value: address.value },
-      ],
-    });
-    return Boolean(parseInvokeResult(res));
-  };
-
   /** Read exact amount claimed by current wallet from a pool envelope */
   const getPoolClaimedAmount = async (poolId: string): Promise<number> => {
     if (!address.value) throw new Error("Wallet not connected");
@@ -284,7 +270,6 @@ export function useRedEnvelope() {
     createEnvelope,
     openEnvelope,
     claimFromPool,
-    hasClaimedFromPool,
     getPoolClaimedAmount,
     transferEnvelope,
     reclaimEnvelope,

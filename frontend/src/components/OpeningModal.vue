@@ -4,6 +4,8 @@ import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope"
 import { useWallet } from "@/composables/useWallet";
 import { useNeoEligibility } from "@/composables/useNeoEligibility";
 import { useI18n } from "@/composables/useI18n";
+import { useAudio } from "@/composables/useAudio";
+import { useFocusTrap } from "@/composables/useFocusTrap";
 import { extractError, formatGas } from "@/utils/format";
 import { waitForConfirmation } from "@/utils/rpc";
 import LuckyOverlay from "./LuckyOverlay.vue";
@@ -19,6 +21,10 @@ const { t } = useI18n();
 const { address } = useWallet();
 const { openEnvelope, getOpenedAmount } = useRedEnvelope();
 const { checking, result: eligibility, checkEligibility } = useNeoEligibility();
+const { playOpenSound } = useAudio();
+
+const modalRef = ref<HTMLElement | null>(null);
+useFocusTrap(modalRef);
 
 const opening = ref(false);
 const confirming = ref(false);
@@ -26,15 +32,19 @@ const opened = ref(false);
 const openResult = ref<number | null>(null);
 const error = ref("");
 const showShare = ref(false);
+const eligibilityWarning = ref("");
 
 const isLocked = computed(() => eligibility.value != null && !eligibility.value.eligible);
 const requiredHoldDays = computed(() => (eligibility.value ? Math.floor(eligibility.value.minHoldSeconds / 86400) : 0));
+const hasGate = computed(
+  () => eligibility.value != null && (eligibility.value.minNeoRequired > 1 || requiredHoldDays.value > 0),
+);
 
 onMounted(async () => {
   try {
     await checkEligibility(props.envelope.id);
   } catch {
-    // Eligibility check failed — user can still attempt to open
+    eligibilityWarning.value = t("eligibilityCheckFailed");
   }
 });
 
@@ -54,12 +64,20 @@ const handleOpen = async () => {
     } else {
       // Spreading envelopes: wait for TX confirmation before reading amount
       confirming.value = true;
-      await waitForConfirmation(txid);
-      confirming.value = false;
-      openResult.value = await getOpenedAmount(props.envelope.id);
+      try {
+        await waitForConfirmation(txid);
+      } finally {
+        confirming.value = false;
+      }
+      try {
+        openResult.value = await getOpenedAmount(props.envelope.id);
+      } catch {
+        openResult.value = 0; // fallback — TX succeeded but amount query failed
+      }
     }
 
     opened.value = true;
+    playOpenSound();
     emit("opened", openResult.value ?? 0);
   } catch (e: unknown) {
     error.value = extractError(e);
@@ -70,23 +88,29 @@ const handleOpen = async () => {
 </script>
 
 <template>
-  <div class="modal-overlay" role="dialog" aria-modal="true" @click.self="emit('close')">
-    <div class="modal opening-modal">
+  <div
+    ref="modalRef"
+    class="modal-overlay"
+    role="dialog"
+    aria-modal="true"
+    @click.self="emit('close')"
+    @keydown.escape="emit('close')"
+  >
+    <div class="modal opening-modal" aria-labelledby="opening-modal-title">
       <div class="modal-header">
-        <h3>{{ t("openEnvelope") }}</h3>
+        <h3 id="opening-modal-title">{{ t("openEnvelope") }}</h3>
         <button class="btn-close" :aria-label="t('close')" @click="emit('close')">&times;</button>
       </div>
 
       <div class="modal-body">
         <!-- CSS Envelope Shape -->
         <div :class="['envelope-shape', { 'envelope-opened': opened, 'envelope-locked': isLocked }]">
-          <div class="envelope-back"></div>
+          <div class="envelope-back" aria-hidden="true"></div>
           <div class="envelope-flap"></div>
-          <div class="envelope-seal">🧧</div>
+          <div class="envelope-seal" aria-hidden="true">🧧</div>
+          <div class="envelope-characters" aria-hidden="true">恭喜發財</div>
           <div class="envelope-content">
-            <div v-if="openResult !== null" style="color: var(--color-gold); font-weight: 700">
-              ~{{ formatGas(openResult) }} GAS
-            </div>
+            <div v-if="openResult !== null" class="open-amount-text">~{{ formatGas(openResult) }} GAS</div>
           </div>
         </div>
 
@@ -102,33 +126,49 @@ const handleOpen = async () => {
         <div v-if="checking" class="eligibility-check loading">{{ t("searching") }}</div>
 
         <div v-else-if="eligibility" class="eligibility-check">
-          <div class="eligibility-row">
-            <span>{{ t("neoBalance") }}</span>
-            <span
-              :class="eligibility.neoBalance >= eligibility.minNeoRequired ? 'text-ok' : 'text-fail'"
-              :aria-label="eligibility.neoBalance >= eligibility.minNeoRequired ? t('active') : t('insufficientNeo')"
-            >
-              {{ eligibility.neoBalance >= eligibility.minNeoRequired ? "✅" : "❌" }}
-              {{ eligibility.neoBalance }} NEO
-            </span>
-          </div>
-          <div class="eligibility-row">
-            <span>{{ t("holdingDays") }}</span>
-            <span
-              :class="eligibility.holdDays >= requiredHoldDays ? 'text-ok' : 'text-fail'"
-              :aria-label="eligibility.holdDays >= requiredHoldDays ? t('active') : t('holdNotMet')"
-            >
-              {{ eligibility.holdDays >= requiredHoldDays ? "✅" : "❌" }}
-              {{ eligibility.holdDays }}d
-            </span>
-          </div>
-          <div class="eligibility-row">
+          <template v-if="hasGate">
+            <div class="eligibility-row">
+              <span>{{ t("neoBalance") }}</span>
+              <span
+                :class="eligibility.neoBalance >= eligibility.minNeoRequired ? 'text-ok' : 'text-fail'"
+                :aria-label="eligibility.neoBalance >= eligibility.minNeoRequired ? t('active') : t('insufficientNeo')"
+              >
+                {{ eligibility.neoBalance >= eligibility.minNeoRequired ? "✅" : "❌" }}
+                {{ eligibility.neoBalance }} NEO
+              </span>
+            </div>
+            <div class="eligibility-row">
+              <span>{{ t("holdingDays") }}</span>
+              <span
+                :class="eligibility.holdDays >= requiredHoldDays ? 'text-ok' : 'text-fail'"
+                :aria-label="eligibility.holdDays >= requiredHoldDays ? t('active') : t('holdNotMet')"
+              >
+                {{ eligibility.holdDays >= requiredHoldDays ? "✅" : "❌" }}
+                {{ eligibility.holdDays }}d
+              </span>
+            </div>
+            <div class="eligibility-row">
+              <span>{{ t("neoRequirement") }}</span>
+              <span>≥{{ eligibility.minNeoRequired }} NEO, ≥{{ requiredHoldDays }}d</span>
+            </div>
+            <div v-if="!eligibility.eligible" class="status error">
+              {{
+                eligibility.reason === "insufficient NEO"
+                  ? t("insufficientNeo")
+                  : eligibility.reason === "hold duration not met"
+                    ? t("holdNotMet")
+                    : eligibility.reason
+              }}
+            </div>
+          </template>
+          <div v-else class="eligibility-row">
             <span>{{ t("neoRequirement") }}</span>
-            <span>≥{{ eligibility.minNeoRequired }} NEO, ≥{{ requiredHoldDays }}d</span>
+            <span>{{ t("detailNoGate") }}</span>
           </div>
-          <div v-if="!eligibility.eligible" class="status error">
-            {{ eligibility.reason === "insufficient NEO" ? t("insufficientNeo") : t("holdNotMet") }}
-          </div>
+        </div>
+
+        <div v-if="eligibilityWarning" class="status text-subtle-sm">
+          {{ eligibilityWarning }}
         </div>
 
         <!-- Lucky result -->
@@ -149,7 +189,9 @@ const handleOpen = async () => {
         </button>
 
         <div v-else class="modal-actions">
-          <button class="btn btn-open" @click="showShare = true">🎉 {{ t("shareYourLuck") }}</button>
+          <button v-if="openResult > 0" class="btn btn-open" @click="showShare = true">
+            🎉 {{ t("shareYourLuck") }}
+          </button>
           <button class="btn btn-primary" @click="emit('close')">
             {{ t("close") }}
           </button>

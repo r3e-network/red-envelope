@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useI18n } from "@/composables/useI18n";
+import { useFocusTrap } from "@/composables/useFocusTrap";
 import { formatGas, formatHash } from "@/utils/format";
 import { useRedEnvelope } from "@/composables/useRedEnvelope";
 
@@ -13,6 +14,13 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>();
 const { t } = useI18n();
 const { getTokenURI } = useRedEnvelope();
+
+const modalRef = ref<HTMLElement | null>(null);
+useFocusTrap(modalRef);
+
+const CARD_W = 600;
+const CARD_H = 400;
+const CARD_DPR = 2;
 
 const copyStatus = ref("");
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -42,9 +50,9 @@ function decodeBase64Utf8(value: string): string {
 
 // ── Canvas share image generator ──
 function drawShareImage(canvas: HTMLCanvasElement): void {
-  const W = 600;
-  const H = 400;
-  const dpr = 2;
+  const W = CARD_W;
+  const H = CARD_H;
+  const dpr = CARD_DPR;
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width = `${W}px`;
@@ -157,9 +165,9 @@ function drawShareImage(canvas: HTMLCanvasElement): void {
 }
 
 async function drawShareImageFromSvg(canvas: HTMLCanvasElement, svgDataUri: string): Promise<void> {
-  const W = 600;
-  const H = 400;
-  const dpr = 2;
+  const W = CARD_W;
+  const H = CARD_H;
+  const dpr = CARD_DPR;
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width = `${W}px`;
@@ -200,7 +208,8 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 // ── Actions ──
 async function getCanvas(): Promise<HTMLCanvasElement> {
-  const c = canvasRef.value!;
+  const c = canvasRef.value;
+  if (!c) throw new Error("Canvas element not mounted");
   if (nftSvgDataUri.value) {
     try {
       await drawShareImageFromSvg(c, nftSvgDataUri.value);
@@ -246,17 +255,24 @@ function shareOnTwitter() {
 </script>
 
 <template>
-  <div class="modal-overlay" role="dialog" aria-modal="true" @click.self="emit('close')">
-    <div class="modal share-modal">
+  <div
+    ref="modalRef"
+    class="modal-overlay"
+    role="dialog"
+    aria-modal="true"
+    @click.self="emit('close')"
+    @keydown.escape="emit('close')"
+  >
+    <div class="modal share-modal" aria-labelledby="share-modal-title">
       <div class="modal-header">
-        <h3>{{ t("congratulations") }}</h3>
+        <h3 id="share-modal-title">{{ t("congratulations") }}</h3>
         <button class="btn-close" :aria-label="t('close')" @click="emit('close')">&times;</button>
       </div>
 
       <div class="modal-body share-body">
         <!-- Visual card preview -->
         <div v-if="nftSvgDataUri" class="share-card-preview">
-          <img :src="nftSvgDataUri" alt="NFT SVG" style="width: 100%; border-radius: 12px" />
+          <img :src="nftSvgDataUri" :alt="'Red Envelope #' + props.envelopeId + ' NFT'" class="nft-preview-img" />
         </div>
 
         <div v-else class="share-card-preview">
@@ -288,13 +304,13 @@ function shareOnTwitter() {
           </button>
         </div>
 
-        <button class="btn btn-primary" style="width: 100%; margin-top: 0.75rem" @click="emit('close')">
+        <button class="btn btn-primary btn-block-mt" @click="emit('close')">
           {{ t("close") }}
         </button>
       </div>
 
       <!-- Hidden canvas for image generation -->
-      <canvas ref="canvasRef" style="display: none"></canvas>
+      <canvas ref="canvasRef" class="d-none"></canvas>
     </div>
   </div>
 </template>

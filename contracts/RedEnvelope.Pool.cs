@@ -34,12 +34,13 @@ namespace RedEnvelope.Contract
                 (ByteString)(byte[])claimer);
             ExecutionEngine.Assert(Storage.Get(Storage.CurrentContext, claimerKey) == null, "already claimed");
 
-            ValidateNeoHolding(claimer, pool.MinNeoRequired, pool.MinHoldSeconds);
+            BigInteger claimerNeo = ValidateNeoHolding(claimer, pool.MinNeoRequired, pool.MinHoldSeconds);
 
             BigInteger remainingPacketsBeforeClaim = pool.PacketCount - pool.OpenedCount;
             BigInteger amount = CalculateRuntimeRandomPacketAmount(
                 pool.RemainingAmount,
-                remainingPacketsBeforeClaim);
+                remainingPacketsBeforeClaim,
+                claimerNeo);
             ExecutionEngine.Assert(amount > 0, "invalid amount");
 
             Storage.Put(Storage.CurrentContext, claimerKey, amount);

@@ -36,7 +36,6 @@ export const messages = {
   neoGateSection: { en: "🔒 NEO Gate", zh: "🔒 NEO 门槛" },
   settingsSection: { en: "⏰ Settings", zh: "⏰ 设置" },
   labelGasAmount: { en: "Total GAS to distribute", zh: "分发的 GAS 总量" },
-  labelPacketCount: { en: "Number of packets", zh: "红包数量" },
   labelClaimSlots: { en: "Number of claim slots", zh: "领取位数量" },
   labelOpenCount: { en: "Number of opens", zh: "可打开次数" },
   labelMinNeo: { en: "Minimum NEO required", zh: "最低 NEO 要求" },
@@ -51,15 +50,20 @@ export const messages = {
   minHoldDaysPlaceholder: { en: "2", zh: "2" },
   summaryTitle: { en: "Summary", zh: "摘要" },
   summaryTotal: { en: "Total GAS", zh: "GAS 总量" },
-  summaryPerPacket: { en: "~Per packet", zh: "~每个红包" },
   summaryPerSlot: { en: "~Per slot", zh: "~每个领取位" },
   summaryPerOpen: { en: "~Per open (avg)", zh: "~每次打开（均值）" },
   summaryExpiry: { en: "Expires in", zh: "过期时间" },
   summaryHours: { en: "{0}h", zh: "{0}小时" },
   summaryNeoGate: { en: "NEO Gate", zh: "NEO 门槛" },
   creating: { en: "Creating...", zh: "创建中..." },
+  creatingConfirming: { en: "Confirming on chain...", zh: "链上确认中..." },
+  reclaiming: { en: "Reclaiming...", zh: "回收中..." },
   sendRedEnvelope: { en: "🧧 Send Red Envelope", zh: "🧧 发送红包" },
   defaultBlessing: { en: "Best Wishes", zh: "大吉大利" },
+  validationMinGas: { en: "Minimum 1 GAS required", zh: "最少需要 1 GAS" },
+  validationPacketRange: { en: "Must be 1–100 packets", zh: "数量需在 1–100 之间" },
+  validationMinPerPacket: { en: "Need at least 0.1 GAS per packet", zh: "每个红包至少需要 0.1 GAS" },
+  validationExpiryMin: { en: "Expiry must be at least 1 hour", zh: "过期时间至少为 1 小时" },
 
   // ── My Envelopes ──────────────────────────────────
   noEnvelopes: { en: "No envelopes yet", zh: "暂无红包" },
@@ -98,10 +102,8 @@ export const messages = {
 
   // ── Share Card ──────────────────────────────────────
   shareTitle: { en: "Neo Red Envelope", zh: "Neo 红包" },
-  shareSubtitle: { en: "Lucky red packets on Neo N3", zh: "Neo N3 链上幸运红包" },
   shareEnvelopeId: { en: "Envelope #{0}", zh: "红包 #{0}" },
   shareReceived: { en: "I received", zh: "我收到了" },
-  shareAddress: { en: "Address", zh: "地址" },
   shareTwitter: { en: "Share on X", zh: "分享到 X" },
   shareCopyImage: { en: "Copy as Image", zh: "复制为图片" },
   shareSaveImage: { en: "Save Image", zh: "保存图片" },
@@ -133,6 +135,7 @@ export const messages = {
   neoRequirement: { en: "NEO Requirement", zh: "NEO 要求" },
   insufficientNeo: { en: "Insufficient NEO", zh: "NEO 不足" },
   holdNotMet: { en: "Hold duration not met", zh: "持有时间不足" },
+  eligibilityCheckFailed: { en: "Could not verify eligibility", zh: "无法验证资格" },
   neoBalance: { en: "NEO Balance", zh: "NEO 余额" },
   holdingDays: { en: "Holding Days", zh: "持有天数" },
 
@@ -140,7 +143,6 @@ export const messages = {
   searchPlaceholder: { en: "Enter envelope ID...", zh: "输入红包 ID..." },
   searchButton: { en: "Search", zh: "搜索" },
   searchPrompt: { en: "Enter an envelope ID to view details and claim", zh: "输入红包 ID 查看详情并领取" },
-  searchPromptIcon: { en: "🔍", zh: "🔍" },
   notFound: { en: "Envelope not found", zh: "未找到红包" },
   notFoundHint: { en: "Check the ID and try again", zh: "请检查 ID 后重试" },
   claimButton: { en: "🧧 Claim", zh: "🧧 领取" },
@@ -210,10 +212,15 @@ export const messages = {
   // ── Hardcoded string replacements ─────────────────────
   poolUseClaimNotOpen: { en: "Pool envelopes use Claim, not Open", zh: "池红包请使用「领取」而非「打开」" },
   claimedTx: { en: "Claimed! TX: {0}", zh: "已领取！TX: {0}" },
-  reclaimed: { en: "Reclaimed!", zh: "已回收！" },
   contractLabel: { en: "Contract:", zh: "合约：" },
   hoursMinutes: { en: "{0}h {1}m", zh: "{0}时{1}分" },
   minutesOnly: { en: "{0}m", zh: "{0}分" },
+
+  // ── Audio & Festive ────────────────────────────────
+  bgmOn: { en: "Music On", zh: "音乐开" },
+  bgmOff: { en: "Music Off", zh: "音乐关" },
+  volume: { en: "Volume", zh: "音量" },
+  gongxifacai: { en: "Gong Xi Fa Cai", zh: "恭喜發財" },
 };
 
 export type MessageKey = keyof typeof messages;

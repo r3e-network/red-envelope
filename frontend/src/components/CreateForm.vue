@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, nextTick } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
 import { extractError } from "@/utils/format";
+import { waitForConfirmation } from "@/utils/rpc";
 import { parseOptionalNumber } from "./createForm.logic";
 
 const { t } = useI18n();
@@ -14,21 +15,31 @@ const amount = ref("");
 const count = ref("");
 const expiryHours = ref("24");
 const message = ref("");
-const minNeo = ref("100");
-const minHoldDays = ref("2");
+const minNeo = ref("");
+const minHoldDays = ref("");
 const envelopeType = ref(1); // 0=spreading (Lucky NFT), 1=pool (Red Envelope Pool)
+const confirming = ref(false);
 const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
+
+const radioPoolRef = ref<HTMLElement | null>(null);
+const radioNftRef = ref<HTMLElement | null>(null);
+
+const selectType = (type: 0 | 1) => {
+  envelopeType.value = type;
+  nextTick(() => (type === 1 ? radioPoolRef : radioNftRef).value?.focus());
+};
 
 const canSubmit = computed(() => {
   const a = Number(amount.value);
   const c = Number(count.value);
-  return a >= 1 && c >= 1 && c <= 100 && a >= c * 0.1;
+  const e = Number(expiryHours.value);
+  return a >= 1 && c >= 1 && c <= 100 && a >= c * 0.1 && e >= 1;
 });
 
 const perPacket = computed(() => {
   const a = Number(amount.value);
   const c = Number(count.value);
-  if (a > 0 && c > 0) return (a / c).toFixed(4);
+  if (a > 0 && c > 0) return (a / c).toFixed(2);
   return "—";
 });
 
@@ -48,12 +59,19 @@ const handleSubmit = async () => {
       minHoldDays: parseOptionalNumber(minHoldDays.value, 2),
       envelopeType: envelopeType.value,
     });
+    confirming.value = true;
+    status.value = { msg: t("confirming"), type: "success" };
+    await waitForConfirmation(txid);
     status.value = { msg: `TX: ${txid.slice(0, 12)}...`, type: "success" };
     amount.value = "";
     count.value = "";
     message.value = "";
+    minNeo.value = "";
+    minHoldDays.value = "";
   } catch (e: unknown) {
     status.value = { msg: extractError(e), type: "error" };
+  } finally {
+    confirming.value = false;
   }
 };
 </script>
@@ -62,7 +80,7 @@ const handleSubmit = async () => {
   <div class="create-form layout-two-col">
     <!-- LEFT PANEL: Flow explanation + Summary -->
     <div class="panel-left">
-      <h3 class="detail-title" style="margin-bottom: 1rem">{{ t("createFlowTitle") }}</h3>
+      <h3 class="detail-title flow-title">{{ t("createFlowTitle") }}</h3>
 
       <div class="flow-banner">{{ envelopeType === 1 ? t("flowBannerPool") : t("flowBannerNft") }}</div>
 
@@ -82,7 +100,7 @@ const handleSubmit = async () => {
       </ul>
 
       <!-- Summary card (shows when form is valid) -->
-      <div v-if="canSubmit" class="summary-card" style="margin-top: 1.25rem">
+      <div v-if="canSubmit" class="summary-card">
         <div class="summary-title">{{ t("summaryTitle") }}</div>
         <div class="summary-row">
           <span>{{ t("summaryTotal") }}</span>
@@ -98,7 +116,9 @@ const handleSubmit = async () => {
         </div>
         <div class="summary-row">
           <span>{{ t("summaryNeoGate") }}</span>
-          <span class="summary-value">≥{{ minNeo }} NEO, ≥{{ minHoldDays }}d</span>
+          <span class="summary-value"
+            >≥{{ parseOptionalNumber(minNeo, 100) }} NEO, ≥{{ parseOptionalNumber(minHoldDays, 2) }}d</span
+          >
         </div>
       </div>
     </div>
@@ -110,25 +130,35 @@ const handleSubmit = async () => {
         <div class="form-section-title">{{ t("envelopeTypeSection") }}</div>
         <div id="envelope-type" class="type-selector" role="radiogroup" :aria-label="t('envelopeTypeSection')">
           <div
+            ref="radioPoolRef"
             :class="['type-option', { 'type-active': envelopeType === 1 }]"
             role="radio"
-            tabindex="0"
+            :tabindex="envelopeType === 1 ? 0 : -1"
             :aria-checked="envelopeType === 1"
-            @click="envelopeType = 1"
-            @keydown.enter="envelopeType = 1"
-            @keydown.space.prevent="envelopeType = 1"
+            @click="selectType(1)"
+            @keydown.enter="selectType(1)"
+            @keydown.space.prevent="selectType(1)"
+            @keydown.left="selectType(1)"
+            @keydown.right="selectType(0)"
+            @keydown.up.prevent="selectType(1)"
+            @keydown.down.prevent="selectType(0)"
           >
             <div class="type-label">{{ t("typePool") }}</div>
             <div class="type-desc">{{ t("typePoolDesc") }}</div>
           </div>
           <div
+            ref="radioNftRef"
             :class="['type-option', { 'type-active': envelopeType === 0 }]"
             role="radio"
-            tabindex="0"
+            :tabindex="envelopeType === 0 ? 0 : -1"
             :aria-checked="envelopeType === 0"
-            @click="envelopeType = 0"
-            @keydown.enter="envelopeType = 0"
-            @keydown.space.prevent="envelopeType = 0"
+            @click="selectType(0)"
+            @keydown.enter="selectType(0)"
+            @keydown.space.prevent="selectType(0)"
+            @keydown.left="selectType(1)"
+            @keydown.right="selectType(0)"
+            @keydown.up.prevent="selectType(1)"
+            @keydown.down.prevent="selectType(0)"
           >
             <div class="type-label">{{ t("typeNft") }}</div>
             <div class="type-desc">{{ t("typeNftDesc") }}</div>
@@ -150,6 +180,7 @@ const handleSubmit = async () => {
             :placeholder="t('totalGasPlaceholder')"
             class="input"
           />
+          <div v-if="amount && Number(amount) < 1" class="field-hint text-fail">{{ t("validationMinGas") }}</div>
         </div>
         <div class="form-group">
           <label class="form-label" for="packet-count">{{
@@ -164,6 +195,22 @@ const handleSubmit = async () => {
             :placeholder="t('packetsPlaceholder')"
             class="input"
           />
+          <div v-if="count && (Number(count) < 1 || Number(count) > 100)" class="field-hint text-fail">
+            {{ t("validationPacketRange") }}
+          </div>
+          <div
+            v-if="
+              amount &&
+              count &&
+              Number(amount) >= 1 &&
+              Number(count) >= 1 &&
+              Number(count) <= 100 &&
+              Number(amount) < Number(count) * 0.1
+            "
+            class="field-hint text-fail"
+          >
+            {{ t("validationMinPerPacket") }}
+          </div>
         </div>
       </div>
 
@@ -209,18 +256,28 @@ const handleSubmit = async () => {
             :placeholder="t('expiryPlaceholder')"
             class="input"
           />
+          <div v-if="expiryHours && Number(expiryHours) < 1" class="field-hint text-fail">
+            {{ t("validationExpiryMin") }}
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label" for="message">{{ t("labelMessage") }}</label>
-          <input id="message" v-model="message" type="text" :placeholder="t('messagePlaceholder')" class="input" />
+          <input
+            id="message"
+            v-model="message"
+            type="text"
+            maxlength="256"
+            :placeholder="t('messagePlaceholder')"
+            class="input"
+          />
         </div>
       </div>
 
-      <button class="btn btn-send" :disabled="!canSubmit || isLoading" @click="handleSubmit">
-        {{ isLoading ? t("creating") : t("sendRedEnvelope") }}
+      <button class="btn btn-send" :disabled="!canSubmit || isLoading || confirming" @click="handleSubmit">
+        {{ confirming ? t("creatingConfirming") : isLoading ? t("creating") : t("sendRedEnvelope") }}
       </button>
 
-      <div v-if="status" :class="['status', status.type]">
+      <div v-if="status" :class="['status', status.type]" role="status">
         {{ status.msg }}
       </div>
     </div>

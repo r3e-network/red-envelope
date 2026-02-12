@@ -1,5 +1,5 @@
 /**
- * Contract Upgrade Script — upgrades the testnet contract in-place.
+ * Contract Upgrade Script — upgrades the mainnet contract in-place.
  *
  * Reads the compiled .nef + .manifest.json from contracts/bin/sc/
  * and calls the existing contract's `update(nef, manifest)` method
@@ -20,7 +20,7 @@ async function main() {
   console.log("═══════════════════════════════════════════");
   console.log(`  Contract:  ${CONTRACT}`);
   console.log(`  Admin:     ${key1.address}`);
-  console.log(`  Network:   TestNet (magic ${NETWORK_MAGIC})`);
+  console.log(`  Network:   MainNet (magic ${NETWORK_MAGIC})`);
   console.log("───────────────────────────────────────────\n");
 
   // ── 1. Load artifacts ──
@@ -49,8 +49,8 @@ async function main() {
   console.log(`  ✅ NEF loaded (${nefBytes.length} bytes)`);
 
   // Neo N3 requires the contract name to stay the same during update.
-  // Deployed contract is "MiniAppRedEnvelope"; local build is "RedEnvelope".
-  const DEPLOYED_NAME = "MiniAppRedEnvelope";
+  // Mainnet contract was deployed as "RedEnvelope".
+  const DEPLOYED_NAME = "RedEnvelope";
   if (manifest.name !== DEPLOYED_NAME) {
     console.log(`  ⚠️  Patching manifest name: "${manifest.name}" → "${DEPLOYED_NAME}"`);
     manifest.name = DEPLOYED_NAME;
@@ -60,7 +60,7 @@ async function main() {
 
   // ── 2. Pre-flight: verify admin access ──
   console.log("\n[2/5] Verifying admin access...");
-  const adminRes = await rpcClient.invokeFunction(CONTRACT, "admin", []);
+  const adminRes = await rpcClient.invokeFunction(CONTRACT, "getOwner", []);
   if (adminRes.state !== "HALT" || !adminRes.stack?.[0]?.value) {
     console.error("  ❌ Cannot read admin — aborting");
     process.exit(1);

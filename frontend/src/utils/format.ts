@@ -17,10 +17,10 @@ export function fromFixed8(value: number | bigint | string): number {
   return Number(value) / FIXED8_FACTOR;
 }
 
-/** Format a Neo N3 address hash for display (first 6 + last 4) */
+/** Format a Neo N3 address/hash for display (first 8 + last 6) */
 export function formatHash(hash: string): string {
-  if (!hash || hash.length < 10) return hash || "";
-  return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
+  if (!hash || hash.length < 14) return hash || "";
+  return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
 }
 
 /** Format GAS amount with up to 8 decimal places, trimming trailing zeros */

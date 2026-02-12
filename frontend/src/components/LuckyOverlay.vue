@@ -1,13 +1,20 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { useI18n } from "@/composables/useI18n";
+import { useAudio } from "@/composables/useAudio";
 import { formatGas } from "@/utils/format";
 
 const props = defineProps<{ amount: number }>();
 const { t } = useI18n();
+const { playCelebrationSound } = useAudio();
 
-// Generate 20 confetti particles with random properties
+onMounted(() => {
+  playCelebrationSound();
+});
+
+// Generate 40 confetti particles with random properties
 const confettiColors = ["#e53935", "#ffd700", "#ff6f60", "#ffab00", "#c62828", "#ffeb3b"];
-const confetti = Array.from({ length: 20 }, (_, i) => ({
+const confetti = Array.from({ length: 40 }, (_, i) => ({
   id: i,
   color: confettiColors[i % confettiColors.length],
   left: `${Math.random() * 100}%`,
@@ -20,7 +27,7 @@ const confetti = Array.from({ length: 20 }, (_, i) => ({
 <template>
   <div class="lucky-overlay">
     <!-- CSS confetti particles -->
-    <div class="confetti-container">
+    <div class="confetti-container" aria-hidden="true">
       <span
         v-for="c in confetti"
         :key="c.id"
@@ -36,7 +43,15 @@ const confetti = Array.from({ length: 20 }, (_, i) => ({
       ></span>
     </div>
 
-    <div class="lucky-icon">🧧</div>
+    <!-- Firework burst -->
+    <div class="firework-burst" aria-hidden="true">
+      <div class="firework-ring"></div>
+      <div class="firework-ring"></div>
+      <div class="firework-ring"></div>
+    </div>
+
+    <div class="lucky-gongxi" aria-hidden="true">恭喜發財</div>
+    <div class="lucky-icon" aria-hidden="true">🧧</div>
     <div class="lucky-title">{{ t("congratulations") }}</div>
 
     <!-- Gold sparkle border around amount -->
@@ -175,5 +190,48 @@ const confetti = Array.from({ length: 20 }, (_, i) => ({
     transform: translateY(350px) rotate(720deg);
     opacity: 0;
   }
+}
+
+/* Firework burst */
+.firework-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.firework-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-gold, #ffd700);
+  animation: fireworkExpand 1s ease-out forwards;
+}
+
+.firework-ring:nth-child(2) {
+  animation-delay: 0.15s;
+  border-color: var(--color-red-light, #ff6f60);
+}
+
+.firework-ring:nth-child(3) {
+  animation-delay: 0.3s;
+  border-color: var(--color-gold-light, #ffeb3b);
+}
+
+.lucky-gongxi {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-gold, #ffd700);
+  text-shadow:
+    0 0 20px rgba(255, 215, 0, 0.4),
+    0 0 40px rgba(255, 215, 0, 0.2);
+  letter-spacing: 0.2em;
+  margin-bottom: 0.5rem;
+  animation: glowPulse 2s ease-in-out infinite;
 }
 </style>

@@ -50,9 +50,6 @@ export function addressToScriptHashHex(address: string): string {
   }
 }
 
-/** @deprecated Use addressToScriptHashHex instead */
-export const addressToBase64ScriptHash = addressToScriptHashHex;
-
 /** Parse a Neo N3 stack item from invokeRead response */
 export function parseStackItem(item: unknown): unknown {
   if (!item || typeof item !== "object") return item;

@@ -1,24 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from "vue";
+import { computed } from "vue";
 import type { EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
-import { formatGas } from "@/utils/format";
-import { msUntilExpiry } from "@/utils/time";
+import { useReactiveClock } from "@/composables/useReactiveClock";
+import { formatGas, formatHash } from "@/utils/format";
+import { computeCountdown, formatCountdownDisplay } from "@/utils/time";
 
 const props = defineProps<{ envelope: EnvelopeItem }>();
 const { t } = useI18n();
-
-// Reactive clock — ticks every second so countdown stays live
-const now = ref(Date.now());
-let tickTimer: ReturnType<typeof setInterval> | null = null;
-onMounted(() => {
-  tickTimer = setInterval(() => {
-    now.value = Date.now();
-  }, 1000);
-});
-onUnmounted(() => {
-  if (tickTimer) clearInterval(tickTimer);
-});
+const { now } = useReactiveClock();
 
 const progress = computed(() => {
   const { packetCount, openedCount } = props.envelope;
@@ -37,19 +27,9 @@ const isActive = computed(() => {
   return env.active && !env.expired && !env.depleted;
 });
 
-const countdown = computed(() => {
-  const env = props.envelope;
-  if (env.expired) return { text: t("expiredLabel"), urgent: true };
-  if (!env.expiryTime) return null;
-  const diff = msUntilExpiry(env.expiryTime, now.value);
-  if (diff <= 0) return { text: t("expiredLabel"), urgent: true };
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-  if (days > 0) return { text: t("daysRemaining", days, hours), urgent: false };
-  if (hours > 0) return { text: t("hoursMinutes", hours, mins), urgent: hours < 6 };
-  return { text: t("minutesOnly", mins), urgent: true };
-});
+const countdown = computed(() =>
+  formatCountdownDisplay(computeCountdown(props.envelope.expiryTime, now.value, props.envelope.expired), t),
+);
 
 const typeLabel = computed(() => {
   switch (props.envelope.envelopeType) {
@@ -63,11 +43,6 @@ const typeLabel = computed(() => {
 });
 
 const holdDays = computed(() => Math.floor(props.envelope.minHoldSeconds / 86400));
-
-const creatorShort = computed(() => {
-  const c = props.envelope.creator;
-  return c ? `${c.slice(0, 8)}...${c.slice(-6)}` : "—";
-});
 </script>
 
 <template>
@@ -103,8 +78,8 @@ const creatorShort = computed(() => {
 
     <div class="detail-row">
       <span class="detail-label">{{ t("detailCreator") }}</span>
-      <span class="detail-value" style="font-family: monospace; font-size: 0.8rem">
-        {{ creatorShort }}
+      <span class="detail-value mono-sm">
+        {{ formatHash(envelope.creator) }}
       </span>
     </div>
 
@@ -124,7 +99,7 @@ const creatorShort = computed(() => {
     <div class="detail-row">
       <span class="detail-label">{{ t("detailNeoGate") }}</span>
       <span class="detail-value">
-        <template v-if="envelope.minNeoRequired > 0">
+        <template v-if="envelope.minNeoRequired > 1 || holdDays > 0">
           {{ t("detailNeoGateValue", envelope.minNeoRequired, holdDays) }}
         </template>
         <template v-else>{{ t("detailNoGate") }}</template>

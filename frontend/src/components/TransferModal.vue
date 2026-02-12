@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, nextTick } from "vue";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
+import { useFocusTrap } from "@/composables/useFocusTrap";
 import { extractError } from "@/utils/format";
+import { waitForConfirmation } from "@/utils/rpc";
 
 const props = defineProps<{ envelope: EnvelopeItem }>();
 const emit = defineEmits<{
@@ -13,14 +15,21 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { transferEnvelope } = useRedEnvelope();
 
+const modalRef = ref<HTMLElement | null>(null);
+useFocusTrap(modalRef);
+
 const recipient = ref("");
+const recipientRef = ref<HTMLInputElement | null>(null);
 const sending = ref(false);
+const confirming = ref(false);
 const error = ref("");
 const success = ref(false);
 
 const isValidAddress = (addr: string) => /^N[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr);
 const addressValid = computed(() => !recipient.value || isValidAddress(recipient.value));
 const canSubmit = computed(() => recipient.value.length === 34 && addressValid.value && !sending.value);
+
+onMounted(() => nextTick(() => recipientRef.value?.focus()));
 
 const handleTransfer = async () => {
   if (!isValidAddress(recipient.value)) {
@@ -30,7 +39,13 @@ const handleTransfer = async () => {
   sending.value = true;
   error.value = "";
   try {
-    await transferEnvelope(props.envelope, recipient.value);
+    const { txid } = await transferEnvelope(props.envelope, recipient.value);
+    confirming.value = true;
+    try {
+      await waitForConfirmation(txid);
+    } finally {
+      confirming.value = false;
+    }
     success.value = true;
     emit("transferred");
   } catch (e: unknown) {
@@ -42,10 +57,17 @@ const handleTransfer = async () => {
 </script>
 
 <template>
-  <div class="modal-overlay" role="dialog" aria-modal="true" @click.self="emit('close')">
-    <div class="modal transfer-modal">
+  <div
+    ref="modalRef"
+    class="modal-overlay"
+    role="dialog"
+    aria-modal="true"
+    @click.self="emit('close')"
+    @keydown.escape="emit('close')"
+  >
+    <div class="modal transfer-modal" aria-labelledby="transfer-modal-title">
       <div class="modal-header">
-        <h3>{{ t("transferEnvelope") }} #{{ envelope.id }}</h3>
+        <h3 id="transfer-modal-title">{{ t("transferEnvelope") }} #{{ envelope.id }}</h3>
         <button class="btn-close" :aria-label="t('close')" @click="emit('close')">&times;</button>
       </div>
 
@@ -59,6 +81,7 @@ const handleTransfer = async () => {
             <label class="form-label" for="recipient-address">{{ t("labelRecipient") }}</label>
             <input
               id="recipient-address"
+              ref="recipientRef"
               v-model="recipient"
               type="text"
               :placeholder="t('recipientAddress')"
@@ -74,8 +97,8 @@ const handleTransfer = async () => {
             <button class="btn" @click="emit('close')">
               {{ t("cancel") }}
             </button>
-            <button class="btn btn-primary" :disabled="!canSubmit" @click="handleTransfer">
-              {{ sending ? t("transferring") : t("confirm") }}
+            <button class="btn btn-primary" :disabled="!canSubmit || confirming" @click="handleTransfer">
+              {{ confirming ? t("confirming") : sending ? t("transferring") : t("confirm") }}
             </button>
           </div>
         </template>

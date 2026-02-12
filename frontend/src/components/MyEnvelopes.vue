@@ -3,9 +3,10 @@ import { onMounted, ref, computed, watch } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
+import { useReactiveClock } from "@/composables/useReactiveClock";
 import { formatGas, extractError } from "@/utils/format";
 import { waitForConfirmation } from "@/utils/rpc";
-import { msUntilExpiry } from "@/utils/time";
+import { computeCountdown, formatCountdownDisplay } from "@/utils/time";
 import { addressToScriptHashHex } from "@/utils/neo";
 import EnvelopeCard from "./EnvelopeCard.vue";
 import type { EnrichedEnvelope } from "./EnvelopeCard.vue";
@@ -16,11 +17,13 @@ import { countActionableClaimNfts, partitionEnvelopeSections } from "./myEnvelop
 const { t } = useI18n();
 const { address, connected } = useWallet();
 const { envelopes, loadingEnvelopes, loadEnvelopes, reclaimEnvelope } = useRedEnvelope();
+const { now } = useReactiveClock();
 
 const selectedEnvelope = ref<EnvelopeItem | null>(null);
 const showOpenModal = ref(false);
 const showTransferModal = ref(false);
 const actionStatus = ref<{ msg: string; type: "success" | "error" } | null>(null);
+const reclaimingId = ref<string | null>(null);
 
 onMounted(() => {
   if (connected.value) loadEnvelopes();
@@ -46,20 +49,7 @@ const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
     if (creator) role = { text: t("youAreCreator"), cls: "role-creator" };
     else if (holder) role = { text: t("youAreHolder"), cls: "role-holder" };
 
-    // Countdown
-    let countdown: EnrichedEnvelope["countdown"] = null;
-    if (env.expired) {
-      countdown = { text: t("expiredLabel"), urgent: true };
-    } else if (env.expiryTime) {
-      const diff = msUntilExpiry(env.expiryTime);
-      if (diff <= 0) {
-        countdown = { text: t("expiredLabel"), urgent: true };
-      } else {
-        const days = Math.floor(diff / 86400000);
-        const hours = Math.floor((diff % 86400000) / 3600000);
-        countdown = { text: t("daysRemaining", days, hours), urgent: days === 0 && hours < 6 };
-      }
-    }
+    const countdown = formatCountdownDisplay(computeCountdown(env.expiryTime, now.value, env.expired), t);
 
     // Status label
     let status = t("active");
@@ -103,6 +93,7 @@ const handleTransfer = (env: EnvelopeItem) => {
 
 const handleReclaim = async (env: EnvelopeItem) => {
   actionStatus.value = null;
+  reclaimingId.value = env.id;
   try {
     const res = await reclaimEnvelope(env);
     actionStatus.value = { msg: t("reclaimSuccess", formatGas(env.remainingAmount)), type: "success" };
@@ -111,6 +102,8 @@ const handleReclaim = async (env: EnvelopeItem) => {
     await loadEnvelopes();
   } catch (e: unknown) {
     actionStatus.value = { msg: extractError(e), type: "error" };
+  } finally {
+    reclaimingId.value = null;
   }
 };
 </script>
@@ -146,6 +139,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           :key="'s-' + env.id"
           :env="env"
           :spreading="true"
+          :reclaiming="reclaimingId === env.id"
           @open="handleOpen"
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
@@ -155,7 +149,9 @@ const handleReclaim = async (env: EnvelopeItem) => {
       <!-- ── Claim NFTs Section ── -->
       <div class="section-header">
         <span>{{ t("myClaimNfts") }}</span>
-        <span :class="['section-count', { 'section-count-hot': actionableClaimCount > 0 }]">{{ claimNfts.length }}</span>
+        <span :class="['section-count', { 'section-count-hot': actionableClaimCount > 0 }]">{{
+          claimNfts.length
+        }}</span>
       </div>
       <div class="section-hint">
         {{ t("claimNftHint") }}
@@ -173,6 +169,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           v-for="env in claimNfts"
           :key="'c-' + env.id"
           :env="env"
+          :reclaiming="reclaimingId === env.id"
           @open="handleOpen"
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
@@ -194,6 +191,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           v-for="env in otherEnvelopes"
           :key="'o-' + env.id"
           :env="env"
+          :reclaiming="reclaimingId === env.id"
           @open="handleOpen"
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
@@ -201,7 +199,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
       </div>
     </template>
 
-    <div v-if="actionStatus" :class="['status', actionStatus.type]">
+    <div v-if="actionStatus" :class="['status', actionStatus.type]" role="status">
       {{ actionStatus.msg }}
     </div>
 

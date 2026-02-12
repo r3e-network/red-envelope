@@ -33,18 +33,18 @@ Send lucky GAS gifts to friends
 
 | Property          | Value                                                                                             |
 | ----------------- | ------------------------------------------------------------------------------------------------- |
-| **Contract**      | `0x36a46aa95413029e340e57365cdadd3ae29244ff`                                                      |
+| **Contract**      | `0x78ba71c03c29b3f101ff11824dc8f664cf6d65cd`                                                      |
 | **RPC**           | `https://testnet1.neo.coz.io:443`                                                                 |
-| **Explorer**      | [View on NeoTube](https://testnet.neotube.io/contract/0x36a46aa95413029e340e57365cdadd3ae29244ff) |
+| **Explorer**      | [View on NeoTube](https://testnet.neotube.io/contract/0x78ba71c03c29b3f101ff11824dc8f664cf6d65cd) |
 | **Network Magic** | `894710606`                                                                                       |
 
 ### Mainnet
 
 | Property          | Value                                                                                     |
 | ----------------- | ----------------------------------------------------------------------------------------- |
-| **Contract**      | `0x5f371cc50116bb13d79554d96ccdd6e246cd5d59`                                              |
+| **Contract**      | `0x215099698349ba405400b3b2fe97bb96941c0f9b`                                              |
 | **RPC**           | `https://mainnet1.neo.coz.io:443`                                                         |
-| **Explorer**      | [View on NeoTube](https://neotube.io/contract/0x5f371cc50116bb13d79554d96ccdd6e246cd5d59) |
+| **Explorer**      | [View on NeoTube](https://neotube.io/contract/0x215099698349ba405400b3b2fe97bb96941c0f9b) |
 | **Network Magic** | `860833102`                                                                               |
 
 ## Platform Contracts
