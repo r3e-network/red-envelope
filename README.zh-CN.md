@@ -1,6 +1,6 @@
 # 红包
 
-发送 GAS 红包给好友
+在 Neo N3 上发送 GAS 红包给好友
 
 ## 概述
 
@@ -10,35 +10,19 @@
 | **分类**    | 社交                  |
 | **版本**    | 1.0.0                 |
 | **框架**    | Vue 3 + Vite          |
+| **标准**    | NEP-11 (NFT)          |
+| **网络**    | Neo N3 主网           |
 
 ## 功能特性
 
-- Red-envelope
-- Social
-- Gift
-- Lucky
-
-## 权限要求
-
-| 权限   | 是否需要 |
-| ------ | -------- |
-| 支付   | ✅ 是    |
-| 随机数 | ✅ 是    |
-| 数据源 | ❌ 否    |
-| 治理   | ❌ 否    |
+- 基于链上随机数的 GAS 红包
+- 双模式：红包池（多人领取）与幸运 NFT（单个传播）
+- NEO 加权幸运加成 — 持有更多 NEO 可提升中奖概率
+- Claim NFT 铸造、转让与打开领取机制
+- 可升级合约，支持管理员暂停/恢复熔断开关
+- 双语界面（English / 中文）
 
 ## 网络配置
-
-### 测试网 (Testnet)
-
-| 属性           | 值                                                                                                |
-| -------------- | ------------------------------------------------------------------------------------------------- |
-| **合约地址**   | `0x78ba71c03c29b3f101ff11824dc8f664cf6d65cd`                                                      |
-| **RPC 节点**   | `https://testnet1.neo.coz.io:443`                                                                 |
-| **区块浏览器** | [在 NeoTube 查看](https://testnet.neotube.io/contract/0x78ba71c03c29b3f101ff11824dc8f664cf6d65cd) |
-| **网络魔数**   | `894710606`                                                                                       |
-
-### 主网 (Mainnet)
 
 | 属性           | 值                                                                                        |
 | -------------- | ----------------------------------------------------------------------------------------- |
@@ -48,20 +32,6 @@
 | **网络魔数**   | `860833102`                                                                               |
 
 ## 平台合约
-
-### 测试网 (Testnet)
-
-| 合约                | 地址                                         |
-| ------------------- | -------------------------------------------- |
-| PaymentHub          | `0x0bb8f09e6d3611bc5c8adbd79ff8af1e34f73193` |
-| Governance          | `0xc8f3bbe1c205c932aab00b28f7df99f9bc788a05` |
-| PriceFeed           | `0xc5d9117d255054489d1cf59b2c1d188c01bc9954` |
-| RandomnessLog       | `0x76dfee17f2f4b9fa8f32bd3f4da6406319ab7b39` |
-| AppRegistry         | `0x79d16bee03122e992bb80c478ad4ed405f33bc7f` |
-| AutomationAnchor    | `0x1c888d699ce76b0824028af310d90c3c18adeab5` |
-| ServiceLayerGateway | `0x27b79cf631eff4b520dd9d95cd1425ec33025a53` |
-
-### 主网 (Mainnet)
 
 | 合约                | 地址                                         |
 | ------------------- | -------------------------------------------- |
@@ -76,13 +46,16 @@
 ## 开发指南
 
 ```bash
-# 安装依赖
-npm install
+# 安装前端依赖
+cd frontend && npm install
+
+# 配置前端（默认主网）
+cp .env.example .env
 
 # 开发服务器
-npm run dev
+cd .. && npm run dev
 
-# 构建 H5 版本
+# 构建前端
 npm run build
 
 # 构建 Neo N3 合约（.nef + .manifest）
@@ -93,6 +66,25 @@ npm run contract:build
 
 - `contracts/bin/sc/RedEnvelope.nef`
 - `contracts/bin/sc/RedEnvelope.manifest.json`
+
+### 部署脚本
+
+| 脚本                        | 用途               |
+| --------------------------- | ------------------ |
+| `scripts/deploy-mainnet.js` | 部署全新合约到主网 |
+| `scripts/deploy-update.js`  | 原地升级现有合约   |
+| `scripts/test-e2e.js`       | 完整端到端流程验证 |
+
+```bash
+# 部署新合约
+DEPLOYER_WIF=... node scripts/deploy-mainnet.js
+
+# 升级现有合约
+KEY1_WIF=... KEY2_WIF=... node scripts/deploy-update.js
+
+# 运行端到端测试
+KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
+```
 
 ## 玩法说明
 
@@ -114,6 +106,18 @@ npm run contract:build
 5. 当可打开次数用完后，NFT 自动销毁。
 6. 过期后，仅原发行者可以回收剩余 GAS。
 
+### NEO 加权幸运加成
+
+随机 GAS 分配采用基于打开者 NEO 余额的「择优 N 次」掷骰机制：
+
+| NEO 余额 | 掷骰次数 | 效果              |
+| -------- | -------- | ----------------- |
+| 0–99     | 1        | 基准均匀随机      |
+| 100–999  | 2        | 取 2 次中较优结果 |
+| 1000+    | 3        | 取 3 次中最优结果 |
+
+持有更多 NEO 可提升获得更大奖励的概率，但不保证获得最大值。所有掷骰均从单次 `Runtime.GetRandom()` 调用中通过位移除法提取。
+
 ## 核心规则
 
 - **仅真实用户可打开/领取**：合约账户不能执行打开或领取动作。
@@ -124,7 +128,8 @@ npm run contract:build
 
 ## 合约 API
 
-以下所有函数已在 Neo N3 测试网通过端到端验证（56/56 测试通过）。
+以下所有函数已在 Neo N3 主网验证通过。
+运行端到端测试请设置 `KEY1_WIF` 和 `KEY2_WIF`，然后执行 `node scripts/test-e2e.js`。
 
 ### 入口
 
@@ -185,6 +190,16 @@ npm run contract:build
 | `EnvelopeOpened`   | `id, opener, amount`                     | GAS 分发给打开者      |
 | `EnvelopeBurned`   | `id`                                     | NFT 完全消耗          |
 | `EnvelopeRefunded` | `id, creator, amount`                    | 过期后创建者回收      |
+
+## 工作原理
+
+1. **文化传统**：基于中国红包（压岁钱/利是）传统
+2. **智能合约托管**：发行者的 GAS 存放在合约中，直到用户打开领取
+3. **NEO 加权随机**：红包金额使用 Neo 运行时随机数，并为 NEO 持有者提供择优 N 次幸运加成
+4. **双模式**：红包池模式（每个名额一个 Claim NFT）与幸运 NFT 模式（单个可转让红包）
+5. **打开即领取**：用户仅在执行打开操作时才会收到 GAS
+6. **过期 + 回收**：过期后仅发行者可回收未打开/剩余的 GAS
+7. **可升级**：合约所有者可通过 `Update(nef, manifest)` 推送更新，无需重新部署
 
 ## 资产配置
 

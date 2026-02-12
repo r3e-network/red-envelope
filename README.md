@@ -1,6 +1,6 @@
 # Red Envelope
 
-Send lucky GAS gifts to friends
+Send lucky GAS gifts to friends on Neo N3
 
 ## Overview
 
@@ -10,35 +10,19 @@ Send lucky GAS gifts to friends
 | **Category**  | Social                |
 | **Version**   | 1.0.0                 |
 | **Framework** | Vue 3 + Vite          |
+| **Standard**  | NEP-11 (NFT)          |
+| **Network**   | Neo N3 MainNet        |
 
 ## Features
 
-- Red-envelope
-- Social
-- Gift
-- Lucky
-
-## Permissions
-
-| Permission | Required |
-| ---------- | -------- |
-| Payments   | ✅ Yes   |
-| RNG        | ✅ Yes   |
-| Data Feed  | ❌ No    |
-| Governance | ❌ No    |
+- GAS red envelopes with on-chain randomness
+- Two modes: Pool (multi-claimer) and Lucky NFT (single spreading)
+- NEO-weighted luck boost — holding more NEO improves your odds
+- Claim NFT minting, transfer, and open-to-earn mechanics
+- Upgradable contract with admin pause/resume circuit breaker
+- Bilingual UI (English / 中文)
 
 ## Network Configuration
-
-### Testnet
-
-| Property          | Value                                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------- |
-| **Contract**      | `0x78ba71c03c29b3f101ff11824dc8f664cf6d65cd`                                                      |
-| **RPC**           | `https://testnet1.neo.coz.io:443`                                                                 |
-| **Explorer**      | [View on NeoTube](https://testnet.neotube.io/contract/0x78ba71c03c29b3f101ff11824dc8f664cf6d65cd) |
-| **Network Magic** | `894710606`                                                                                       |
-
-### Mainnet
 
 | Property          | Value                                                                                     |
 | ----------------- | ----------------------------------------------------------------------------------------- |
@@ -48,20 +32,6 @@ Send lucky GAS gifts to friends
 | **Network Magic** | `860833102`                                                                               |
 
 ## Platform Contracts
-
-### Testnet
-
-| Contract            | Address                                      |
-| ------------------- | -------------------------------------------- |
-| PaymentHub          | `0x0bb8f09e6d3611bc5c8adbd79ff8af1e34f73193` |
-| Governance          | `0xc8f3bbe1c205c932aab00b28f7df99f9bc788a05` |
-| PriceFeed           | `0xc5d9117d255054489d1cf59b2c1d188c01bc9954` |
-| RandomnessLog       | `0x76dfee17f2f4b9fa8f32bd3f4da6406319ab7b39` |
-| AppRegistry         | `0x79d16bee03122e992bb80c478ad4ed405f33bc7f` |
-| AutomationAnchor    | `0x1c888d699ce76b0824028af310d90c3c18adeab5` |
-| ServiceLayerGateway | `0x27b79cf631eff4b520dd9d95cd1425ec33025a53` |
-
-### Mainnet
 
 | Contract            | Address                                      |
 | ------------------- | -------------------------------------------- |
@@ -77,15 +47,13 @@ Send lucky GAS gifts to friends
 
 ```bash
 # Install frontend dependencies
-cd frontend
-npm install
+cd frontend && npm install
 
-# Configure frontend
+# Configure frontend (defaults to mainnet)
 cp .env.example .env
 
 # Development server
-cd ..
-npm run dev
+cd .. && npm run dev
 
 # Build frontend
 npm run build
@@ -98,6 +66,25 @@ Contract artifacts are generated at:
 
 - `contracts/bin/sc/RedEnvelope.nef`
 - `contracts/bin/sc/RedEnvelope.manifest.json`
+
+### Deployment Scripts
+
+| Script                      | Purpose                            |
+| --------------------------- | ---------------------------------- |
+| `scripts/deploy-mainnet.js` | Deploy a fresh contract to mainnet |
+| `scripts/deploy-update.js`  | Upgrade existing contract in-place |
+| `scripts/test-e2e.js`       | Full E2E workflow validation       |
+
+```bash
+# Deploy new contract
+DEPLOYER_WIF=... node scripts/deploy-mainnet.js
+
+# Upgrade existing contract
+KEY1_WIF=... KEY2_WIF=... node scripts/deploy-update.js
+
+# Run E2E tests
+KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
+```
 
 ## Usage
 
@@ -119,6 +106,18 @@ Contract artifacts are generated at:
 5. When all open-count is used, the NFT is burned.
 6. After expiry, only the original issuer can reclaim remaining GAS.
 
+### NEO-Weighted Luck Boost
+
+The random GAS distribution uses a "best-of-N" roll mechanism based on the opener's NEO balance:
+
+| NEO Balance | Rolls | Effect                     |
+| ----------- | ----- | -------------------------- |
+| 0–99        | 1     | Baseline uniform random    |
+| 100–999     | 2     | Keep the better of 2 rolls |
+| 1000+       | 3     | Keep the best of 3 rolls   |
+
+More NEO improves your odds of a larger reward but never guarantees the maximum. All rolls are extracted from a single `Runtime.GetRandom()` call using bit-shifted division.
+
 ## Core Rules
 
 - **Only real users can open/claim**: contract accounts are rejected for open/claim actions.
@@ -129,8 +128,8 @@ Contract artifacts are generated at:
 
 ## Contract API
 
-All functions below were evaluated on Neo N3 TestNet in the latest full E2E run (56/56 passing).
-To reproduce that run locally, set `KEY1_WIF` and `KEY2_WIF` and execute `node scripts/test-e2e.js`.
+All functions below have been validated on Neo N3 MainNet.
+To run E2E tests, set `KEY1_WIF` and `KEY2_WIF` and execute `node scripts/test-e2e.js`.
 
 ### Entry Point
 
@@ -194,14 +193,13 @@ To reproduce that run locally, set `KEY1_WIF` and `KEY2_WIF` and execute `node s
 
 ## How It Works
 
-Red Envelope brings traditional gifting to the blockchain:
-
 1. **Cultural Tradition**: Based on the Chinese tradition of hongbao (lucky money)
 2. **Smart Contract Escrow**: Issuer's GAS stays in contract until users open claims
-3. **Runtime Randomness**: Packet amounts are assigned with Neo runtime randomness syscall
+3. **NEO-Weighted Randomness**: Packet amounts use Neo runtime randomness with a best-of-N luck boost for NEO holders
 4. **Two Modes**: Pool mode (claim NFT per slot) and Lucky NFT mode (single transferable envelope)
 5. **Open-to-Earn**: Users receive GAS only when they execute open operation
 6. **Expiry + Reclaim**: After expiry, only issuer can reclaim unopened/remaining GAS
+7. **Upgradable**: Contract owner can push updates via `Update(nef, manifest)` without redeployment
 
 ## Assets
 
