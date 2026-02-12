@@ -12,7 +12,6 @@ export const messages = {
   },
 
   // ── Create Form ───────────────────────────────────
-  createEnvelope: { en: "Create Envelope", zh: "创建红包" },
   envelopeTypeSection: { en: "🎁 Envelope Type", zh: "🎁 红包类型" },
   typePool: { en: "🎁 Red Envelope Pool", zh: "🎁 红包池" },
   typeNft: { en: "🎫 Lucky NFT", zh: "🎫 幸运 NFT" },
@@ -165,18 +164,13 @@ export const messages = {
   detailTypePool: { en: "Pool", zh: "红包池" },
   detailTypeNft: { en: "NFT", zh: "NFT" },
   detailTypeSpreading: { en: "Spreading", zh: "传播型" },
-  detailMessage: { en: "Message", zh: "祝福语" },
   detailGasTotal: { en: "Total GAS", zh: "GAS 总量" },
-  detailGasRemaining: { en: "Remaining", zh: "剩余" },
-  detailProgress: { en: "Progress", zh: "进度" },
   detailExpiry: { en: "Expires", zh: "过期时间" },
   detailNeoGate: { en: "NEO Gate", zh: "NEO 门槛" },
   detailNeoGateValue: { en: "≥{0} NEO, ≥{1}d hold", zh: "≥{0} NEO, 持有 ≥{1} 天" },
   detailNoGate: { en: "None", zh: "无" },
-  detailStatus: { en: "Status", zh: "状态" },
 
   // ── History ──────────────────────────────────────────
-  historyTitle: { en: "📜 Claim History", zh: "📜 领取记录" },
   historyPoolTitle: { en: "📜 Pool Claims", zh: "📜 红包池领取记录" },
   historyNftTitle: { en: "📜 NFT Info", zh: "📜 NFT 信息" },
   historyHolder: { en: "Holder", zh: "持有者" },
@@ -221,6 +215,10 @@ export const messages = {
   bgmOff: { en: "Music Off", zh: "音乐关" },
   volume: { en: "Volume", zh: "音量" },
   gongxifacai: { en: "Gong Xi Fa Cai", zh: "恭喜發財" },
+  snakeYearBadge: { en: "🐍 2026 Year of the Snake", zh: "🐍 2026 蛇年大吉" },
+  springCoupletLeft: { en: "Fortune flows like spring water", zh: "春回大地福满门" },
+  springCoupletRight: { en: "Luck rises with the new year", zh: "蛇舞新春喜盈庭" },
+  snakeYearCelebration: { en: "Year of the Snake 🐍", zh: "蛇年大吉 🐍" },
 };
 
 export type MessageKey = keyof typeof messages;

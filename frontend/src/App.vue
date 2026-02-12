@@ -148,6 +148,7 @@ onMounted(() => {
 
       <h1 class="app-title">{{ t("title") }}</h1>
       <p class="gongxi-text">{{ t("gongxifacai") }}</p>
+      <div class="year-badge" aria-hidden="true">{{ t("snakeYearBadge") }}</div>
       <p class="app-subtitle">{{ t("subtitle") }}</p>
       <p class="app-subtitle text-dim">{{ network.label }}</p>
 
@@ -164,6 +165,10 @@ onMounted(() => {
     <!-- Gold ornamental divider -->
     <div class="ornament-divider">
       <span class="ornament-dot"></span>
+    </div>
+    <div class="spring-couplet" aria-hidden="true">
+      <span class="couplet-half">{{ t("springCoupletLeft") }}</span>
+      <span class="couplet-half">{{ t("springCoupletRight") }}</span>
     </div>
 
     <nav class="tabs" role="tablist">

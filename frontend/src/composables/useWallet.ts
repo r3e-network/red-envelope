@@ -141,7 +141,11 @@ export function useWallet() {
     const dapi = await waitForDapi();
     if (!dapi) return "0";
     if (!connected.value || !address.value) {
-      await connect();
+      try {
+        await connect();
+      } catch {
+        return "0";
+      }
     }
 
     const res = (await dapi.request({

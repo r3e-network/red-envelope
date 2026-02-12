@@ -43,6 +43,15 @@ const perPacket = computed(() => {
   return "—";
 });
 
+const parsedMinNeo = computed(() => parseOptionalNumber(minNeo.value, 100));
+const parsedMinHoldDays = computed(() => parseOptionalNumber(minHoldDays.value, 2));
+
+const showMinPerPacketError = computed(() => {
+  const a = Number(amount.value);
+  const c = Number(count.value);
+  return amount.value && count.value && a >= 1 && c >= 1 && c <= 100 && a < c * 0.1;
+});
+
 const handleSubmit = async () => {
   if (!connected.value) {
     await connect();
@@ -116,9 +125,7 @@ const handleSubmit = async () => {
         </div>
         <div class="summary-row">
           <span>{{ t("summaryNeoGate") }}</span>
-          <span class="summary-value"
-            >≥{{ parseOptionalNumber(minNeo, 100) }} NEO, ≥{{ parseOptionalNumber(minHoldDays, 2) }}d</span
-          >
+          <span class="summary-value">≥{{ parsedMinNeo }} NEO, ≥{{ parsedMinHoldDays }}d</span>
         </div>
       </div>
     </div>
@@ -198,17 +205,7 @@ const handleSubmit = async () => {
           <div v-if="count && (Number(count) < 1 || Number(count) > 100)" class="field-hint text-fail">
             {{ t("validationPacketRange") }}
           </div>
-          <div
-            v-if="
-              amount &&
-              count &&
-              Number(amount) >= 1 &&
-              Number(count) >= 1 &&
-              Number(count) <= 100 &&
-              Number(amount) < Number(count) * 0.1
-            "
-            class="field-hint text-fail"
-          >
+          <div v-if="showMinPerPacketError" class="field-hint text-fail">
             {{ t("validationMinPerPacket") }}
           </div>
         </div>

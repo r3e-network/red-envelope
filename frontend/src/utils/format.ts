@@ -25,6 +25,7 @@ export function formatHash(hash: string): string {
 
 /** Format GAS amount with up to 8 decimal places, trimming trailing zeros */
 export function formatGas(amount: number): string {
+  if (!Number.isFinite(amount)) return "0";
   if (amount === 0) return "0";
   return amount.toFixed(8).replace(/\.?0+$/, "");
 }

@@ -12,6 +12,10 @@ export type EligibilityResult = {
   minHoldSeconds: number;
 };
 
+function failedResult(reason: string): EligibilityResult {
+  return { eligible: false, reason, neoBalance: 0, holdDays: 0, minNeoRequired: 0, minHoldSeconds: 0 };
+}
+
 export function useNeoEligibility() {
   const { address, connected, invokeRead } = useWallet();
 
@@ -22,16 +26,9 @@ export function useNeoEligibility() {
     checking.value = true;
     try {
       if (!connected.value || !address.value) {
-        const missingWallet: EligibilityResult = {
-          eligible: false,
-          reason: "wallet not connected",
-          neoBalance: 0,
-          holdDays: 0,
-          minNeoRequired: 0,
-          minHoldSeconds: 0,
-        };
-        result.value = missingWallet;
-        return missingWallet;
+        const r = failedResult("wallet not connected");
+        result.value = r;
+        return r;
       }
 
       const res = await invokeRead({
@@ -52,6 +49,10 @@ export function useNeoEligibility() {
         minNeoRequired: Number(data?.minNeoRequired ?? 0),
         minHoldSeconds: Number(data?.minHoldSeconds ?? 0),
       };
+      result.value = r;
+      return r;
+    } catch (err) {
+      const r = failedResult(err instanceof Error ? err.message : "check failed");
       result.value = r;
       return r;
     } finally {

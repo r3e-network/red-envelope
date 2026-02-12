@@ -26,7 +26,10 @@ export function useEnvelopeHistory() {
   const loading = ref(false);
   const history = ref<HistoryData | null>(null);
 
-  /** Fetch pool claim history by iterating claim indices */
+  /** Fetch pool claim history by iterating claim indices.
+   *  Uses a generation counter to discard stale results from superseded calls. */
+  let generation = 0;
+
   const fetchPoolHistory = async (poolId: string, claimCount: number): Promise<HistoryData> => {
     const claims: ClaimRecord[] = [];
     let totalClaimedFixed8 = 0;
@@ -98,20 +101,26 @@ export function useEnvelopeHistory() {
 
   /** Load history for a given envelope */
   const loadHistory = async (envelopeId: string, envelopeType: number, claimCount: number) => {
+    const gen = ++generation;
     loading.value = true;
     history.value = null;
 
     try {
       if (envelopeType === 1 && claimCount > 0) {
         // Pool type: fetch all claim records
-        history.value = await fetchPoolHistory(envelopeId, claimCount);
+        const data = await fetchPoolHistory(envelopeId, claimCount);
+        if (gen !== generation) return; // superseded by a newer call
+        history.value = data;
       }
       // Spreading (type 0) and Claim (type 2) don't have sub-claims
       // Their state is shown via EnvelopeDetail (currentHolder, etc.)
     } catch (err) {
+      if (gen !== generation) return; // superseded — don't touch state
       console.warn("[EnvelopeHistory] loadHistory failed:", err);
     } finally {
-      loading.value = false;
+      if (gen === generation) {
+        loading.value = false;
+      }
     }
   };
 

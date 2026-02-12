@@ -51,6 +51,7 @@ const confetti = Array.from({ length: 40 }, (_, i) => ({
     </div>
 
     <div class="lucky-gongxi" aria-hidden="true">恭喜發財</div>
+    <div class="lucky-snake-year" aria-hidden="true">{{ t("snakeYearCelebration") }}</div>
     <div class="lucky-icon" aria-hidden="true">🧧</div>
     <div class="lucky-title">{{ t("congratulations") }}</div>
 
@@ -223,6 +224,16 @@ const confetti = Array.from({ length: 40 }, (_, i) => ({
   border-color: var(--color-gold-light, #ffeb3b);
 }
 
+.lucky-snake-year {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-gold-light, #ffeb3b);
+  opacity: 0;
+  animation: fadeIn 0.6s ease 0.5s forwards;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
 .lucky-gongxi {
   font-size: 2rem;
   font-weight: 800;
@@ -233,5 +244,33 @@ const confetti = Array.from({ length: 40 }, (_, i) => ({
   letter-spacing: 0.2em;
   margin-bottom: 0.5rem;
   animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes fireworkExpand {
+  0% {
+    width: 10px;
+    height: 10px;
+    opacity: 1;
+  }
+  100% {
+    width: 150px;
+    height: 150px;
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    text-shadow:
+      0 0 20px rgba(255, 215, 0, 0.4),
+      0 0 40px rgba(255, 215, 0, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(255, 215, 0, 0.6),
+      0 0 60px rgba(255, 215, 0, 0.3);
+  }
 }
 </style>

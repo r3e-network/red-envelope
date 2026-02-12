@@ -32,7 +32,11 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div :class="['envelope-card', { 'spreading-card': spreading, 'card-inactive': !env.isActive }]">
+  <div
+    :class="['envelope-card', { 'spreading-card': spreading, 'card-inactive': !env.isActive }]"
+    role="article"
+    :aria-label="t('detailEnvelopeId', env.id)"
+  >
     <div class="card-header">
       <div class="card-header-left">
         <span class="envelope-id">#{{ env.id }}</span>
@@ -66,17 +70,29 @@ const { t } = useI18n();
     </div>
 
     <div v-if="env.showOpen || env.showTransfer || env.showReclaim" class="card-actions">
-      <button v-if="env.showOpen" class="btn btn-open" @click="emit('open', env)">
+      <button
+        v-if="env.showOpen"
+        class="btn btn-open"
+        :aria-label="t('openEnvelope') + ' #' + env.id"
+        @click="emit('open', env)"
+      >
         {{ t("openEnvelope") }}
       </button>
       <button
         v-if="env.showTransfer"
         :class="['btn', spreading ? 'btn-send-friend' : 'btn-transfer']"
+        :aria-label="(spreading ? t('sendToFriend') : t('transferEnvelope')) + ' #' + env.id"
         @click="emit('transfer', env)"
       >
         {{ spreading ? t("sendToFriend") : t("transferEnvelope") }}
       </button>
-      <button v-if="env.showReclaim" class="btn btn-reclaim" :disabled="reclaiming" @click="emit('reclaim', env)">
+      <button
+        v-if="env.showReclaim"
+        class="btn btn-reclaim"
+        :disabled="reclaiming"
+        :aria-label="t('reclaimEnvelope') + ' #' + env.id"
+        @click="emit('reclaim', env)"
+      >
         {{ reclaiming ? t("reclaiming") : t("reclaimEnvelope") }}
       </button>
     </div>

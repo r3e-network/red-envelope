@@ -14,4 +14,9 @@ window.addEventListener("unhandledrejection", (event) => {
   console.error("[Unhandled Rejection]", event.reason);
 });
 
+// Catch synchronous uncaught errors (e.g. thrown in event handlers outside Vue)
+window.addEventListener("error", (event) => {
+  console.error("[Uncaught Error]", event.error ?? event.message);
+});
+
 app.mount("#app");

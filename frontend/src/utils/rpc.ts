@@ -23,6 +23,7 @@ export async function waitForConfirmation(txid: string, maxWaitMs = DEFAULT_TIME
           params: [txid],
         }),
       });
+      if (!res.ok) continue;
       const json = (await res.json()) as Record<string, unknown>;
       if (json.result && !json.error) {
         // Check for VM FAULT — TX confirmed but execution failed

@@ -56,8 +56,7 @@ export type CountdownDisplay = { text: string; urgent: boolean };
  */
 export function formatCountdownDisplay(
   cd: CountdownData | null,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  t: (key: any, ...args: any[]) => string,
+  t: (key: "expiredLabel" | "daysRemaining" | "hoursMinutes" | "minutesOnly", ...args: (string | number)[]) => string,
 ): CountdownDisplay | null {
   if (!cd) return null;
   if (cd.expired) return { text: t("expiredLabel"), urgent: true };

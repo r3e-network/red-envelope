@@ -46,9 +46,9 @@ const claimedGas = computed(() => {
         <table class="history-table">
           <thead>
             <tr class="history-table-head">
-              <th>{{ t("historyHolder") }}</th>
-              <th>{{ t("historyAmount") }}</th>
-              <th>{{ t("historyStatus") }}</th>
+              <th scope="col">{{ t("historyHolder") }}</th>
+              <th scope="col">{{ t("historyAmount") }}</th>
+              <th scope="col">{{ t("historyStatus") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -79,7 +79,7 @@ const claimedGas = computed(() => {
         <div class="detail-row">
           <span class="detail-label">{{ t("historyCurrentHolder") }}</span>
           <span class="detail-value mono-sm">
-            {{ formatHash(envelope.currentHolder) || t("historyNoHolder") }}
+            {{ formatHash(props.envelope.currentHolder) || t("historyNoHolder") }}
           </span>
         </div>
 

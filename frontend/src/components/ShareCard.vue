@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "@/composables/useI18n";
 import { useFocusTrap } from "@/composables/useFocusTrap";
 import { formatGas, formatHash } from "@/utils/format";
@@ -25,6 +25,12 @@ const CARD_DPR = 2;
 const copyStatus = ref("");
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const nftSvgDataUri = ref("");
+const timers = new Set<ReturnType<typeof setTimeout>>();
+
+onUnmounted(() => {
+  timers.forEach(clearTimeout);
+  timers.clear();
+});
 
 onMounted(async () => {
   try {
@@ -229,7 +235,11 @@ async function copyAsImage() {
     if (!blob) return;
     await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
     copyStatus.value = "copied";
-    setTimeout(() => (copyStatus.value = ""), 2000);
+    const t1 = setTimeout(() => {
+      copyStatus.value = "";
+      timers.delete(t1);
+    }, 2000);
+    timers.add(t1);
   } catch {
     // Fallback: save instead
     await saveImage();
@@ -243,7 +253,11 @@ async function saveImage() {
   link.href = canvas.toDataURL("image/png");
   link.click();
   copyStatus.value = "saved";
-  setTimeout(() => (copyStatus.value = ""), 2000);
+  const t2 = setTimeout(() => {
+    copyStatus.value = "";
+    timers.delete(t2);
+  }, 2000);
+  timers.add(t2);
 }
 
 function shareOnTwitter() {
@@ -272,7 +286,7 @@ function shareOnTwitter() {
       <div class="modal-body share-body">
         <!-- Visual card preview -->
         <div v-if="nftSvgDataUri" class="share-card-preview">
-          <img :src="nftSvgDataUri" :alt="'Red Envelope #' + props.envelopeId + ' NFT'" class="nft-preview-img" />
+          <img :src="nftSvgDataUri" :alt="t('shareEnvelopeId', props.envelopeId) + ' NFT'" class="nft-preview-img" />
         </div>
 
         <div v-else class="share-card-preview">

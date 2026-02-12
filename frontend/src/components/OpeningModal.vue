@@ -202,7 +202,7 @@ const handleOpen = async () => {
 
   <!-- Share Card overlay -->
   <ShareCard
-    v-if="showShare && openResult !== null"
+    v-if="showShare && openResult !== null && address"
     :amount="openResult"
     :envelope-id="props.envelope.id"
     :address="address"

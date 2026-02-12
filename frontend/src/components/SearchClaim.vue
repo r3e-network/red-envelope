@@ -56,6 +56,24 @@ const isCreator = computed(() => {
   return envelope.value.creator === currentAddressHash.value;
 });
 
+const canOpenOrClaim = computed(() => {
+  const env = envelope.value;
+  if (!env) return false;
+  return env.active && !env.expired && !env.depleted && (env.envelopeType === 1 || isHolder.value);
+});
+
+const canTransfer = computed(() => {
+  const env = envelope.value;
+  if (!env) return false;
+  return env.active && !env.expired && env.envelopeType !== 1 && isHolder.value;
+});
+
+const canReclaim = computed(() => {
+  const env = envelope.value;
+  if (!env) return false;
+  return env.active && env.expired && env.remainingAmount > 0 && isCreator.value;
+});
+
 const walletSpreadingEnvelopes = computed(() => {
   if (!currentAddressHash.value) return [];
 
@@ -283,7 +301,7 @@ watch(connected, (isConnected) => {
     <!-- RIGHT PANEL: Search + Actions -->
     <div class="panel-right">
       <!-- Search bar -->
-      <div class="search-bar">
+      <div class="search-bar" role="search">
         <input
           v-model="searchId"
           type="text"
@@ -341,6 +359,7 @@ watch(connected, (isConnected) => {
             <button
               class="btn btn-open wallet-spreading-open"
               :disabled="!env.active || env.expired || env.depleted"
+              :aria-label="t('openEnvelope') + ' #' + env.id"
               @click="handleWalletSpreadingClaim(env)"
             >
               {{ t("openEnvelope") }}
@@ -351,30 +370,15 @@ watch(connected, (isConnected) => {
 
       <!-- Action buttons (only when envelope loaded) -->
       <template v-if="envelope">
-        <!-- Pool (type=1): anyone can claim; Spreading/Claim (type=0,2): only holder can open -->
-        <button
-          v-if="envelope.active && !envelope.expired && !envelope.depleted && (envelope.envelopeType === 1 || isHolder)"
-          class="btn btn-open"
-          :disabled="claiming"
-          @click="handleOpen"
-        >
+        <button v-if="canOpenOrClaim" class="btn btn-open" :disabled="claiming" @click="handleOpen">
           {{ claiming ? t("claiming") : envelope.envelopeType === 1 ? t("claimButton") : t("openEnvelope") }}
         </button>
 
-        <button
-          v-if="envelope.active && !envelope.expired && envelope.envelopeType !== 1 && isHolder"
-          class="btn btn-transfer"
-          @click="handleTransfer"
-        >
+        <button v-if="canTransfer" class="btn btn-transfer" @click="handleTransfer">
           {{ t("transferEnvelope") }}
         </button>
 
-        <button
-          v-if="envelope.active && envelope.expired && envelope.remainingAmount > 0 && isCreator"
-          class="btn btn-reclaim"
-          :disabled="reclaimingSearch"
-          @click="handleReclaim"
-        >
+        <button v-if="canReclaim" class="btn btn-reclaim" :disabled="reclaimingSearch" @click="handleReclaim">
           {{ reclaimingSearch ? t("reclaiming") : t("reclaimEnvelope") }}
         </button>
       </template>
@@ -405,7 +409,7 @@ watch(connected, (isConnected) => {
   />
 
   <ShareCard
-    v-if="showShareCard && envelope"
+    v-if="showShareCard && envelope && address"
     :amount="claimedAmount"
     :envelope-id="envelope.id"
     :address="address"

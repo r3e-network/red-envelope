@@ -1,13 +1,12 @@
 // ── Base58 decode (Neo N3 address → script hash) ─────────────────
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const BASE58_MAP = new Map<string, number>();
+for (let i = 0; i < BASE58_ALPHABET.length; i++) BASE58_MAP.set(BASE58_ALPHABET[i], i);
 
 function base58Decode(str: string): Uint8Array {
-  const map = new Map<string, number>();
-  for (let i = 0; i < BASE58_ALPHABET.length; i++) map.set(BASE58_ALPHABET[i], i);
-
   let bytes = [0];
   for (const ch of str) {
-    const val = map.get(ch);
+    const val = BASE58_MAP.get(ch);
     if (val === undefined) throw new Error(`Invalid base58 char: ${ch}`);
     let carry = val;
     for (let j = 0; j < bytes.length; j++) {
