@@ -1,7 +1,7 @@
 /**
  * Deploy New Contract to Neo N3 MainNet.
  *
- * Self-contained script — does not depend on helpers.js (which is testnet-oriented).
+ * Self-contained script — does not depend on helpers.js.
  * Reads compiled .nef + .manifest.json and calls ContractManagement.deploy().
  *
  * Usage: DEPLOYER_WIF=... node scripts/deploy-mainnet.js

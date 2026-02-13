@@ -18,19 +18,25 @@ namespace RedEnvelope.Contract
         private static BigInteger ValidateNeoHolding(UInt160 account, BigInteger minNeo, BigInteger minHoldSeconds)
         {
             BigInteger neoBalance = (BigInteger)NEO.BalanceOf(account);
-            ExecutionEngine.Assert(neoBalance >= minNeo, "insufficient NEO");
+            if (minNeo > 0)
+            {
+                ExecutionEngine.Assert(neoBalance >= minNeo, "insufficient NEO");
+            }
 
-            object[] state = (object[])Neo.SmartContract.Framework.Services.Contract.Call(
-                NEO_HASH,
-                "getAccountState",
-                CallFlags.ReadOnly,
-                new object[] { account });
-            ExecutionEngine.Assert(state != null, "no NEO state");
+            if (minHoldSeconds > 0)
+            {
+                object[] state = (object[])Neo.SmartContract.Framework.Services.Contract.Call(
+                    NEO_HASH,
+                    "getAccountState",
+                    CallFlags.ReadOnly,
+                    new object[] { account });
+                ExecutionEngine.Assert(state != null, "no NEO state");
 
-            BigInteger balanceHeight = (BigInteger)state[1];
-            BigInteger blockTs = (BigInteger)Ledger.GetBlock((uint)balanceHeight).Timestamp;
-            BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs; // milliseconds
-            ExecutionEngine.Assert(holdDuration >= minHoldSeconds * 1000, "hold duration not met");
+                BigInteger balanceHeight = (BigInteger)state[1];
+                BigInteger blockTs = (BigInteger)Ledger.GetBlock((uint)balanceHeight).Timestamp;
+                BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs; // milliseconds
+                ExecutionEngine.Assert(holdDuration >= minHoldSeconds * 1000, "hold duration not met");
+            }
 
             return neoBalance;
         }

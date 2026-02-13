@@ -30,7 +30,7 @@ namespace RedEnvelope.Contract
     public partial class RedEnvelope : Nep11Token<RedEnvelopeState>
     {
         [Safe]
-        public override string Symbol => "RDE";
+        public override string Symbol => "RedEnvelope";
 
         #region Constants
 
@@ -38,8 +38,8 @@ namespace RedEnvelope.Contract
         private const int MAX_PACKETS = 100;
         private const long MIN_PER_PACKET = 10_000_000;         // 0.1 GAS
         private const long DEFAULT_EXPIRY_MS = 604_800_000;      // 7 days in ms
-        private const long DEFAULT_MIN_NEO = 100;
-        private const long DEFAULT_MIN_HOLD_SECONDS = 172_800;  // 2 days
+        private const long DEFAULT_MIN_NEO = 0;
+        private const long DEFAULT_MIN_HOLD_SECONDS = 0;
 
         internal const int ENVELOPE_TYPE_SPREADING = 0;
         internal const int ENVELOPE_TYPE_POOL = 1;
@@ -190,7 +190,6 @@ namespace RedEnvelope.Contract
             if (from == null || !from.IsValid) return;
 
             AssertNotPaused();
-            AssertNotEnvelopeOwnerActor(from);
             ExecutionEngine.Assert(amount >= MIN_AMOUNT, "min 1 GAS");
 
             object[] config = data == null ? new object[0] : (object[])data;
@@ -203,14 +202,16 @@ namespace RedEnvelope.Contract
 
             ExecutionEngine.Assert(packetCount > 0 && packetCount <= MAX_PACKETS, "1-100 packets");
             ExecutionEngine.Assert(amount >= packetCount * MIN_PER_PACKET, "min 0.1 GAS/packet");
+            ExecutionEngine.Assert(minNeo >= 0, "min NEO cannot be negative");
+            ExecutionEngine.Assert(minHold >= 0, "min hold cannot be negative");
             ExecutionEngine.Assert(
                 envelopeType == ENVELOPE_TYPE_SPREADING || envelopeType == ENVELOPE_TYPE_POOL,
                 "invalid envelope type");
 
             BigInteger envelopeId = AllocateEnvelopeId();
             BigInteger effectiveExpiry = expiryMs > 0 ? expiryMs : DEFAULT_EXPIRY_MS;
-            BigInteger effectiveMinNeo = minNeo > 0 ? minNeo : DEFAULT_MIN_NEO;
-            BigInteger effectiveMinHold = minHold > 0 ? minHold : DEFAULT_MIN_HOLD_SECONDS;
+            BigInteger effectiveMinNeo = minNeo;
+            BigInteger effectiveMinHold = minHold;
 
             EnvelopeData envelope = new EnvelopeData
             {
@@ -324,9 +325,8 @@ namespace RedEnvelope.Contract
 
         internal static void AssertNotEnvelopeOwnerActor(UInt160 account)
         {
-            UInt160 owner = GetOwner();
-            if (owner == null || !owner.IsValid) return;
-            ExecutionEngine.Assert(account != owner, "owner cannot touch envelopes");
+            // Owner can participate in envelope flows like any other EOA.
+            // Keep this helper for backward-compatible call sites.
         }
 
         internal static void AssertNotPaused()

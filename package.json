@@ -2,11 +2,18 @@
   "name": "miniapp-redenvelope",
   "version": "1.0.0",
   "private": true,
+  "dependencies": {
+    "@cityofzion/neon-js": "^5.8.0"
+  },
   "scripts": {
     "dev": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview",
     "test": "cd frontend && npm run test",
-    "contract:build": "cd contracts && dotnet build"
+    "contract:build": "cd contracts && dotnet build",
+    "smoke:testnet": "NETWORK=testnet node scripts/test-testnet.js",
+    "smoke:mainnet": "NETWORK=mainnet node scripts/test-testnet.js",
+    "verify:network-parity": "node scripts/verify-network-parity.js",
+    "verify:all-networks": "npm run verify:network-parity && npm run smoke:testnet && npm run smoke:mainnet"
   }
 }

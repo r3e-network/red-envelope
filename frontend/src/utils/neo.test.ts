@@ -94,6 +94,12 @@ describe("parseStackItem", () => {
     const result = parseStackItem({ type: "ByteString", value: b64 });
     expect(result).toBe("0x" + "14131211100f0e0d0c0b0a09080706050403020100".slice(0, 40));
   });
+
+  it("keeps printable 20-byte ByteString values as text", () => {
+    const text = "12345678901234567890"; // exactly 20 bytes
+    const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+    expect(parseStackItem({ type: "ByteString", value: b64 })).toBe(text);
+  });
 });
 
 describe("parseInvokeResult", () => {

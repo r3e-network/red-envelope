@@ -1,9 +1,15 @@
 /**
- * Testnet smoke test — verifies contract connectivity and read-only operations.
- * Usage: node scripts/test-testnet.js
+ * Smoke test — verifies contract connectivity and read-only operations.
+ * Works without signer private keys.
+ * Usage:
+ *   node scripts/test-testnet.js               # default NETWORK=testnet
+ *   NETWORK=mainnet node scripts/test-testnet.js
  */
+process.env.NETWORK = process.env.NETWORK || "testnet";
+
 const {
   Neon,
+  NETWORK,
   RPC_URL,
   CONTRACT,
   GAS_HASH,
@@ -34,13 +40,17 @@ function check(label, ok, detail = "") {
 }
 
 async function main() {
+  const key1Address = key1?.address || process.env.KEY1_ADDRESS || null;
+  const key2Address = key2?.address || process.env.KEY2_ADDRESS || null;
+  const networkLabel = NETWORK === "testnet" ? "TestNet" : NETWORK === "mainnet" ? "MainNet" : "Custom";
+
   console.log("═══════════════════════════════════════════");
-  console.log("  Red Envelope — TestNet Smoke Test");
+  console.log(`  Red Envelope — ${networkLabel} Smoke Test`);
   console.log("═══════════════════════════════════════════");
   console.log(`  RPC:      ${RPC_URL}`);
   console.log(`  Contract: ${CONTRACT}`);
-  console.log(`  Key1:     ${key1.address}`);
-  console.log(`  Key2:     ${key2.address}`);
+  console.log(`  Key1:     ${key1Address || "(not set)"}`);
+  console.log(`  Key2:     ${key2Address || "(not set)"}`);
   console.log("───────────────────────────────────────────");
 
   // ── 1. RPC Connectivity ──
@@ -142,21 +152,34 @@ async function main() {
 
   // ── 6. Account Balances ──
   console.log("\n[6/6] Test Account Balances");
-  try {
-    const gas1 = await getGasBalance(key1.address);
-    check("Key1 GAS balance", gas1 >= 0, `${gas1.toFixed(4)} GAS`);
+  if (!key1Address && !key2Address) {
+    console.log(`  ${WARN} Skipped: set KEY1_WIF/KEY2_WIF or KEY1_ADDRESS/KEY2_ADDRESS to include balance checks`);
+  } else {
+    try {
+      if (key1Address) {
+        const gas1 = await getGasBalance(key1Address);
+        check("Key1 GAS balance", gas1 >= 0, `${gas1.toFixed(4)} GAS`);
+      } else {
+        console.log(`  ${WARN} Key1 address not set — skipping Key1 balance checks`);
+      }
 
-    const gas2 = await getGasBalance(key2.address);
-    check("Key2 GAS balance", gas2 >= 0, `${gas2.toFixed(4)} GAS`);
+      if (key2Address) {
+        const gas2 = await getGasBalance(key2Address);
+        check("Key2 GAS balance", gas2 >= 0, `${gas2.toFixed(4)} GAS`);
+      } else {
+        console.log(`  ${WARN} Key2 address not set — skipping Key2 balance checks`);
+      }
 
-    // NEO balance
-    const neo1Res = await rpcClient.invokeFunction(NEO_HASH, "balanceOf", [
-      { type: "Hash160", value: Neon.wallet.getScriptHashFromAddress(key1.address) },
-    ]);
-    const neo1 = Number(neo1Res.stack?.[0]?.value ?? 0);
-    check("Key1 NEO balance", neo1 >= 0, `${neo1} NEO`);
-  } catch (e) {
-    check("Account balances", false, e.message);
+      if (key1Address) {
+        const neo1Res = await rpcClient.invokeFunction(NEO_HASH, "balanceOf", [
+          { type: "Hash160", value: Neon.wallet.getScriptHashFromAddress(key1Address) },
+        ]);
+        const neo1 = Number(neo1Res.stack?.[0]?.value ?? 0);
+        check("Key1 NEO balance", neo1 >= 0, `${neo1} NEO`);
+      }
+    } catch (e) {
+      check("Account balances", false, e.message);
+    }
   }
 
   // ── Summary ──

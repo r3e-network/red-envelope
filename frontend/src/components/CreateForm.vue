@@ -53,8 +53,8 @@ const perPacket = computed(() => {
   return "—";
 });
 
-const parsedMinNeo = computed(() => parseOptionalNumber(minNeo.value, 100));
-const parsedMinHoldDays = computed(() => parseOptionalNumber(minHoldDays.value, 2));
+const parsedMinNeo = computed(() => parseOptionalNumber(minNeo.value, 0));
+const parsedMinHoldDays = computed(() => parseOptionalNumber(minHoldDays.value, 0));
 
 const minNeoInputValid = computed(() => {
   const raw = String(minNeo.value).trim();
@@ -88,8 +88,8 @@ const handleSubmit = async () => {
       packetCount: Number(count.value),
       expiryHours: Number(expiryHours.value) || 24,
       message: message.value || t("defaultBlessing"),
-      minNeo: parseOptionalNumber(minNeo.value, 100),
-      minHoldDays: parseOptionalNumber(minHoldDays.value, 2),
+      minNeo: parseOptionalNumber(minNeo.value, 0),
+      minHoldDays: parseOptionalNumber(minHoldDays.value, 0),
       envelopeType: envelopeType.value,
     });
     confirming.value = true;

@@ -1,16 +1,23 @@
 /**
  * Update the RedEnvelope contract on Neo N3 TestNet.
  * Reads compiled NEF + manifest and calls contract.Update(nef, manifest).
+ * Usage:
+ *   KEY1_WIF=... node scripts/update-contract.js                       # default NETWORK=testnet
+ *   NETWORK=mainnet KEY1_WIF=... node scripts/update-contract.js
  */
+process.env.NETWORK = process.env.NETWORK || "testnet";
+
 const fs = require("fs");
 const path = require("path");
-const { Neon, CONTRACT, NETWORK_MAGIC, RPC_URL, key1, rpcClient, waitForTx } = require("./helpers");
+const { Neon, NETWORK, CONTRACT, NETWORK_MAGIC, RPC_URL, key1, requireKey1, rpcClient, waitForTx } = require("./helpers");
 
 const NEF_PATH = path.resolve(__dirname, "../contracts/bin/sc/RedEnvelope.nef");
 const MANIFEST_PATH = path.resolve(__dirname, "../contracts/bin/sc/RedEnvelope.manifest.json");
 
 async function main() {
+  requireKey1("node scripts/update-contract.js");
   console.log("=== RedEnvelope Contract Update ===");
+  console.log("Network: ", NETWORK);
   console.log("Contract:", CONTRACT);
   console.log("Owner:   ", key1.address);
   console.log("RPC:     ", RPC_URL);

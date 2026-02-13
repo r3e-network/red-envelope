@@ -121,7 +121,6 @@ More NEO improves your odds of a larger reward but never guarantees the maximum.
 ## Core Rules
 
 - **Only real users can open/claim**: contract accounts are rejected for open/claim actions.
-- **Contract owner cannot touch envelopes**: owner cannot create/open/claim/transfer/reclaim envelopes.
 - **Open is required to receive GAS**: holding or claiming NFT alone does not transfer GAS.
 - **Expiry is enforced**: open/claim operations are blocked after expiry.
 - **Minimum amounts**: total per envelope is at least `1 GAS`, and each packet/slot is at least `0.1 GAS`.

@@ -241,4 +241,119 @@ describe("useRedEnvelope", () => {
     expect(api.envelopes.value).toHaveLength(2);
     expect(api.envelopes.value.map((item) => item.id)).toEqual(["3", "1"]);
   });
+
+  it("constructs GAS transfer payload correctly when creating envelope", async () => {
+    mockInvoke.mockResolvedValue({ txid: "0xabc" });
+    const api = useRedEnvelope();
+
+    await api.createEnvelope({
+      totalGas: 1.5,
+      packetCount: 3,
+      expiryHours: 12,
+      message: "gm",
+      minNeo: 0,
+      minHoldDays: 0,
+      envelopeType: 1,
+    });
+
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    const req = mockInvoke.mock.calls[0][0] as {
+      scriptHash: string;
+      operation: string;
+      args: Array<{ type: string; value: unknown }>;
+    };
+
+    expect(req.scriptHash).toBe("0xd2a4cff31913016155e38e474a2c06d08be276cf");
+    expect(req.operation).toBe("transfer");
+    expect(req.args[0]).toEqual({ type: "Hash160", value: "NXV7ZhHiyM1aHXwpVsRZC6BwNFP2jghXAq" });
+    expect(req.args[2]).toEqual({ type: "Integer", value: "150000000" });
+
+    const dataArg = req.args[3] as { type: "Array"; value: Array<{ type: string; value: string }> };
+    expect(dataArg.type).toBe("Array");
+    expect(dataArg.value).toEqual([
+      { type: "Integer", value: "3" },
+      { type: "Integer", value: "43200000" },
+      { type: "String", value: "gm" },
+      { type: "Integer", value: "0" },
+      { type: "Integer", value: "0" },
+      { type: "Integer", value: "1" },
+    ]);
+  });
+
+  it("uses correct operation names for open/transfer/reclaim flows", async () => {
+    mockInvoke.mockResolvedValue({ txid: "0xabc" });
+    const api = useRedEnvelope();
+    const makeEnvelope = (id: string, envelopeType: number) => ({
+      id,
+      creator: "0xcreator",
+      envelopeType,
+      parentEnvelopeId: "0",
+      totalAmount: 1,
+      packetCount: 1,
+      openedCount: 0,
+      claimedCount: 0,
+      remainingAmount: 1,
+      remainingPackets: 1,
+      minNeoRequired: 1,
+      minHoldSeconds: 1,
+      active: true,
+      expired: false,
+      depleted: false,
+      currentHolder: "0xholder",
+      message: "",
+      expiryTime: 0,
+    });
+
+    await api.openEnvelope(makeEnvelope("10", 0));
+    await api.openEnvelope(makeEnvelope("11", 2));
+    await api.claimFromPool("12");
+    await api.transferEnvelope(makeEnvelope("13", 0), "NQvRtu7k7M5J8fS8gqZ2tu5G9D7wT7LQ1W");
+    await api.transferEnvelope(makeEnvelope("14", 2), "NQvRtu7k7M5J8fS8gqZ2tu5G9D7wT7LQ1W");
+    await api.reclaimEnvelope(makeEnvelope("15", 0));
+    await api.reclaimEnvelope(makeEnvelope("16", 1));
+
+    const ops = mockInvoke.mock.calls.map((call) => call[0].operation);
+    expect(ops).toEqual([
+      "openEnvelope",
+      "openClaim",
+      "claimFromPool",
+      "transferEnvelope",
+      "transferClaim",
+      "reclaimEnvelope",
+      "reclaimPool",
+    ]);
+  });
+
+  it("rejects invalid envelope-type operations before sending tx", async () => {
+    mockInvoke.mockResolvedValue({ txid: "0xabc" });
+    const api = useRedEnvelope();
+    const makeEnvelope = (id: string, envelopeType: number) => ({
+      id,
+      creator: "0xcreator",
+      envelopeType,
+      parentEnvelopeId: "0",
+      totalAmount: 1,
+      packetCount: 1,
+      openedCount: 0,
+      claimedCount: 0,
+      remainingAmount: 1,
+      remainingPackets: 1,
+      minNeoRequired: 1,
+      minHoldSeconds: 1,
+      active: true,
+      expired: false,
+      depleted: false,
+      currentHolder: "0xholder",
+      message: "",
+      expiryTime: 0,
+    });
+
+    await expect(api.openEnvelope(makeEnvelope("20", 1))).rejects.toThrow("Use claimFromPool for pool envelopes");
+    await expect(api.transferEnvelope(makeEnvelope("21", 1), "NQvRtu7k7M5J8fS8gqZ2tu5G9D7wT7LQ1W")).rejects.toThrow(
+      "Pool envelopes cannot be transferred",
+    );
+    await expect(api.reclaimEnvelope(makeEnvelope("22", 2))).rejects.toThrow(
+      "Claim NFTs cannot be reclaimed directly; reclaim the parent pool",
+    );
+  });
 });

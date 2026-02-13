@@ -72,7 +72,7 @@ const canTransfer = computed(() => {
 const canReclaim = computed(() => {
   const env = envelope.value;
   if (!env) return false;
-  return env.active && env.expired && env.remainingAmount > 0 && isCreator.value;
+  return env.envelopeType !== 2 && env.active && env.expired && env.remainingAmount > 0 && isCreator.value;
 });
 
 const walletSpreadingEnvelopes = computed(() => {

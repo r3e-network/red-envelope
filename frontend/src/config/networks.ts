@@ -12,7 +12,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     label: "Neo N3 TestNet",
     defaultRpc: "https://testnet1.neo.coz.io:443",
     explorerBase: "https://testnet.neotube.io",
-    contractHash: "0x78ba71c03c29b3f101ff11824dc8f664cf6d65cd",
+    contractHash: "0x116b5217bf0916e5c7069770cf40ceee7917d349",
   },
   mainnet: {
     key: "mainnet",

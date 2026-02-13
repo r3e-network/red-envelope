@@ -1,9 +1,16 @@
 /**
  * Pre-flight check — verify account states and script building before E2E test.
+ * Usage:
+ *   KEY1_WIF=... KEY2_WIF=... node scripts/_preflight.js              # default NETWORK=testnet
+ *   NETWORK=mainnet KEY1_WIF=... KEY2_WIF=... node scripts/_preflight.js
  */
-const { Neon, rpcClient, CONTRACT, GAS_HASH, key1, key2, NETWORK_MAGIC } = require("./helpers");
+process.env.NETWORK = process.env.NETWORK || "testnet";
+
+const { Neon, NETWORK, rpcClient, CONTRACT, GAS_HASH, key1, key2, NETWORK_MAGIC, requireSignerKeys } = require("./helpers");
 
 async function main() {
+  requireSignerKeys("node scripts/_preflight.js");
+  console.log(`Using network: ${NETWORK} (magic ${NETWORK_MAGIC})`);
   const neoHash = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5";
 
   // 1. NEO account state for Key2

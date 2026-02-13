@@ -5,22 +5,27 @@
  * and calls the existing contract's `update(nef, manifest)` method
  * using Key1 (the contract admin).
  *
- * Usage: node scripts/deploy-update.js
+ * Usage:
+ *   KEY1_WIF=... node scripts/deploy-update.js                         # default NETWORK=mainnet
+ *   NETWORK=testnet KEY1_WIF=... node scripts/deploy-update.js
  */
+process.env.NETWORK = process.env.NETWORK || "mainnet";
+
 const fs = require("fs");
 const path = require("path");
-const { Neon, CONTRACT, NETWORK_MAGIC, key1, rpcClient, waitForTx, sleep } = require("./helpers");
+const { Neon, NETWORK, CONTRACT, NETWORK_MAGIC, key1, requireKey1, rpcClient, waitForTx, sleep } = require("./helpers");
 
 const NEF_PATH = path.resolve(__dirname, "../contracts/bin/sc/RedEnvelope.nef");
 const MANIFEST_PATH = path.resolve(__dirname, "../contracts/bin/sc/RedEnvelope.manifest.json");
 
 async function main() {
+  requireKey1("node scripts/deploy-update.js");
   console.log("═══════════════════════════════════════════");
   console.log("  Red Envelope — Contract Upgrade");
   console.log("═══════════════════════════════════════════");
   console.log(`  Contract:  ${CONTRACT}`);
   console.log(`  Admin:     ${key1.address}`);
-  console.log(`  Network:   MainNet (magic ${NETWORK_MAGIC})`);
+  console.log(`  Network:   ${NETWORK} (magic ${NETWORK_MAGIC})`);
   console.log("───────────────────────────────────────────\n");
 
   // ── 1. Load artifacts ──

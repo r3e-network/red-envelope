@@ -57,9 +57,8 @@ export function useRedEnvelope() {
 
       // Contract adds expiry directly to Runtime.Time (milliseconds), so send ms
       const expiryMs = params.expiryHours * 3_600_000;
-      // Contract defaults <=0 to strict defaults (100 NEO / 172800s); send the minimum valid values instead.
-      const minNeo = params.minNeo > 0 ? params.minNeo : 1;
-      const minHoldSeconds = params.minHoldDays > 0 ? params.minHoldDays * 86400 : 1;
+      const minNeo = params.minNeo;
+      const minHoldSeconds = params.minHoldDays * 86400;
 
       // Send GAS to contract with config data array
       const res = assertTxResult(
@@ -95,6 +94,9 @@ export function useRedEnvelope() {
   const openEnvelope = async (envelope: EnvelopeItem): Promise<{ txid: string }> => {
     if (envelope.envelopeType === 1) {
       throw new Error("Use claimFromPool for pool envelopes");
+    }
+    if (envelope.envelopeType !== 0 && envelope.envelopeType !== 2) {
+      throw new Error("Unsupported envelope type");
     }
     const operation = envelope.envelopeType === 2 ? "openClaim" : "openEnvelope";
 
@@ -163,6 +165,13 @@ export function useRedEnvelope() {
 
   /** Transfer spreading or claim envelope NFT */
   const transferEnvelope = async (envelope: EnvelopeItem, to: string): Promise<{ txid: string }> => {
+    if (envelope.envelopeType === 1) {
+      throw new Error("Pool envelopes cannot be transferred");
+    }
+    if (envelope.envelopeType !== 0 && envelope.envelopeType !== 2) {
+      throw new Error("Unsupported envelope type");
+    }
+
     const isClaim = envelope.envelopeType === 2;
     const operation = isClaim ? "transferClaim" : "transferEnvelope";
     const args = isClaim
@@ -189,6 +198,13 @@ export function useRedEnvelope() {
 
   /** Reclaim expired spreading envelope or pool GAS */
   const reclaimEnvelope = async (envelope: EnvelopeItem): Promise<{ txid: string }> => {
+    if (envelope.envelopeType === 2) {
+      throw new Error("Claim NFTs cannot be reclaimed directly; reclaim the parent pool");
+    }
+    if (envelope.envelopeType !== 0 && envelope.envelopeType !== 1) {
+      throw new Error("Unsupported envelope type");
+    }
+
     const operation = envelope.envelopeType === 1 ? "reclaimPool" : "reclaimEnvelope";
 
     return assertTxResult(

@@ -58,17 +58,20 @@ const handleOpen = async () => {
   try {
     const { txid } = await openEnvelope(props.envelope);
 
+    // Wait for on-chain confirmation for both spreading and claim NFTs,
+    // so VM FAULTs are surfaced consistently before showing success UI.
+    confirming.value = true;
+    try {
+      await waitForConfirmation(txid);
+    } finally {
+      confirming.value = false;
+    }
+
     if (props.envelope.envelopeType === 2) {
-      // Claim envelopes: amount is known upfront, no need to wait
+      // Claim envelopes: amount equals the claim NFT's remaining amount.
       openResult.value = props.envelope.remainingAmount;
     } else {
-      // Spreading envelopes: wait for TX confirmation before reading amount
-      confirming.value = true;
-      try {
-        await waitForConfirmation(txid);
-      } finally {
-        confirming.value = false;
-      }
+      // Spreading envelopes: query exact opened amount after confirmation
       try {
         openResult.value = await getOpenedAmount(props.envelope.id);
       } catch {

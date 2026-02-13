@@ -17,5 +17,5 @@ Build output artifacts are generated to:
 ## Notes
 
 - The project uses local .NET tool restore (`neo.compiler.csharp`) during build.
-- Contract symbol is `RDE` (NEP-11 non-divisible token).
+- Contract symbol is `RedEnvelope` (NEP-11 non-divisible token).
 - Legacy duplicate lower-case method aliases that caused compiler method-key collisions were removed to keep the contract buildable on the current Neo compiler.

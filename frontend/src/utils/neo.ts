@@ -81,9 +81,13 @@ export function parseStackItem(item: unknown): unknown {
       try {
         const binary = atob(String(value));
         const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-        // UInt160 script hashes are exactly 20 bytes and often non-printable
+        const decodedText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        const hasControlChars = /[\u0000-\u001f\u007f]/.test(decodedText);
+        if (!hasControlChars) return decodedText;
+
+        // UInt160 script hashes are exactly 20 bytes and often non-printable.
+        // Only treat as hash when payload does not look like display text.
         if (bytes.length === 20) {
-          // Return as 0x-prefixed little-endian hex (Neo convention)
           return (
             "0x" +
             Array.from(bytes)
@@ -92,7 +96,7 @@ export function parseStackItem(item: unknown): unknown {
               .join("")
           );
         }
-        return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        return decodedText;
       } catch {
         return String(value);
       }

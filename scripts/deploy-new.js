@@ -7,11 +7,16 @@
  * Reads compiled .nef + .manifest.json from contracts/bin/sc/
  * and calls ContractManagement.deploy(nef, manifest) using Key1 (admin).
  *
- * Usage: node scripts/deploy-new.js
+ * Usage:
+ *   KEY1_WIF=... node scripts/deploy-new.js                            # default NETWORK=testnet
+ *   NETWORK=mainnet KEY1_WIF=... node scripts/deploy-new.js
+ *   # Optional: set KEY2_WIF for automatic top-up when Key1 GAS is low
  */
+process.env.NETWORK = process.env.NETWORK || "testnet";
+
 const fs = require("fs");
 const path = require("path");
-const { Neon, NETWORK_MAGIC, key1, key2, rpcClient, waitForTx, sleep } = require("./helpers");
+const { Neon, NETWORK, NETWORK_MAGIC, key1, key2, requireKey1, rpcClient, waitForTx, sleep } = require("./helpers");
 
 const NEF_PATH = path.resolve(__dirname, "../contracts/bin/sc/RedEnvelope.nef");
 const MANIFEST_PATH = path.resolve(__dirname, "../contracts/bin/sc/RedEnvelope.manifest.json");
@@ -20,11 +25,12 @@ const MANIFEST_PATH = path.resolve(__dirname, "../contracts/bin/sc/RedEnvelope.m
 const CONTRACT_MANAGEMENT = "0xfffdc93764dbaddd97c48f252a53ea4643faa3fd";
 
 async function main() {
+  requireKey1("node scripts/deploy-new.js");
   console.log("═══════════════════════════════════════════");
   console.log("  Red Envelope — Deploy New Contract");
   console.log("═══════════════════════════════════════════");
   console.log(`  Deployer: ${key1.address} (${key1.scriptHash})`);
-  console.log(`  Network:  TestNet (magic ${NETWORK_MAGIC})`);
+  console.log(`  Network:  ${NETWORK} (magic ${NETWORK_MAGIC})`);
   console.log("───────────────────────────────────────────\n");
 
   // ── 1. Load artifacts ──
@@ -66,6 +72,11 @@ async function main() {
   console.log(`  Key1 GAS: ${gasBalance.toFixed(4)}`);
 
   if (gasBalance < 15) {
+    if (!key2) {
+      console.error("  ❌ Key1 GAS is low and KEY2_WIF is not configured for top-up.");
+      console.error("  Provide KEY2_WIF or fund Key1 manually before retrying.");
+      process.exit(1);
+    }
     console.log("  ⚠️  Key1 GAS low — topping up 20 GAS from Key2...");
     const topUpScript = sc.createScript({
       scriptHash: "0xd2a4cff31913016155e38e474a2c06d08be276cf",
@@ -242,7 +253,7 @@ async function main() {
     }
 
     console.log("\n  ⚠️  ACTION REQUIRED:");
-    console.log(`  Update CONTRACT in scripts/helpers.js to: "${newContractHash}"`);
+    console.log(`  Update NETWORK_PRESETS.${NETWORK}.CONTRACT in scripts/helpers.js to: "${newContractHash}"`);
     console.log(`  Update contract hash in src/config/networks.ts`);
     console.log(`  Update contract hash in public/neo-manifest.json`);
   } else {

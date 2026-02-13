@@ -107,14 +107,6 @@ namespace RedEnvelope.Contract
                 return result;
             }
 
-            UInt160 owner = GetOwner();
-            if (owner != null && owner.IsValid && user == owner)
-            {
-                result["eligible"] = false;
-                result["reason"] = "owner cannot touch envelopes";
-                return result;
-            }
-
             EnvelopeData envelope = GetEnvelopeData(envelopeId);
 
             if (!EnvelopeExists(envelope))
@@ -139,10 +131,21 @@ namespace RedEnvelope.Contract
             result["neoBalance"] = neoBalance;
             result["minNeoRequired"] = envelope.MinNeoRequired;
 
-            if (neoBalance < envelope.MinNeoRequired)
+            if (envelope.MinNeoRequired > 0 && neoBalance < envelope.MinNeoRequired)
             {
                 result["eligible"] = false;
                 result["reason"] = "insufficient NEO";
+                return result;
+            }
+
+            result["minHoldSeconds"] = envelope.MinHoldSeconds;
+
+            if (envelope.MinHoldSeconds <= 0)
+            {
+                result["holdDuration"] = 0;
+                result["holdDays"] = 0;
+                result["eligible"] = true;
+                result["reason"] = "ok";
                 return result;
             }
 
@@ -166,7 +169,6 @@ namespace RedEnvelope.Contract
 
             result["holdDuration"] = holdDuration;
             result["holdDays"] = holdDays;
-            result["minHoldSeconds"] = envelope.MinHoldSeconds;
 
             if (holdDuration < envelope.MinHoldSeconds * 1000)
             {

@@ -4,15 +4,21 @@
  * Tests: create envelopes (spreading + pool), open, claim, transfer, reclaim.
  * Uses Key1 and Key2 from helpers.js.
  *
- * Usage: node scripts/test-e2e.js
+ * Usage:
+ *   KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js               # default NETWORK=testnet
+ *   NETWORK=mainnet KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
  */
+process.env.NETWORK = process.env.NETWORK || "testnet";
+
 const {
   Neon,
+  NETWORK,
   CONTRACT,
   GAS_HASH,
   NETWORK_MAGIC,
   key1,
   key2,
+  requireSignerKeys,
   rpcClient,
   waitForTx,
   invokeRead,
@@ -194,9 +200,11 @@ function listNotifications(appLog) {
 // ─────────────────────────────────────────────────────────────
 
 async function main() {
+  requireSignerKeys("node scripts/test-e2e.js");
   console.log("═══════════════════════════════════════════");
   console.log("  Red Envelope — End-to-End Logic Test");
   console.log("═══════════════════════════════════════════");
+  console.log(`  Network:  ${NETWORK}`);
   console.log(`  Contract: ${CONTRACT}`);
   console.log(`  Key1:     ${key1.address} (${key1.scriptHash})`);
   console.log(`  Key2:     ${key2.address} (${key2.scriptHash})`);
@@ -263,29 +271,17 @@ async function main() {
     }
   }
 
-  // ── Test 2: Transfer Ownership (Key1 → random address) ──
-  // This frees Key1 from the "owner cannot touch envelopes" restriction
-  console.log("\n[2/12] Transfer Ownership (free Key1 for envelope ops)");
+  // ── Test 2: Owner status sanity check ──
+  console.log("\n[2/12] Owner Status Check");
   {
-    // Generate a random throwaway owner address
-    const throwawayAccount = new Neon.wallet.Account();
-    console.log(`  Transferring owner to throwaway: ${throwawayAccount.address}`);
-
-    const setOwnerScript = buildInvokeScript("setOwner", [sc.ContractParam.hash160(throwawayAccount.scriptHash)]);
-    const soLog = await sendTx(key1, setOwnerScript, "SetOwner");
-    if (soLog) {
-      // Verify new owner
-      const newOwnerRes = await invokeRead("getOwner");
-      if (newOwnerRes.stack?.[0]?.value) {
-        const newHex = Buffer.from(newOwnerRes.stack[0].value, "base64").toString("hex");
-        const newReversed = Neon.u.reverseHex(newHex);
-        const isThrowaway = newHex === throwawayAccount.scriptHash || newReversed === throwawayAccount.scriptHash;
-        check("Owner transferred to throwaway", isThrowaway);
-      }
-
-      // Verify Key1 is no longer owner
-      const k1Owner = await invokeRead("isOwner");
-      check("Key1 no longer owner", k1Owner.stack?.[0]?.value === false);
+    const ownerRes = await invokeRead("getOwner");
+    if (ownerRes.stack?.[0]?.value) {
+      const ownerHex = Buffer.from(ownerRes.stack[0].value, "base64").toString("hex");
+      const ownerReversed = Neon.u.reverseHex(ownerHex);
+      const isKey1 = ownerHex === key1.scriptHash || ownerReversed === key1.scriptHash;
+      check("Key1 is owner", isKey1);
+    } else {
+      check("Key1 is owner", false, "getOwner returned empty");
     }
   }
 
@@ -297,8 +293,8 @@ async function main() {
     1, // 1 packet
     600000, // 10 min expiry
     "E2E spreading test",
-    1, // 1 NEO minimum (0 would default to 100)
-    1, // 1 second hold (0 would default to 2 days)
+    0, // no NEO gate
+    0, // no hold gate
     0, // type: spreading
   );
   const spreadLog = await sendTx(key2, spreadScript, "CreateSpreading");
@@ -366,8 +362,8 @@ async function main() {
     3, // 3 packets
     600000, // 10 min expiry
     "E2E pool test",
-    1, // 1 NEO minimum
-    1, // 1 second hold
+    0, // no NEO gate
+    0, // no hold gate
     1, // type: pool
   );
   const poolLog = await sendTx(key2, poolScript, "CreatePool");
@@ -516,8 +512,8 @@ async function main() {
     2, // 2 packets
     600000, // 10 min expiry
     "E2E transfer test",
-    1, // 1 NEO minimum
-    1, // 1 second hold
+    0, // no NEO gate
+    0, // no hold gate
     0, // type: spreading
   );
   const spread2Log = await sendTx(key2, spread2Script, "CreateSpreading2");
