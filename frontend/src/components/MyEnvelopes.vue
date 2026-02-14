@@ -7,7 +7,7 @@ import { useReactiveClock } from "@/composables/useReactiveClock";
 import { formatGas, extractError } from "@/utils/format";
 import { waitForConfirmation } from "@/utils/rpc";
 import { computeCountdown, formatCountdownDisplay } from "@/utils/time";
-import { addressToScriptHashHex } from "@/utils/neo";
+import { addressToScriptHashHex, normalizeScriptHashHex } from "@/utils/neo";
 import EnvelopeCard from "./EnvelopeCard.vue";
 import type { EnrichedEnvelope } from "./EnvelopeCard.vue";
 import OpeningModal from "./OpeningModal.vue";
@@ -24,6 +24,13 @@ const showOpenModal = ref(false);
 const showTransferModal = ref(false);
 const actionStatus = ref<{ msg: string; type: "success" | "error" } | null>(null);
 const reclaimingId = ref<string | null>(null);
+const inspectorInput = ref("");
+
+const walletHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
+const inspectorHash = computed(() => normalizeScriptHashHex(inspectorInput.value));
+const isInspectorActive = computed(() => inspectorInput.value.trim().length > 0);
+const isInspectorValid = computed(() => !isInspectorActive.value || !!inspectorHash.value);
+const isInspectingCurrentWallet = computed(() => !!inspectorHash.value && inspectorHash.value === walletHash.value);
 
 onMounted(() => {
   if (connected.value) loadEnvelopes();
@@ -36,10 +43,9 @@ watch(connected, (isConnected) => {
 // ── Pre-computed enriched list (eliminates repeated calls in template) ──
 const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
   envelopes.value.map((env) => {
-    const addr = address.value;
     // Contract fields are normalized to 0x-prefixed UInt160 script-hash hex.
     // Convert wallet address to the same representation for stable comparisons.
-    const addrHash = addr ? addressToScriptHashHex(addr) : "";
+    const addrHash = walletHash.value;
     const holder = addrHash && env.currentHolder === addrHash;
     const creator = addrHash && env.creator === addrHash;
     const active = env.active && !env.expired && !env.depleted;
@@ -74,11 +80,50 @@ const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
 // ── Filtered: only envelopes where user is creator or holder ──
 const myEnvelopes = computed(() => enrichedEnvelopes.value.filter((env) => env.role !== null));
 
-const sections = computed(() => partitionEnvelopeSections(myEnvelopes.value));
+// ── Address inspector: view creator/holder envelopes for any address/hash ──
+const inspectedEnvelopes = computed<EnrichedEnvelope[]>(() => {
+  const hash = inspectorHash.value;
+  if (!hash) return [];
+
+  const allowActions = isInspectingCurrentWallet.value;
+  const matches: EnrichedEnvelope[] = [];
+  for (const env of enrichedEnvelopes.value) {
+    const creator = env.creator === hash;
+    const holder = env.currentHolder === hash;
+    if (!creator && !holder) continue;
+
+    matches.push({
+      ...env,
+      role: creator
+        ? { text: t("roleCreator"), cls: "role-creator" }
+        : { text: t("roleHolder"), cls: "role-holder" },
+      showOpen: allowActions ? env.showOpen : false,
+      showTransfer: allowActions ? env.showTransfer : false,
+      showReclaim: allowActions ? env.showReclaim : false,
+    });
+  }
+  return matches;
+});
+
+const visibleEnvelopes = computed(() => (isInspectorActive.value ? inspectedEnvelopes.value : myEnvelopes.value));
+
+const sections = computed(() => partitionEnvelopeSections(visibleEnvelopes.value));
 const spreadingNfts = computed(() => sections.value.spreadingNfts);
 const claimNfts = computed(() => sections.value.claimNfts);
 const otherEnvelopes = computed(() => sections.value.otherEnvelopes);
 const actionableClaimCount = computed(() => countActionableClaimNfts(claimNfts.value));
+const sectionSpreadingTitle = computed(() => (isInspectorActive.value ? t("inspectorSpreadingNfts") : t("mySpreadingNfts")));
+const sectionClaimTitle = computed(() => (isInspectorActive.value ? t("inspectorClaimNfts") : t("myClaimNfts")));
+const sectionOtherTitle = computed(() => (isInspectorActive.value ? t("inspectorOtherEnvelopes") : t("myOtherEnvelopes")));
+const emptyText = computed(() => {
+  if (isInspectorActive.value && !isInspectorValid.value) return t("inspectorInvalidAddress");
+  if (isInspectorActive.value) return t("inspectorNoEnvelopes");
+  return t("noEnvelopes");
+});
+
+const clearInspector = () => {
+  inspectorInput.value = "";
+};
 
 // ── Actions ──
 const handleOpen = (env: EnvelopeItem) => {
@@ -115,16 +160,33 @@ const handleReclaim = async (env: EnvelopeItem) => {
       <button class="btn btn-sm" :aria-label="t('refresh')" @click="loadEnvelopes">↻</button>
     </div>
 
+    <div class="inspector-controls">
+      <input
+        v-model="inspectorInput"
+        type="text"
+        class="input inspector-input"
+        :placeholder="t('inspectorPlaceholder')"
+        :aria-label="t('inspectorPlaceholder')"
+      />
+      <button v-if="inspectorInput" class="btn btn-sm" :aria-label="t('inspectorClear')" @click="clearInspector">
+        {{ t("inspectorClear") }}
+      </button>
+    </div>
+
+    <div v-if="isInspectorActive && isInspectorValid" class="section-hint inspector-hint">
+      {{ t("inspectorViewing", inspectorInput.trim()) }}
+    </div>
+
     <div v-if="loadingEnvelopes" class="loading">{{ t("searching") }}</div>
 
-    <div v-else-if="myEnvelopes.length === 0" class="empty">
-      {{ t("noEnvelopes") }}
+    <div v-else-if="visibleEnvelopes.length === 0" class="empty">
+      {{ emptyText }}
     </div>
 
     <template v-else>
       <!-- ── Spreading NFTs Section ── -->
       <div class="section-header">
-        <span>{{ t("mySpreadingNfts") }}</span>
+        <span>{{ sectionSpreadingTitle }}</span>
         <span class="section-count">{{ spreadingNfts.length }}</span>
       </div>
       <div class="section-hint">{{ t("spreadingNftHint") }}</div>
@@ -148,7 +210,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
 
       <!-- ── Claim NFTs Section ── -->
       <div class="section-header">
-        <span>{{ t("myClaimNfts") }}</span>
+        <span>{{ sectionClaimTitle }}</span>
         <span :class="['section-count', { 'section-count-hot': actionableClaimCount > 0 }]">{{
           claimNfts.length
         }}</span>
@@ -178,7 +240,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
 
       <!-- ── Other Envelopes Section ── -->
       <div class="section-header">
-        <span>{{ t("myOtherEnvelopes") }}</span>
+        <span>{{ sectionOtherTitle }}</span>
         <span class="section-count">{{ otherEnvelopes.length }}</span>
       </div>
 

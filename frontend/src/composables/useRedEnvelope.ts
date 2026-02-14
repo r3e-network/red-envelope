@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import { useWallet } from "./useWallet";
 import { CONTRACT_HASH } from "@/config/contract";
+import { resolveNetwork } from "@/config/networks";
 import { fromFixed8, toFixed8 } from "@/utils/format";
 import { normalizeScriptHashHex, parseInvokeResult } from "@/utils/neo";
 import { pAll } from "@/utils/concurrency";
@@ -10,6 +11,7 @@ export const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
 export const MIN_AMOUNT = 100_000_000; // 1 GAS fixed8
 export const MAX_PACKETS = 100;
 export const MIN_PER_PACKET = 10_000_000; // 0.1 GAS fixed8
+const ENVELOPE_ID_STORAGE_KEY_B64 = "Eg=="; // storage key 0x12 (PREFIX_ENVELOPE_ID)
 
 export type EnvelopeItem = {
   id: string;
@@ -254,14 +256,18 @@ export function useRedEnvelope() {
         args: [],
       });
       const total = Number(parseInvokeResult(countRes) ?? 0);
-      if (total === 0) {
+      // Contract allocates IDs for claim NFTs too, so latest envelope ID can be
+      // higher than getTotalEnvelopes(). We must scan up to the latest allocated ID.
+      const latestEnvelopeId = await getLatestEnvelopeIdFromStorage();
+      const upperBound = Math.max(total, latestEnvelopeId);
+      if (upperBound === 0) {
         envelopes.value = [];
         return;
       }
 
       const start = 1;
       const tasks: (() => Promise<EnvelopeItem | null>)[] = [];
-      for (let i = total; i >= start; i--) {
+      for (let i = upperBound; i >= start; i--) {
         const id = String(i);
         tasks.push(async () => {
           try {
@@ -353,4 +359,40 @@ function assertTxResult(res: unknown): { txid: string } {
     return res as { txid: string };
   }
   throw new Error("Unexpected wallet response: missing txid");
+}
+
+async function getLatestEnvelopeIdFromStorage(): Promise<number> {
+  if (typeof window === "undefined") return 0;
+  try {
+    const { defaultRpc } = resolveNetwork();
+    const res = await fetch(defaultRpc, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getstorage",
+        params: [CONTRACT_HASH, ENVELOPE_ID_STORAGE_KEY_B64],
+      }),
+    });
+    if (!res.ok) return 0;
+    const json = (await res.json()) as { result?: unknown; error?: unknown };
+    if (json.error || typeof json.result !== "string" || !json.result) return 0;
+
+    const binary = atob(json.result);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    if (bytes.length === 0) return 0;
+
+    // Neo storage integers are little-endian byte arrays.
+    let value = 0n;
+    for (let i = 0; i < bytes.length; i++) {
+      value += BigInt(bytes[i]) << (BigInt(i) * 8n);
+    }
+
+    if (value <= 0n) return 0;
+    if (value > BigInt(Number.MAX_SAFE_INTEGER)) return Number.MAX_SAFE_INTEGER;
+    return Number(value);
+  } catch {
+    return 0;
+  }
 }

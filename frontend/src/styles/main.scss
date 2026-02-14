@@ -727,6 +727,25 @@ body {
       color: var(--color-gold);
     }
   }
+
+  .inspector-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+
+    .inspector-input {
+      flex: 1;
+    }
+
+    .btn {
+      white-space: nowrap;
+    }
+  }
+
+  .inspector-hint {
+    margin-top: -0.1rem;
+    margin-bottom: 0.5rem;
+  }
 }
 
 .envelope-list {

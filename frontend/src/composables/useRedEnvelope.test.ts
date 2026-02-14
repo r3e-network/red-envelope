@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mockInvoke = vi.fn();
 const mockInvokeRead = vi.fn();
@@ -43,6 +43,10 @@ describe("useRedEnvelope", () => {
     mockInvokeRead.mockReset();
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("loads all envelopes instead of truncating to the latest 50", async () => {
     mockInvokeRead.mockImplementation(async (req: { operation: string; args?: Array<{ value: string }> }) => {
       if (req.operation === "getTotalEnvelopes") {
@@ -78,6 +82,54 @@ describe("useRedEnvelope", () => {
     await api.loadEnvelopes();
 
     expect(api.envelopes.value).toHaveLength(60);
+  });
+
+  it("loads envelopes up to latest allocated ID when it is higher than total envelopes", async () => {
+    vi.stubGlobal("window", {} as Window);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ result: "Eg==" }), // 0x12 => latest allocated ID 18
+      }),
+    );
+
+    mockInvokeRead.mockImplementation(async (req: { operation: string; args?: Array<{ value: string }> }) => {
+      if (req.operation === "getTotalEnvelopes") {
+        return { stack: [{ type: "Integer", value: "13" }] };
+      }
+      if (req.operation === "getEnvelopeState") {
+        const id = String(req.args?.[0]?.value ?? "0");
+        return mapStack({
+          creator: { type: "String", value: `0xcreator${id}` },
+          envelopeType: { type: "Integer", value: Number(id) >= 16 ? "2" : "0" },
+          parentEnvelopeId: { type: "Integer", value: "0" },
+          totalAmount: { type: "Integer", value: "100000000" },
+          packetCount: { type: "Integer", value: "1" },
+          openedCount: { type: "Integer", value: "0" },
+          claimedCount: { type: "Integer", value: "0" },
+          remainingAmount: { type: "Integer", value: "100000000" },
+          remainingPackets: { type: "Integer", value: "1" },
+          minNeoRequired: { type: "Integer", value: "0" },
+          minHoldSeconds: { type: "Integer", value: "0" },
+          active: { type: "Boolean", value: true },
+          isExpired: { type: "Boolean", value: false },
+          isDepleted: { type: "Boolean", value: false },
+          currentHolder: { type: "String", value: "0xholder" },
+          message: { type: "String", value: `env-${id}` },
+          expiryTime: { type: "Integer", value: "9999999999" },
+        });
+      }
+
+      throw new Error(`Unexpected operation: ${req.operation}`);
+    });
+
+    const api = useRedEnvelope();
+    await api.loadEnvelopes();
+
+    expect(api.envelopes.value).toHaveLength(18);
+    expect(api.envelopes.value[0].id).toBe("18");
+    expect(api.envelopes.value[17].id).toBe("1");
   });
 
   it("includes claim NFTs when loading envelopes", async () => {
