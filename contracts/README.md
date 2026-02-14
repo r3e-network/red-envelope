@@ -18,4 +18,5 @@ Build output artifacts are generated to:
 
 - The project uses local .NET tool restore (`neo.compiler.csharp`) during build.
 - Contract symbol is `RedEnvelope` (NEP-11 non-divisible token).
+- Envelope NFTs are persistent: open/reclaim flows do not burn NFTs, so holders can keep transferring them.
 - Legacy duplicate lower-case method aliases that caused compiler method-key collisions were removed to keep the contract buildable on the current Neo compiler.

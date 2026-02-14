@@ -53,8 +53,22 @@ const handleOpen = async () => {
     error.value = t("poolUseClaimNotOpen");
     return;
   }
-  opening.value = true;
   error.value = "";
+
+  // Contract rule: each address can open the same spreading envelope only once.
+  if (props.envelope.envelopeType === 0) {
+    try {
+      const openedAmount = await getOpenedAmount(props.envelope.id);
+      if (openedAmount > 0) {
+        error.value = t("alreadyOpenedByYou");
+        return;
+      }
+    } catch {
+      // Non-blocking: proceed and let contract enforce if the check call fails.
+    }
+  }
+
+  opening.value = true;
   try {
     const { txid } = await openEnvelope(props.envelope);
 

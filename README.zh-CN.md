@@ -18,7 +18,7 @@
 - 基于链上随机数的 GAS 红包
 - 双模式：红包池（多人领取）与幸运 NFT（单个传播）
 - NEO 加权幸运加成 — 持有更多 NEO 可提升中奖概率
-- Claim NFT 铸造、转让与打开领取机制
+- Claim NFT 铸造、持续可转让与打开领取机制
 - 可升级合约，支持管理员暂停/恢复熔断开关
 - 双语界面（English / 中文）
 
@@ -93,7 +93,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 1. 创建者发送 GAS，并设置红包数量、NEO 门槛与过期时间。
 2. 用户从红包池领取一个名额后，会铸造一个 **Claim NFT**。
 3. **领取名额不等于拿到 GAS**：必须执行 `OpenClaim` 才能拿到奖励。
-4. 在打开前，Claim NFT 可以转给其他用户。
+4. Claim NFT 在打开前后都可以继续转给其他用户。
 5. 若用户在过期前一直不打开，该用户实际获得 **0 GAS**。
 6. 过期后，仅红包发行者可回收红包池未领取余额与未打开 Claim 的余额。
 
@@ -103,7 +103,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 2. 当前持有者可先打开一次领取随机 GAS，再转给下一位持有者继续打开。
 3. 若持有者只转发不打开，则该持有者 **不会获得奖励**。
 4. 同一地址对同一个红包仅可打开一次。
-5. 当可打开次数用完后，NFT 自动销毁。
+5. 当可打开次数用完后，仅奖励耗尽，NFT 仍可继续转让。
 6. 过期后，仅原发行者可以回收剩余 GAS。
 
 ### NEO 加权幸运加成
@@ -123,6 +123,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 - **仅真实用户可打开/领取**：合约账户不能执行打开或领取动作。
 - **必须打开才会到账**：仅持有或领取 NFT 不会自动转出 GAS。
 - **过期严格生效**：红包过期后不能再打开或领取。
+- **打开/回收流程不会销毁 NFT**：已结算红包仍可作为收藏品持续转让。
 - **最小金额限制**：每个红包总额至少 `1 GAS`，每个份额至少 `0.1 GAS`。
 
 ## 合约 API
@@ -150,7 +151,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 | --------------- | ----------------------- | ---------------------------- | ---------------------------- |
 | `ClaimFromPool` | `poolId`, `claimer`     | `BigInteger`（Claim NFT id） | 领取名额，铸造 Claim NFT。   |
 | `OpenClaim`     | `claimId`, `opener`     | `BigInteger`（GAS 金额）     | 打开 Claim NFT 领取 GAS。    |
-| `TransferClaim` | `claimId`, `from`, `to` | —                            | 转让未打开的 Claim NFT。     |
+| `TransferClaim` | `claimId`, `from`, `to` | —                            | 转让 Claim NFT（可已打开）。 |
 | `ReclaimPool`   | `poolId`, `creator`     | `BigInteger`（退款）         | 过期后创建者回收未领取 GAS。 |
 
 ### 查询（只读）
@@ -187,7 +188,6 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 | ------------------ | ---------------------------------------- | --------------------- |
 | `EnvelopeCreated`  | `id, creator, amount, packetCount, type` | 红包或 Claim NFT 铸造 |
 | `EnvelopeOpened`   | `id, opener, amount`                     | GAS 分发给打开者      |
-| `EnvelopeBurned`   | `id`                                     | NFT 完全消耗          |
 | `EnvelopeRefunded` | `id, creator, amount`                    | 过期后创建者回收      |
 
 ## 工作原理
@@ -198,7 +198,8 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 4. **双模式**：红包池模式（每个名额一个 Claim NFT）与幸运 NFT 模式（单个可转让红包）
 5. **打开即领取**：用户仅在执行打开操作时才会收到 GAS
 6. **过期 + 回收**：过期后仅发行者可回收未打开/剩余的 GAS
-7. **可升级**：合约所有者可通过 `Update(nef, manifest)` 推送更新，无需重新部署
+7. **NFT 持久化**：打开或领完后 NFT 不会销毁，仍可持续转让
+8. **可升级**：合约所有者可通过 `Update(nef, manifest)` 推送更新，无需重新部署
 
 ## 资产配置
 

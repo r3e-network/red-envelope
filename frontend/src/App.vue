@@ -210,7 +210,7 @@ onMounted(() => {
       </button>
     </nav>
 
-    <main class="app-content" :id="`tabpanel-${activeTab}`" role="tabpanel" :aria-labelledby="`tab-${activeTab}`">
+    <main :id="`tabpanel-${activeTab}`" class="app-content" role="tabpanel" :aria-labelledby="`tab-${activeTab}`">
       <div class="contract-banner">
         {{ t("contractLabel") }}
         <a

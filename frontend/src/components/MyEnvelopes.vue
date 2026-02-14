@@ -64,7 +64,7 @@ const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
       role,
       countdown,
       showOpen: active && !!holder,
-      showTransfer: !!holder && env.active && !env.expired && env.envelopeType !== 1,
+      showTransfer: !!holder && env.envelopeType !== 1,
       showReclaim: env.envelopeType !== 2 && env.active && env.expired && env.remainingAmount > 0 && !!creator,
       holdDays: Math.floor(env.minHoldSeconds / 86400),
     };

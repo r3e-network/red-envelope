@@ -349,6 +349,19 @@ async function main() {
       ]);
       const openedAmt = Number(oaRes.stack?.[0]?.value ?? 0);
       check("getOpenedAmount = 1 GAS", openedAmt === 100000000, `${(openedAmt / 1e8).toFixed(4)} GAS`);
+
+      // Even after depletion, NFT should still be transferable.
+      const transferAfterOpenScript = buildInvokeScript("transferEnvelope", [
+        sc.ContractParam.integer(spreadId),
+        sc.ContractParam.hash160(key2.scriptHash),
+        sc.ContractParam.hash160(key1.scriptHash),
+        sc.ContractParam.any(null),
+      ]);
+      const transferAfterOpenLog = await sendTx(key2, transferAfterOpenScript, "TransferDepletedSpreading");
+      if (transferAfterOpenLog) {
+        console.log(`  Events: ${listNotifications(transferAfterOpenLog).join(", ")}`);
+        check("Depleted spreading NFT remains transferable", true);
+      }
     }
   } else {
     console.log("  ⚠️  Skipped — no spreading envelope created");
@@ -498,6 +511,18 @@ async function main() {
       if (ocLog2) {
         console.log(`  Events: ${listNotifications(ocLog2).join(", ")}`);
         check("Transferred claim opened by Key1", true);
+
+        // Opened claim NFT should still be transferable.
+        const transferOpenedClaimScript = buildInvokeScript("transferClaim", [
+          sc.ContractParam.integer(claimId2),
+          sc.ContractParam.hash160(key1.scriptHash),
+          sc.ContractParam.hash160(key2.scriptHash),
+        ]);
+        const transferOpenedClaimLog = await sendTx(key1, transferOpenedClaimScript, "TransferOpenedClaim");
+        if (transferOpenedClaimLog) {
+          console.log(`  Events: ${listNotifications(transferOpenedClaimLog).join(", ")}`);
+          check("Opened claim NFT remains transferable", true);
+        }
       }
     }
   } else {

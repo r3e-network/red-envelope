@@ -356,4 +356,35 @@ describe("useRedEnvelope", () => {
       "Claim NFTs cannot be reclaimed directly; reclaim the parent pool",
     );
   });
+
+  it("allows transferring settled NFTs (inactive/depleted/expired)", async () => {
+    mockInvoke.mockResolvedValue({ txid: "0xabc" });
+    const api = useRedEnvelope();
+    const makeEnvelope = (id: string, envelopeType: number) => ({
+      id,
+      creator: "0xcreator",
+      envelopeType,
+      parentEnvelopeId: "0",
+      totalAmount: 1,
+      packetCount: 1,
+      openedCount: 1,
+      claimedCount: 1,
+      remainingAmount: 0,
+      remainingPackets: 0,
+      minNeoRequired: 0,
+      minHoldSeconds: 0,
+      active: false,
+      expired: true,
+      depleted: true,
+      currentHolder: "0xholder",
+      message: "",
+      expiryTime: 0,
+    });
+
+    await api.transferEnvelope(makeEnvelope("30", 0), "NQvRtu7k7M5J8fS8gqZ2tu5G9D7wT7LQ1W");
+    await api.transferEnvelope(makeEnvelope("31", 2), "NQvRtu7k7M5J8fS8gqZ2tu5G9D7wT7LQ1W");
+
+    const ops = mockInvoke.mock.calls.map((call) => call[0].operation);
+    expect(ops).toEqual(["transferEnvelope", "transferClaim"]);
+  });
 });

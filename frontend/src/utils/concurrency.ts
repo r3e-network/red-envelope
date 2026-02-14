@@ -9,18 +9,18 @@ export async function pAll<T>(tasks: (() => Promise<T>)[], limit = 6): Promise<T
   if (tasks.length === 0) return [];
 
   const results: T[] = new Array(tasks.length);
+  const workerCount = Number.isFinite(limit) ? Math.max(1, Math.floor(limit)) : 1;
   let next = 0;
 
   async function worker() {
-    while (true) {
+    while (next < tasks.length) {
       const idx = next;
-      if (idx >= tasks.length) break;
       next = idx + 1;
       results[idx] = await tasks[idx]();
     }
   }
 
-  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => worker());
+  const workers = Array.from({ length: Math.min(workerCount, tasks.length) }, () => worker());
   await Promise.all(workers);
   return results;
 }

@@ -1,0 +1,29 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "contracts", "contracts", "{A73F2606-6D4C-3EEE-1759-0E59DCFEF523}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RedEnvelope", "contracts\RedEnvelope.csproj", "{A772AD18-25E4-02CD-2250-99D8BCE28073}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A772AD18-25E4-02CD-2250-99D8BCE28073}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A772AD18-25E4-02CD-2250-99D8BCE28073}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A772AD18-25E4-02CD-2250-99D8BCE28073}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A772AD18-25E4-02CD-2250-99D8BCE28073}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A772AD18-25E4-02CD-2250-99D8BCE28073} = {A73F2606-6D4C-3EEE-1759-0E59DCFEF523}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {65EDECA3-FCA7-4C13-8CAD-B8E6CAA7AD16}
+	EndGlobalSection
+EndGlobal

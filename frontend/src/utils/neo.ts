@@ -4,7 +4,7 @@ const BASE58_MAP = new Map<string, number>();
 for (let i = 0; i < BASE58_ALPHABET.length; i++) BASE58_MAP.set(BASE58_ALPHABET[i], i);
 
 function base58Decode(str: string): Uint8Array {
-  let bytes = [0];
+  const bytes = [0];
   for (const ch of str) {
     const val = BASE58_MAP.get(ch);
     if (val === undefined) throw new Error(`Invalid base58 char: ${ch}`);
@@ -82,6 +82,7 @@ export function parseStackItem(item: unknown): unknown {
         const binary = atob(String(value));
         const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
         const decodedText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        // eslint-disable-next-line no-control-regex
         const hasControlChars = /[\u0000-\u001f\u007f]/.test(decodedText);
         if (!hasControlChars) return decodedText;
 

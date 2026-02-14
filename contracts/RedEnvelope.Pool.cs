@@ -20,7 +20,6 @@ namespace RedEnvelope.Contract
             AssertDirectUserInvocation();
             ExecutionEngine.Assert(Runtime.CheckWitness(claimer), "unauthorized");
             ExecutionEngine.Assert(!IsContractAccount(claimer), "contracts cannot claim");
-            AssertNotEnvelopeOwnerActor(claimer);
 
             EnvelopeData pool = GetEnvelopeData(poolId);
             ExecutionEngine.Assert(EnvelopeExists(pool), "pool not found");
@@ -96,6 +95,7 @@ namespace RedEnvelope.Contract
 
         /// <summary>
         /// Open a claim NFT and claim all GAS in that claim.
+        /// The NFT remains on-chain and transferable after opening.
         /// </summary>
         public static BigInteger OpenClaim(BigInteger claimId, UInt160 opener)
         {
@@ -103,7 +103,6 @@ namespace RedEnvelope.Contract
             AssertDirectUserInvocation();
             ExecutionEngine.Assert(Runtime.CheckWitness(opener), "unauthorized");
             ExecutionEngine.Assert(!IsContractAccount(opener), "contracts cannot open");
-            AssertNotEnvelopeOwnerActor(opener);
 
             ByteString tokenId = (ByteString)claimId.ToByteArray();
             RedEnvelopeState token = GetTokenState(tokenId);
@@ -134,15 +133,13 @@ namespace RedEnvelope.Contract
                 "GAS transfer failed");
             OnEnvelopeOpened(claimId, opener, amount, 0);
 
-            Burn(tokenId);
-            OnEnvelopeBurned(claimId, opener);
-
             return amount;
         }
 
 
         /// <summary>
-        /// Transfer claim NFT only before it is opened.
+        /// Transfer claim NFT.
+        /// Claim NFTs remain transferable after opening/expiry/reclaim as ownership collectibles.
         /// </summary>
         public static void TransferClaim(BigInteger claimId, UInt160 from, UInt160 to)
         {
@@ -151,8 +148,6 @@ namespace RedEnvelope.Contract
             ExecutionEngine.Assert(Runtime.CheckWitness(from), "unauthorized");
             ExecutionEngine.Assert(to != null && to.IsValid, "invalid recipient");
             ExecutionEngine.Assert(!IsContractAccount(to), "contract recipient not allowed");
-            AssertNotEnvelopeOwnerActor(from);
-            AssertNotEnvelopeOwnerActor(to);
 
             ByteString tokenId = (ByteString)claimId.ToByteArray();
             RedEnvelopeState token = GetTokenState(tokenId);
@@ -164,9 +159,6 @@ namespace RedEnvelope.Contract
 
             EnvelopeData claim = GetEnvelopeData(claimId);
             ExecutionEngine.Assert(EnvelopeExists(claim), "claim not found");
-            ExecutionEngine.Assert(claim.Active, "not active");
-            ExecutionEngine.Assert(claim.OpenedCount == 0, "already opened");
-            ExecutionEngine.Assert(Runtime.Time <= (ulong)claim.ExpiryTime, "expired");
 
             ExecutionEngine.Assert(Transfer(to, tokenId, null), "transfer failed");
         }
@@ -182,7 +174,6 @@ namespace RedEnvelope.Contract
             AssertNotPaused();
             AssertDirectUserInvocation();
             ExecutionEngine.Assert(Runtime.CheckWitness(creator), "unauthorized");
-            AssertNotEnvelopeOwnerActor(creator);
 
             EnvelopeData pool = GetEnvelopeData(poolId);
             ExecutionEngine.Assert(EnvelopeExists(pool), "pool not found");

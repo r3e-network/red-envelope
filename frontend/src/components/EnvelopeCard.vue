@@ -16,7 +16,7 @@ export type EnrichedEnvelope = EnvelopeItem & {
   holdDays: number;
 };
 
-const props = defineProps<{
+defineProps<{
   env: EnrichedEnvelope;
   spreading?: boolean;
   reclaiming?: boolean;

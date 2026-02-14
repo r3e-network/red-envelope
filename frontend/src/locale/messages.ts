@@ -16,20 +16,20 @@ export const messages = {
   typePool: { en: "🎁 Red Envelope Pool", zh: "🎁 红包池" },
   typeNft: { en: "🎫 Lucky NFT", zh: "🎫 幸运 NFT" },
   typePoolDesc: {
-    en: "Split GAS into claim slots — each claimer gets one Claim NFT. Reward is received only after opening, before expiry.",
-    zh: "将 GAS 分成多个领取位 — 每位领取者获得一个 Claim NFT。必须在过期前打开后才会到账。",
+    en: "Split GAS into claim slots — each claimer gets one Claim NFT. Reward is received only after opening before expiry, and the NFT remains transferable.",
+    zh: "将 GAS 分成多个领取位 — 每位领取者获得一个 Claim NFT。必须在过期前打开后才会到账，且 NFT 打开后仍可继续转让。",
   },
   typeNftDesc: {
-    en: "One single Lucky NFT passed around — each holder must open to receive reward, then can pass it on. Expires and can be reclaimed by issuer.",
-    zh: "单个 Lucky NFT 传递 — 持有者必须先打开才会获得奖励，然后可继续转给他人。到期后仅发行者可回收。",
+    en: "One single Lucky NFT passed around — each holder must open to receive reward, then can pass it on. GAS can be reclaimed after expiry, but the NFT remains transferable.",
+    zh: "单个 Lucky NFT 传递 — 持有者必须先打开才会获得奖励，然后可继续转给他人。到期后可回收剩余 GAS，但 NFT 仍可继续转让。",
   },
   flowBannerPool: {
     en: "Send GAS → Create Pool → Claim NFT Slot → Open Before Expiry → Receive GAS",
     zh: "发送 GAS → 创建红包池 → 领取 Claim NFT → 过期前打开 → 获得 GAS",
   },
   flowBannerNft: {
-    en: "Send GAS → Mint Single Lucky NFT → Open Then Transfer → Expire/Reclaim",
-    zh: "发送 GAS → 铸造单个 Lucky NFT → 先打开再转让 → 过期/回收",
+    en: "Send GAS → Mint Single Lucky NFT → Open/Claim GAS → Keep Sharing NFT",
+    zh: "发送 GAS → 铸造单个 Lucky NFT → 打开领取 GAS → 持续分享 NFT",
   },
   amountSection: { en: "💰 Amount", zh: "💰 金额" },
   neoGateSection: { en: "🔒 NEO Gate", zh: "🔒 NEO 门槛" },
@@ -79,8 +79,8 @@ export const messages = {
     zh: "传播型 NFT 可打开领取 GAS，然后转给朋友",
   },
   claimNftHint: {
-    en: "Claim NFTs come from pool claims and can be opened or transferred before opening",
-    zh: "Claim NFT 来自红包池领取，可在打开前转让，打开后到账",
+    en: "Claim NFTs come from pool claims and remain transferable even after opening",
+    zh: "Claim NFT 来自红包池领取，打开后仍可继续转让",
   },
   claimNftReadyToOpen: { en: "{0} ready to open", zh: "{0} 个可立即打开" },
   youAreCreator: { en: "👑 Creator", zh: "👑 创建者" },
@@ -186,7 +186,7 @@ export const messages = {
   historyClaimedGas: { en: "Claimed GAS", zh: "已领取 GAS" },
   historyNotOpened: { en: "Not opened yet", zh: "尚未打开" },
   historyLoading: { en: "Loading history...", zh: "加载记录中..." },
-  historyNoHolder: { en: "No holder (burned)", zh: "无持有者（已销毁）" },
+  historyNoHolder: { en: "No holder", zh: "暂无持有者" },
 
   // ── Create Form (two-column) ────────────────────────
   createFlowTitle: { en: "How it works", zh: "流程说明" },
@@ -194,19 +194,20 @@ export const messages = {
   createFlowPoolStep2: { en: "2. Set slots, NEO gate and expiry", zh: "2. 设置份额、NEO 门槛和过期时间" },
   createFlowPoolStep3: { en: "3. Others claim one slot NFT each", zh: "3. 其他用户各自领取一个份额 NFT" },
   createFlowPoolStep4: {
-    en: "4. Holder must open before expiry to receive GAS",
-    zh: "4. 持有者需在过期前打开才会到账",
+    en: "4. Holder must open before expiry to receive GAS; NFT remains transferable",
+    zh: "4. 持有者需在过期前打开才会到账；NFT 会持续可转让",
   },
   createFlowNftStep1: { en: "1. Choose Lucky NFT type & set GAS", zh: "1. 选择 Lucky NFT 并设置 GAS" },
   createFlowNftStep2: { en: "2. Set open count, NEO gate and expiry", zh: "2. 设置打开次数、NEO 门槛和过期时间" },
   createFlowNftStep3: { en: "3. Current holder opens to get random GAS", zh: "3. 当前持有者先打开领取随机 GAS" },
   createFlowNftStep4: {
-    en: "4. Then transfer to others to continue; no open means no reward",
-    zh: "4. 再转给他人继续；不打开就没有奖励",
+    en: "4. Then transfer to others to continue; NFT is not burned after rewards are claimed",
+    zh: "4. 再转给他人继续；奖励领完后 NFT 也不会销毁",
   },
 
   // ── Hardcoded string replacements ─────────────────────
   poolUseClaimNotOpen: { en: "Pool envelopes use Claim, not Open", zh: "池红包请使用「领取」而非「打开」" },
+  alreadyOpenedByYou: { en: "You already opened this envelope before", zh: "你已打开过该红包，无法重复打开" },
   claimedTx: { en: "Claimed! TX: {0}", zh: "已领取！TX: {0}" },
   contractLabel: { en: "Contract:", zh: "合约：" },
   hoursMinutes: { en: "{0}h {1}m", zh: "{0}时{1}分" },

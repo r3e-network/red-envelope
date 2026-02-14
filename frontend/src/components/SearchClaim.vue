@@ -66,7 +66,7 @@ const canOpenOrClaim = computed(() => {
 const canTransfer = computed(() => {
   const env = envelope.value;
   if (!env) return false;
-  return env.active && !env.expired && env.envelopeType !== 1 && isHolder.value;
+  return env.envelopeType !== 1 && isHolder.value;
 });
 
 const canReclaim = computed(() => {

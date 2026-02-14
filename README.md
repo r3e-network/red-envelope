@@ -18,7 +18,7 @@ Send lucky GAS gifts to friends on Neo N3
 - GAS red envelopes with on-chain randomness
 - Two modes: Pool (multi-claimer) and Lucky NFT (single spreading)
 - NEO-weighted luck boost — holding more NEO improves your odds
-- Claim NFT minting, transfer, and open-to-earn mechanics
+- Claim NFT minting, persistent transferability, and open-to-earn mechanics
 - Upgradable contract with admin pause/resume circuit breaker
 - Bilingual UI (English / 中文)
 
@@ -93,7 +93,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 1. Creator sends GAS and configures packet count, NEO gate, and expiry time.
 2. Users claim one slot from the pool; each claim mints one **Claim NFT**.
 3. **Claiming is not the same as receiving GAS** — the holder must call `OpenClaim` to receive reward.
-4. Before opening, the Claim NFT can be transferred to another user.
+4. Claim NFTs remain transferable before and after opening.
 5. If a user never opens the Claim NFT before expiry, they receive **0 GAS**.
 6. After expiry, only the pool issuer can reclaim unclaimed pool balance and unopened claim balances.
 
@@ -103,7 +103,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 2. The current holder can choose to open once for random GAS, then transfer to next holder.
 3. If a holder only transfers without opening, that holder gets **no reward**.
 4. Each address can open that envelope only once.
-5. When all open-count is used, the NFT is burned.
+5. When all open-count is used, reward is depleted but the NFT remains transferable.
 6. After expiry, only the original issuer can reclaim remaining GAS.
 
 ### NEO-Weighted Luck Boost
@@ -123,6 +123,7 @@ More NEO improves your odds of a larger reward but never guarantees the maximum.
 - **Only real users can open/claim**: contract accounts are rejected for open/claim actions.
 - **Open is required to receive GAS**: holding or claiming NFT alone does not transfer GAS.
 - **Expiry is enforced**: open/claim operations are blocked after expiry.
+- **NFTs are never burned by open/reclaim flows**: settled envelopes can still be transferred as collectibles.
 - **Minimum amounts**: total per envelope is at least `1 GAS`, and each packet/slot is at least `0.1 GAS`.
 
 ## Contract API
@@ -150,7 +151,7 @@ To run E2E tests, set `KEY1_WIF` and `KEY2_WIF` and execute `node scripts/test-e
 | --------------- | ----------------------- | --------------------------- | -------------------------------------------- |
 | `ClaimFromPool` | `poolId`, `claimer`     | `BigInteger` (claim NFT id) | Claim a slot; mints a Claim NFT.             |
 | `OpenClaim`     | `claimId`, `opener`     | `BigInteger` (GAS amount)   | Open a Claim NFT to receive GAS.             |
-| `TransferClaim` | `claimId`, `from`, `to` | —                           | Transfer an unopened Claim NFT.              |
+| `TransferClaim` | `claimId`, `from`, `to` | —                           | Transfer a Claim NFT (opened or unopened).   |
 | `ReclaimPool`   | `poolId`, `creator`     | `BigInteger` (refund)       | Creator reclaims unclaimed GAS after expiry. |
 
 ### Query (read-only)
@@ -187,7 +188,6 @@ To run E2E tests, set `KEY1_WIF` and `KEY2_WIF` and execute `node scripts/test-e
 | ------------------ | ---------------------------------------- | ----------------------------- |
 | `EnvelopeCreated`  | `id, creator, amount, packetCount, type` | Envelope or Claim NFT minted  |
 | `EnvelopeOpened`   | `id, opener, amount`                     | GAS distributed to opener     |
-| `EnvelopeBurned`   | `id`                                     | NFT fully consumed            |
 | `EnvelopeRefunded` | `id, creator, amount`                    | Creator reclaims after expiry |
 
 ## How It Works
@@ -198,7 +198,8 @@ To run E2E tests, set `KEY1_WIF` and `KEY2_WIF` and execute `node scripts/test-e
 4. **Two Modes**: Pool mode (claim NFT per slot) and Lucky NFT mode (single transferable envelope)
 5. **Open-to-Earn**: Users receive GAS only when they execute open operation
 6. **Expiry + Reclaim**: After expiry, only issuer can reclaim unopened/remaining GAS
-7. **Upgradable**: Contract owner can push updates via `Update(nef, manifest)` without redeployment
+7. **Persistent NFTs**: Opened/depleted envelopes remain as transferable NFTs (no burn on settlement)
+8. **Upgradable**: Contract owner can push updates via `Update(nef, manifest)` without redeployment
 
 ## Assets
 

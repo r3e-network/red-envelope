@@ -20,7 +20,6 @@ namespace RedEnvelope.Contract
             AssertDirectUserInvocation();
             ExecutionEngine.Assert(Runtime.CheckWitness(opener), "unauthorized");
             ExecutionEngine.Assert(!IsContractAccount(opener), "contracts cannot open");
-            AssertNotEnvelopeOwnerActor(opener);
 
             ByteString tokenId = (ByteString)envelopeId.ToByteArray();
             RedEnvelopeState token = GetTokenState(tokenId);
@@ -68,18 +67,14 @@ namespace RedEnvelope.Contract
 
             OnEnvelopeOpened(envelopeId, opener, amount, remainingPackets);
 
-            if (remainingPackets == 0)
-            {
-                Burn(tokenId);
-                OnEnvelopeBurned(envelopeId, opener);
-            }
-
             return amount;
         }
 
 
         /// <summary>
         /// Transfer spreading envelope NFT.
+        /// NFT ownership can continue circulating even after all reward packets are opened
+        /// or after expiry/reclaim.
         /// </summary>
         public static void TransferEnvelope(BigInteger envelopeId, UInt160 from, UInt160 to, object data)
         {
@@ -88,8 +83,6 @@ namespace RedEnvelope.Contract
             ExecutionEngine.Assert(Runtime.CheckWitness(from), "unauthorized");
             ExecutionEngine.Assert(to != null && to.IsValid, "invalid recipient");
             ExecutionEngine.Assert(!IsContractAccount(to), "contract recipient not allowed");
-            AssertNotEnvelopeOwnerActor(from);
-            AssertNotEnvelopeOwnerActor(to);
 
             ByteString tokenId = (ByteString)envelopeId.ToByteArray();
             RedEnvelopeState token = GetTokenState(tokenId);
@@ -98,8 +91,6 @@ namespace RedEnvelope.Contract
 
             EnvelopeData envelope = GetEnvelopeData(envelopeId);
             ExecutionEngine.Assert(EnvelopeExists(envelope), "envelope not found");
-            ExecutionEngine.Assert(envelope.Active, "not active");
-            ExecutionEngine.Assert(Runtime.Time <= (ulong)envelope.ExpiryTime, "expired");
 
             ExecutionEngine.Assert(Transfer(to, tokenId, data), "transfer failed");
         }
@@ -113,7 +104,6 @@ namespace RedEnvelope.Contract
             AssertNotPaused();
             AssertDirectUserInvocation();
             ExecutionEngine.Assert(Runtime.CheckWitness(creator), "unauthorized");
-            AssertNotEnvelopeOwnerActor(creator);
 
             EnvelopeData envelope = GetEnvelopeData(envelopeId);
             ExecutionEngine.Assert(EnvelopeExists(envelope), "envelope not found");
@@ -133,23 +123,7 @@ namespace RedEnvelope.Contract
                 GAS.Transfer(Runtime.ExecutingScriptHash, creator, refundAmount),
                 "GAS transfer failed");
 
-            ByteString tokenId = (ByteString)envelopeId.ToByteArray();
-            RedEnvelopeState token = GetTokenState(tokenId);
-            UInt160 currentHolder = null;
-            if (token != null)
-            {
-                currentHolder = (UInt160)OwnerOf(tokenId);
-                if (currentHolder != null && currentHolder.IsValid)
-                {
-                    Burn(tokenId);
-                }
-            }
-
             OnEnvelopeRefunded(envelopeId, creator, refundAmount);
-            if (currentHolder != null)
-            {
-                OnEnvelopeBurned(envelopeId, currentHolder);
-            }
 
             return refundAmount;
         }

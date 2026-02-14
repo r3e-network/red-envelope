@@ -16,7 +16,7 @@ namespace RedEnvelope.Contract
     /// Envelope types:
     /// 0 = Spreading (single NFT passed along, each holder opens once for random GAS)
     /// 1 = Lucky Pool (pool can be claimed by many users; each claim mints a claim NFT)
-    /// 2 = Claim NFT (minted from lucky pool claim; can transfer before opening)
+    /// 2 = Claim NFT (minted from lucky pool claim; remains transferable after opening)
     /// </summary>
     [DisplayName("RedEnvelope")]
     [ContractAuthor("R3E Network", "dev@r3e.network")]
@@ -106,10 +106,6 @@ namespace RedEnvelope.Contract
             BigInteger amount,
             BigInteger remainingPackets);
 
-        public delegate void EnvelopeBurnedHandler(
-            BigInteger envelopeId,
-            UInt160 lastHolder);
-
         public delegate void EnvelopeRefundedHandler(
             BigInteger envelopeId,
             UInt160 creator,
@@ -128,9 +124,6 @@ namespace RedEnvelope.Contract
 
         [DisplayName("EnvelopeOpened")]
         public static event EnvelopeOpenedHandler OnEnvelopeOpened;
-
-        [DisplayName("EnvelopeBurned")]
-        public static event EnvelopeBurnedHandler OnEnvelopeBurned;
 
         [DisplayName("EnvelopeRefunded")]
         public static event EnvelopeRefundedHandler OnEnvelopeRefunded;
@@ -195,7 +188,7 @@ namespace RedEnvelope.Contract
             object[] config = data == null ? new object[0] : (object[])data;
             BigInteger packetCount = config.Length > 0 ? (BigInteger)config[0] : 1;
             BigInteger expiryMs = config.Length > 1 ? (BigInteger)config[1] : DEFAULT_EXPIRY_MS;
-            string message = config.Length > 2 ? (string)config[2] : "";
+            string message = config.Length > 2 && config[2] != null ? (string)config[2] : "";
             BigInteger minNeo = config.Length > 3 ? (BigInteger)config[3] : DEFAULT_MIN_NEO;
             BigInteger minHold = config.Length > 4 ? (BigInteger)config[4] : DEFAULT_MIN_HOLD_SECONDS;
             BigInteger envelopeType = config.Length > 5 ? (BigInteger)config[5] : ENVELOPE_TYPE_SPREADING;
@@ -204,6 +197,7 @@ namespace RedEnvelope.Contract
             ExecutionEngine.Assert(amount >= packetCount * MIN_PER_PACKET, "min 0.1 GAS/packet");
             ExecutionEngine.Assert(minNeo >= 0, "min NEO cannot be negative");
             ExecutionEngine.Assert(minHold >= 0, "min hold cannot be negative");
+            ExecutionEngine.Assert(message.Length <= 256, "message too long (max 256 chars)");
             ExecutionEngine.Assert(
                 envelopeType == ENVELOPE_TYPE_SPREADING || envelopeType == ENVELOPE_TYPE_POOL,
                 "invalid envelope type");
@@ -321,12 +315,6 @@ namespace RedEnvelope.Contract
             ExecutionEngine.Assert(
                 Runtime.CallingScriptHash == Runtime.EntryScriptHash,
                 "contract caller not allowed");
-        }
-
-        internal static void AssertNotEnvelopeOwnerActor(UInt160 account)
-        {
-            // Owner can participate in envelope flows like any other EOA.
-            // Keep this helper for backward-compatible call sites.
         }
 
         internal static void AssertNotPaused()
