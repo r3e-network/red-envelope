@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseStackItem, parseInvokeResult, addressToScriptHashHex } from "./neo";
+import { parseStackItem, parseInvokeResult, addressToScriptHashHex, normalizeScriptHashHex } from "./neo";
 
 describe("parseStackItem", () => {
   it("parses Integer with string value as BigInt", () => {
@@ -100,6 +100,15 @@ describe("parseStackItem", () => {
     const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(text)));
     expect(parseStackItem({ type: "ByteString", value: b64 })).toBe("0x3039383736353433323130393837363534333231");
   });
+
+  it("parses Hash160 values with and without 0x prefix", () => {
+    expect(parseStackItem({ type: "Hash160", value: "0xA5DE523AE9D99BE784A536E9412B7A3CBE049E1A" })).toBe(
+      "0xa5de523ae9d99be784a536e9412b7a3cbe049e1a",
+    );
+    expect(parseStackItem({ type: "Hash160", value: "a5de523ae9d99be784a536e9412b7a3cbe049e1a" })).toBe(
+      "0xa5de523ae9d99be784a536e9412b7a3cbe049e1a",
+    );
+  });
 });
 
 describe("parseInvokeResult", () => {
@@ -141,5 +150,23 @@ describe("addressToScriptHashHex", () => {
     expect(hex).toBeTruthy();
     expect(hex.startsWith("0x")).toBe(true);
     expect(hex.length).toBe(42); // "0x" + 40 hex chars
+  });
+});
+
+describe("normalizeScriptHashHex", () => {
+  it("normalizes Neo addresses into 0x-prefixed hash", () => {
+    const normalized = normalizeScriptHashHex("NNLi44dJNXtDNSBkofB48aTVYtb1zZrNEs");
+    expect(normalized).toBe("0xa5de523ae9d99be784a536e9412b7a3cbe049e1a");
+  });
+
+  it("normalizes base64-encoded UInt160 payloads", () => {
+    const bytes = Uint8Array.from({ length: 20 }, (_, i) => i + 1);
+    const b64 = btoa(String.fromCharCode(...bytes));
+    expect(normalizeScriptHashHex(b64)).toBe("0x14131211100f0e0d0c0b0a090807060504030201");
+  });
+
+  it("returns empty string for non-hash input", () => {
+    expect(normalizeScriptHashHex("not-a-hash")).toBe("");
+    expect(normalizeScriptHashHex(null)).toBe("");
   });
 });

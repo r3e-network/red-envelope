@@ -19,6 +19,8 @@ type StackItem =
   | { type: "Integer"; value: string }
   | { type: "Boolean"; value: boolean }
   | { type: "String"; value: string }
+  | { type: "Hash160"; value: string }
+  | { type: "ByteString"; value: string }
   | { type: "Map"; value: Array<{ key: StackItem; value: StackItem }> };
 
 function mapStack(values: Record<string, StackItem>): { stack: StackItem[] } {
@@ -135,6 +137,39 @@ describe("useRedEnvelope", () => {
     await api.loadEnvelopes();
 
     expect(api.envelopes.value.some((e) => e.envelopeType === 2)).toBe(true);
+  });
+
+  it("normalizes creator/currentHolder hashes returned in Hash160 and bare-hex forms", async () => {
+    mockInvokeRead.mockImplementation(async (req: { operation: string }) => {
+      if (req.operation === "getEnvelopeState") {
+        return mapStack({
+          creator: { type: "Hash160", value: "A5DE523AE9D99BE784A536E9412B7A3CBE049E1A" },
+          envelopeType: { type: "Integer", value: "1" },
+          parentEnvelopeId: { type: "Integer", value: "0" },
+          totalAmount: { type: "Integer", value: "200000000" },
+          packetCount: { type: "Integer", value: "2" },
+          openedCount: { type: "Integer", value: "0" },
+          claimedCount: { type: "Integer", value: "0" },
+          remainingAmount: { type: "Integer", value: "200000000" },
+          remainingPackets: { type: "Integer", value: "2" },
+          minNeoRequired: { type: "Integer", value: "0" },
+          minHoldSeconds: { type: "Integer", value: "0" },
+          active: { type: "Boolean", value: true },
+          isExpired: { type: "Boolean", value: false },
+          isDepleted: { type: "Boolean", value: false },
+          currentHolder: { type: "Hash160", value: "0000000000000000000000000000000000000000" },
+          message: { type: "String", value: "pool" },
+          expiryTime: { type: "Integer", value: "9999999999" },
+        });
+      }
+      throw new Error(`Unexpected operation: ${req.operation}`);
+    });
+
+    const api = useRedEnvelope();
+    const state = await api.fetchEnvelopeState("99");
+    expect(state).toBeTruthy();
+    expect(state?.creator).toBe("0xa5de523ae9d99be784a536e9412b7a3cbe049e1a");
+    expect(state?.currentHolder).toBe("0x0000000000000000000000000000000000000000");
   });
 
   it("exposes exact pool claimed amount for current wallet", async () => {

@@ -2,7 +2,7 @@ import { ref } from "vue";
 import { useWallet } from "./useWallet";
 import { CONTRACT_HASH } from "@/config/contract";
 import { fromFixed8, toFixed8 } from "@/utils/format";
-import { parseInvokeResult } from "@/utils/neo";
+import { normalizeScriptHashHex, parseInvokeResult } from "@/utils/neo";
 import { pAll } from "@/utils/concurrency";
 
 export const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
@@ -323,9 +323,12 @@ function mapEnvelopeData(id: string, d: Record<string, unknown>): EnvelopeItem {
   const expired = Boolean(d.isExpired);
   const depleted = Boolean(d.isDepleted);
 
+  const creator = normalizeScriptHashHex(d.creator) || String(d.creator ?? "");
+  const currentHolder = normalizeScriptHashHex(d.currentHolder) || String(d.currentHolder ?? "");
+
   return {
     id,
-    creator: String(d.creator ?? ""),
+    creator,
     envelopeType,
     parentEnvelopeId: String(d.parentEnvelopeId ?? "0"),
     totalAmount: fromFixed8(Number(d.totalAmount ?? 0)),
@@ -339,7 +342,7 @@ function mapEnvelopeData(id: string, d: Record<string, unknown>): EnvelopeItem {
     active,
     expired,
     depleted,
-    currentHolder: String(d.currentHolder ?? ""),
+    currentHolder,
     message: String(d.message ?? ""),
     expiryTime,
   };

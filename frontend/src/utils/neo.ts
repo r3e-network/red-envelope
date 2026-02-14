@@ -2,6 +2,19 @@
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const BASE58_MAP = new Map<string, number>();
 for (let i = 0; i < BASE58_ALPHABET.length; i++) BASE58_MAP.set(BASE58_ALPHABET[i], i);
+const HASH160_RE = /^[0-9a-f]{40}$/;
+const HASH160_PREFIX_RE = /^0x[0-9a-f]{40}$/;
+const NEO_ADDRESS_RE = /^N[1-9A-HJ-NP-Za-km-z]{33}$/;
+
+function bytesToScriptHashHex(bytes: Uint8Array): string {
+  return (
+    "0x" +
+    Array.from(bytes)
+      .reverse()
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
 
 function base58Decode(str: string): Uint8Array {
   const bytes = [0];
@@ -37,16 +50,39 @@ export function addressToScriptHashHex(address: string): string {
     // Neo N3 address = 1 version + 20 script-hash + 4 checksum = 25 bytes
     if (decoded.length !== 25) return "";
     const scriptHash = decoded.slice(1, 21);
-    return (
-      "0x" +
-      Array.from(scriptHash)
-        .reverse()
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("")
-    );
+    return bytesToScriptHashHex(scriptHash);
   } catch {
     return "";
   }
+}
+
+/**
+ * Normalize script-hash-ish values into 0x-prefixed lowercase UInt160 hex.
+ * Accepts:
+ * - "0x..." or bare 40-hex
+ * - Neo N3 addresses (N...)
+ * - base64-encoded 20-byte payloads
+ */
+export function normalizeScriptHashHex(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const raw = value.trim();
+  if (!raw) return "";
+
+  const lower = raw.toLowerCase();
+  if (HASH160_PREFIX_RE.test(lower)) return lower;
+  if (HASH160_RE.test(lower)) return `0x${lower}`;
+
+  if (NEO_ADDRESS_RE.test(raw)) return addressToScriptHashHex(raw);
+
+  try {
+    const binary = atob(raw);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    if (bytes.length === 20) return bytesToScriptHashHex(bytes);
+  } catch {
+    // not base64
+  }
+
+  return "";
 }
 
 /** Parse a Neo N3 stack item from invokeRead response */
@@ -85,13 +121,7 @@ export function parseStackItem(item: unknown): unknown {
         // Neo UInt160 script hashes are 20-byte byte strings.
         // Always normalize these to 0x-prefixed little-endian hex so address matching is stable.
         if (bytes.length === 20) {
-          return (
-            "0x" +
-            Array.from(bytes)
-              .reverse()
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join("")
-          );
+          return bytesToScriptHashHex(bytes);
         }
 
         const decodedText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -99,6 +129,10 @@ export function parseStackItem(item: unknown): unknown {
       } catch {
         return String(value);
       }
+    }
+    case "Hash160": {
+      const normalized = normalizeScriptHashHex(value);
+      return normalized || String(value ?? "");
     }
     case "Array":
       return Array.isArray(value) ? value.map(parseStackItem) : [];
