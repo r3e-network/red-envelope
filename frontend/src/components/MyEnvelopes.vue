@@ -37,8 +37,8 @@ watch(connected, (isConnected) => {
 const enrichedEnvelopes = computed<EnrichedEnvelope[]>(() =>
   envelopes.value.map((env) => {
     const addr = address.value;
-    // Contract returns base64-encoded UInt160 script hash; wallet returns Neo N3 address.
-    // Convert wallet address to base64 script hash for comparison.
+    // Contract fields are normalized to 0x-prefixed UInt160 script-hash hex.
+    // Convert wallet address to the same representation for stable comparisons.
     const addrHash = addr ? addressToScriptHashHex(addr) : "";
     const holder = addrHash && env.currentHolder === addrHash;
     const creator = addrHash && env.creator === addrHash;

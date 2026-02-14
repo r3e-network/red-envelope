@@ -92,13 +92,13 @@ describe("parseStackItem", () => {
     const bytes = Uint8Array.from({ length: 20 }, (_, i) => i + 1);
     const b64 = btoa(String.fromCharCode(...bytes));
     const result = parseStackItem({ type: "ByteString", value: b64 });
-    expect(result).toBe("0x" + "14131211100f0e0d0c0b0a09080706050403020100".slice(0, 40));
+    expect(result).toBe("0x14131211100f0e0d0c0b0a090807060504030201");
   });
 
-  it("keeps printable 20-byte ByteString values as text", () => {
+  it("normalizes printable 20-byte ByteString values to script-hash hex", () => {
     const text = "12345678901234567890"; // exactly 20 bytes
     const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(text)));
-    expect(parseStackItem({ type: "ByteString", value: b64 })).toBe(text);
+    expect(parseStackItem({ type: "ByteString", value: b64 })).toBe("0x3039383736353433323130393837363534333231");
   });
 });
 

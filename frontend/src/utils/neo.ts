@@ -81,13 +81,9 @@ export function parseStackItem(item: unknown): unknown {
       try {
         const binary = atob(String(value));
         const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-        const decodedText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-        // eslint-disable-next-line no-control-regex
-        const hasControlChars = /[\u0000-\u001f\u007f]/.test(decodedText);
-        if (!hasControlChars) return decodedText;
 
-        // UInt160 script hashes are exactly 20 bytes and often non-printable.
-        // Only treat as hash when payload does not look like display text.
+        // Neo UInt160 script hashes are 20-byte byte strings.
+        // Always normalize these to 0x-prefixed little-endian hex so address matching is stable.
         if (bytes.length === 20) {
           return (
             "0x" +
@@ -97,6 +93,8 @@ export function parseStackItem(item: unknown): unknown {
               .join("")
           );
         }
+
+        const decodedText = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
         return decodedText;
       } catch {
         return String(value);
