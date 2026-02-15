@@ -379,6 +379,16 @@ body {
     width: 100%;
   }
 
+  .my-envelopes .inspector-controls,
+  .my-envelopes .inspector-share-actions {
+    flex-direction: column;
+  }
+
+  .my-envelopes .inspector-controls .btn,
+  .my-envelopes .inspector-share-actions .btn {
+    width: 100%;
+  }
+
   .create-wait-card {
     width: 94vw;
     padding: 1rem;
@@ -2152,6 +2162,8 @@ body {
   margin-top: 0.45rem;
   font-size: 0.74rem;
   color: #f2d19c;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .share-gameplay {
@@ -2159,6 +2171,8 @@ body {
   font-size: 0.71rem;
   color: #d3b079;
   line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .share-actions {

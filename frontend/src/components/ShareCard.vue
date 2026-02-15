@@ -164,15 +164,16 @@ function drawShareImage(canvas: HTMLCanvasElement): void {
   // Address
   ctx.fillStyle = "#7a5555";
   ctx.font = "12px monospace";
-  ctx.fillText(formatHash(props.address), W / 2, 308);
+  const maxCenteredTextWidth = W - 52;
+  ctx.fillText(fitCanvasText(ctx, formatHash(props.address), maxCenteredTextWidth), W / 2, 308);
 
   ctx.fillStyle = "#d8c0a0";
   ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText(gateText(), W / 2, 334);
+  ctx.fillText(fitCanvasText(ctx, gateText(), maxCenteredTextWidth), W / 2, 334);
 
   ctx.fillStyle = "#c8ac82";
   ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText(t("shareGameplay", gameplayText()), W / 2, 356);
+  ctx.fillText(fitCanvasText(ctx, t("shareGameplay", gameplayText()), maxCenteredTextWidth), W / 2, 356);
 
   // Confetti dots
   const colors = ["#e53935", "#ffd700", "#ff6f60", "#ffab00", "#00e599"];
@@ -230,10 +231,11 @@ async function drawShareImageFromSvg(canvas: HTMLCanvasElement, svgDataUri: stri
   ctx.fillStyle = "#ffdba0";
   ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(gateText(), pad + 18, overlayY + 24);
+  const maxOverlayTextWidth = W - (pad + 18) * 2;
+  ctx.fillText(fitCanvasText(ctx, gateText(), maxOverlayTextWidth), pad + 18, overlayY + 24);
   ctx.fillStyle = "#ffcf87";
   ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText(t("shareGameplay", gameplayText()), pad + 18, overlayY + 44);
+  ctx.fillText(fitCanvasText(ctx, t("shareGameplay", gameplayText()), maxOverlayTextWidth), pad + 18, overlayY + 44);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -248,6 +250,17 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+function fitCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (!text) return "";
+  if (ctx.measureText(text).width <= maxWidth) return text;
+
+  let out = text;
+  while (out.length > 0 && ctx.measureText(`${out}...`).width > maxWidth) {
+    out = out.slice(0, -1);
+  }
+  return out ? `${out}...` : "...";
 }
 
 // ── Actions ──

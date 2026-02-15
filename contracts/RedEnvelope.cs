@@ -332,11 +332,35 @@ namespace RedEnvelope.Contract
             return (RedEnvelopeState)token;
         }
 
+        private static void ResolveTokenGate(RedEnvelopeState token, out BigInteger minNeoRequired, out BigInteger minHoldSeconds)
+        {
+            minNeoRequired = token.MinNeoRequired;
+            minHoldSeconds = token.MinHoldSeconds;
+
+            EnvelopeData envelope = GetEnvelopeData(token.EnvelopeId);
+            if (EnvelopeExists(envelope))
+            {
+                minNeoRequired = envelope.MinNeoRequired;
+                minHoldSeconds = envelope.MinHoldSeconds;
+            }
+        }
+
+        private static string ResolveTokenMessage(RedEnvelopeState token)
+        {
+            EnvelopeData envelope = GetEnvelopeData(token.EnvelopeId);
+            if (EnvelopeExists(envelope) && envelope.Message != null)
+            {
+                return envelope.Message;
+            }
+            return token.Message == null ? "" : token.Message;
+        }
+
         [Safe]
         public override Map<string, object> Properties(ByteString tokenId)
         {
             RedEnvelopeState token = GetTokenState(tokenId);
             ExecutionEngine.Assert(token != null, "token not found");
+            ResolveTokenGate(token, out BigInteger minNeoRequired, out BigInteger minHoldSeconds);
 
             Map<string, object> map = new Map<string, object>();
             map["name"] = token.Name;
@@ -348,8 +372,8 @@ namespace RedEnvelope.Contract
             map["totalAmount"] = token.TotalAmount;
             map["packetCount"] = token.PacketCount;
             map["parentEnvelopeId"] = token.ParentEnvelopeId;
-            map["minNeoRequired"] = token.MinNeoRequired;
-            map["minHoldSeconds"] = token.MinHoldSeconds;
+            map["minNeoRequired"] = minNeoRequired;
+            map["minHoldSeconds"] = minHoldSeconds;
             return map;
         }
 
@@ -388,8 +412,9 @@ namespace RedEnvelope.Contract
                 : token.EnvelopeType == ENVELOPE_TYPE_POOL
                     ? "Pool"
                     : "Spreading";
-            string gateText = "Gate: >= " + token.MinNeoRequired.ToString() + " NEO, >= " +
-                (token.MinHoldSeconds / 86400).ToString() + "d hold";
+            ResolveTokenGate(token, out BigInteger minNeoRequired, out BigInteger minHoldSeconds);
+            string gateText = "Gate: >= " + minNeoRequired.ToString() + " NEO, >= " +
+                (minHoldSeconds / 86400).ToString() + "d hold";
             string flowText = token.EnvelopeType == ENVELOPE_TYPE_CLAIM
                 ? "Flow: Claim NFT -> Open before expiry -> Transfer collectible"
                 : "Flow: Hold NFT -> Open for GAS -> Share to next holder";
@@ -408,12 +433,13 @@ namespace RedEnvelope.Contract
 
             string totalGas = Fixed8ToGasString(token.TotalAmount);
             string creator = EscapeXmlText(token.Creator.ToString());
+            ResolveTokenGate(token, out BigInteger minNeoRequired, out BigInteger minHoldSeconds);
             string gate = EscapeXmlText(
-                ">= " + token.MinNeoRequired.ToString() + " NEO, >= " + (token.MinHoldSeconds / 86400).ToString() + "d hold");
+                ">= " + minNeoRequired.ToString() + " NEO, >= " + (minHoldSeconds / 86400).ToString() + "d hold");
             string playIntro = token.EnvelopeType == ENVELOPE_TYPE_CLAIM
                 ? "Claim slot NFT, then open before expiry to receive GAS"
                 : "Hold NFT, open for GAS, then share NFT to continue";
-            string message = token.Message == null ? "" : token.Message;
+            string message = ResolveTokenMessage(token);
             if (message.Length > 40)
             {
                 message = message.Substring(0, 40) + "...";

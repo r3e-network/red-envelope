@@ -227,6 +227,17 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   return img;
 }
 
+function fitCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (!text) return "";
+  if (ctx.measureText(text).width <= maxWidth) return text;
+
+  let out = text;
+  while (out.length > 0 && ctx.measureText(`${out}...`).width > maxWidth) {
+    out = out.slice(0, -1);
+  }
+  return out ? `${out}...` : "...";
+}
+
 async function getCreateShareCanvas(): Promise<HTMLCanvasElement> {
   if (!createdEnvelopeId.value || !shareLink.value) throw new Error(t("nftLoadFailed"));
   const canvas = shareCanvasRef.value;
@@ -266,7 +277,7 @@ async function getCreateShareCanvas(): Promise<HTMLCanvasElement> {
   const blessing = (createdBlessing.value || t("defaultBlessing")).slice(0, 48);
   ctx.fillStyle = "#fff0c9";
   ctx.font = "600 30px sans-serif";
-  ctx.fillText(blessing, W / 2, 170);
+  ctx.fillText(fitCanvasText(ctx, blessing, W - 100), W / 2, 170);
 
   if (createdNftImage.value) {
     try {
@@ -282,15 +293,15 @@ async function getCreateShareCanvas(): Promise<HTMLCanvasElement> {
   const creator = createdByAddress.value || scriptHashHexToAddress(address.value) || address.value;
   ctx.fillStyle = "#ffd9a0";
   ctx.font = "600 21px monospace";
-  ctx.fillText(creator, W / 2, 786);
+  ctx.fillText(fitCanvasText(ctx, creator, W - 88), W / 2, 786);
 
   ctx.fillStyle = "#ffe0b8";
   ctx.font = "600 21px sans-serif";
-  ctx.fillText(getCreatedGateText(), W / 2, 818);
+  ctx.fillText(fitCanvasText(ctx, getCreatedGateText(), W - 88), W / 2, 818);
 
   ctx.fillStyle = "#ffd089";
   ctx.font = "500 18px sans-serif";
-  ctx.fillText(t("shareGameplay", getPlayIntroByType(createdEnvelopeType.value)), W / 2, 848);
+  ctx.fillText(fitCanvasText(ctx, t("shareGameplay", getPlayIntroByType(createdEnvelopeType.value)), W - 88), W / 2, 848);
 
   const qr = await QRCode.toDataURL(shareLink.value, {
     margin: 1,
@@ -304,7 +315,7 @@ async function getCreateShareCanvas(): Promise<HTMLCanvasElement> {
 
   ctx.fillStyle = "#ffe9c3";
   ctx.font = "500 18px sans-serif";
-  ctx.fillText(shareLink.value, W / 2, 1234);
+  ctx.fillText(fitCanvasText(ctx, shareLink.value, W - 80), W / 2, 1234);
 
   ctx.fillStyle = "#ffd35a";
   ctx.font = "700 32px sans-serif";

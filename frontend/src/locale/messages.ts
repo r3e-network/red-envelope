@@ -262,7 +262,7 @@ export const messages = {
   gongxifacai: { en: "Gong Xi Fa Cai", zh: "恭喜發財" },
   snakeYearBadge: { en: "🐎 2026 Year of the Horse", zh: "🐎 2026 马年大吉" },
   springCoupletLeft: { en: "Fortune flows like spring water", zh: "春回大地福满门" },
-  springCoupletRight: { en: "Luck rises with the new year", zh: "蛇舞新春喜盈庭" },
+  springCoupletRight: { en: "Luck rises with the new year", zh: "马跃新程喜盈庭" },
   snakeYearCelebration: { en: "Year of the Horse 🐎", zh: "马年大吉 🐎" },
 };
 

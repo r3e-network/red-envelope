@@ -36,7 +36,7 @@ const typeLabel = computed(() => {
     case 1:
       return t("detailTypePool");
     case 2:
-      return t("detailTypeNft");
+      return t("detailTypeClaim");
     default:
       return t("detailTypeSpreading");
   }
