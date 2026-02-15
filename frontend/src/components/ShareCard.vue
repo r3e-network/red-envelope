@@ -9,6 +9,9 @@ const props = defineProps<{
   amount: number;
   envelopeId: string;
   address: string;
+  minNeoRequired?: number;
+  minHoldDays?: number;
+  envelopeType?: number;
 }>();
 
 const emit = defineEmits<{ close: [] }>();
@@ -19,13 +22,26 @@ const modalRef = ref<HTMLElement | null>(null);
 useFocusTrap(modalRef);
 
 const CARD_W = 600;
-const CARD_H = 400;
+const CARD_H = 460;
 const CARD_DPR = 2;
 
 const copyStatus = ref("");
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const nftSvgDataUri = ref("");
 const timers = new Set<ReturnType<typeof setTimeout>>();
+
+const gateText = () => {
+  const neo = Number(props.minNeoRequired ?? 0);
+  const hold = Number(props.minHoldDays ?? 0);
+  if (neo <= 0 && hold <= 0) return t("shareGateNone");
+  return t("shareGateRequirement", neo, hold);
+};
+
+const gameplayText = () => {
+  if (props.envelopeType === 2) return t("playIntroClaim");
+  if (props.envelopeType === 1) return t("playIntroPool");
+  return t("playIntroSpreading");
+};
 
 onUnmounted(() => {
   timers.forEach(clearTimeout);
@@ -150,12 +166,20 @@ function drawShareImage(canvas: HTMLCanvasElement): void {
   ctx.font = "12px monospace";
   ctx.fillText(formatHash(props.address), W / 2, 308);
 
+  ctx.fillStyle = "#d8c0a0";
+  ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText(gateText(), W / 2, 334);
+
+  ctx.fillStyle = "#c8ac82";
+  ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText(t("shareGameplay", gameplayText()), W / 2, 356);
+
   // Confetti dots
   const colors = ["#e53935", "#ffd700", "#ff6f60", "#ffab00", "#00e599"];
   for (let i = 0; i < 30; i++) {
     ctx.beginPath();
     const x = Math.random() * W;
-    const y = 320 + Math.random() * 60;
+    const y = 372 + Math.random() * 58;
     const r = 2 + Math.random() * 3;
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = colors[i % colors.length];
@@ -196,6 +220,20 @@ async function drawShareImageFromSvg(canvas: HTMLCanvasElement, svgDataUri: stri
 
   const pad = 16;
   ctx.drawImage(img, pad, pad, W - pad * 2, H - pad * 2);
+
+  // Overlay requirement + gameplay text so share image always carries rule context.
+  const overlayY = H - 88;
+  ctx.fillStyle = "rgba(20, 8, 8, 0.74)";
+  roundRect(ctx, pad + 6, overlayY, W - (pad + 6) * 2, 64, 10);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffdba0";
+  ctx.font = "12px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(gateText(), pad + 18, overlayY + 24);
+  ctx.fillStyle = "#ffcf87";
+  ctx.font = "11px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillText(t("shareGameplay", gameplayText()), pad + 18, overlayY + 44);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -287,6 +325,8 @@ function shareOnTwitter() {
         <!-- Visual card preview -->
         <div v-if="nftSvgDataUri" class="share-card-preview">
           <img :src="nftSvgDataUri" :alt="t('shareEnvelopeId', props.envelopeId) + ' NFT'" class="nft-preview-img" />
+          <div class="share-gate">{{ gateText() }}</div>
+          <div class="share-gameplay">{{ t("shareGameplay", gameplayText()) }}</div>
         </div>
 
         <div v-else class="share-card-preview">
@@ -305,6 +345,8 @@ function shareOnTwitter() {
           <div class="share-divider"></div>
 
           <div class="share-address">{{ formatHash(props.address) }}</div>
+          <div class="share-gate">{{ gateText() }}</div>
+          <div class="share-gameplay">{{ t("shareGameplay", gameplayText()) }}</div>
         </div>
 
         <!-- Action buttons -->

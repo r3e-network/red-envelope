@@ -121,6 +121,21 @@ export const messages = {
   shareTitle: { en: "Neo Red Envelope", zh: "Neo 红包" },
   shareEnvelopeId: { en: "Envelope #{0}", zh: "红包 #{0}" },
   shareReceived: { en: "I received", zh: "我收到了" },
+  shareGateNone: { en: "No NEO holding requirement", zh: "无 NEO 持有门槛" },
+  shareGateRequirement: { en: "Gate: ≥{0} NEO, hold ≥{1}d", zh: "门槛：≥{0} NEO，持有 ≥{1} 天" },
+  shareGameplay: { en: "How to play: {0}", zh: "玩法：{0}" },
+  playIntroPool: {
+    en: "Create pool -> friends claim Claim NFT -> open before expiry to receive GAS",
+    zh: "创建红包池 -> 朋友领取 Claim NFT -> 过期前打开领取 GAS",
+  },
+  playIntroSpreading: {
+    en: "Hold NFT -> open for GAS -> keep sharing NFT",
+    zh: "持有 NFT -> 打开领取 GAS -> 持续分享 NFT",
+  },
+  playIntroClaim: {
+    en: "Claim slot NFT -> open before expiry -> receive GAS",
+    zh: "领取份额 NFT -> 过期前打开 -> 获得 GAS",
+  },
   shareTwitter: { en: "Share on X", zh: "分享到 X" },
   shareCopyImage: { en: "Copy as Image", zh: "复制为图片" },
   shareSaveImage: { en: "Save Image", zh: "保存图片" },

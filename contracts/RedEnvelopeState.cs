@@ -19,5 +19,7 @@ namespace RedEnvelope.Contract
         public string Message;
         public BigInteger EnvelopeType;
         public BigInteger ParentEnvelopeId;
+        public BigInteger MinNeoRequired;
+        public BigInteger MinHoldSeconds;
     }
 }

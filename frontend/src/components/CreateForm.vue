@@ -28,6 +28,10 @@ const shareCopied = ref(false);
 const createdNftImage = ref("");
 const createdBlessing = ref("");
 const createdByAddress = ref("");
+const createdTotalGas = ref(0);
+const createdMinNeoRequired = ref(0);
+const createdMinHoldDays = ref(0);
+const createdEnvelopeType = ref(0);
 const shareImageCopied = ref(false);
 const shareImageSaved = ref(false);
 const shareImageWorking = ref(false);
@@ -135,23 +139,38 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function getPlayIntroByType(type: number): string {
+  if (type === 2) return t("playIntroClaim");
+  if (type === 1) return t("playIntroPool");
+  return t("playIntroSpreading");
+}
+
+function getCreatedGateText(): string {
+  if (createdMinNeoRequired.value <= 0 && createdMinHoldDays.value <= 0) return t("shareGateNone");
+  return t("shareGateRequirement", createdMinNeoRequired.value, createdMinHoldDays.value);
+}
+
 function buildCreatedFallbackNftImage(envelopeId: string, blessing: string): string {
   const creator = createdByAddress.value || scriptHashHexToAddress(address.value) || address.value || "";
   const safeCreator = escapeXml(creator);
   const safeBlessing = escapeXml((blessing || t("defaultBlessing")).slice(0, 52));
-  const totalText = amount.value ? formatGas(Number(amount.value)) : "";
+  const totalText = createdTotalGas.value > 0 ? formatGas(createdTotalGas.value) : "";
+  const gateText = escapeXml(getCreatedGateText());
+  const playText = escapeXml(getPlayIntroByType(createdEnvelopeType.value));
 
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 430">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 470">` +
     `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7a0000"/><stop offset="100%" stop-color="#250000"/></linearGradient></defs>` +
-    `<rect width="720" height="430" rx="24" fill="url(#bg)"/>` +
-    `<rect x="14" y="14" width="692" height="402" rx="18" fill="none" stroke="#ffd35a" stroke-width="2"/>` +
+    `<rect width="720" height="470" rx="24" fill="url(#bg)"/>` +
+    `<rect x="14" y="14" width="692" height="442" rx="18" fill="none" stroke="#ffd35a" stroke-width="2"/>` +
     `<text x="36" y="58" fill="#ffd35a" font-size="30" font-family="sans-serif" font-weight="700">Neo N3 Red Envelope</text>` +
     `<text x="36" y="98" fill="#fff2cc" font-size="22" font-family="sans-serif">Envelope #${envelopeId}</text>` +
     `<text x="36" y="140" fill="#ffffff" font-size="20" font-family="sans-serif">${t("snakeYearBadge")}</text>` +
     `<text x="36" y="180" fill="#ffffff" font-size="18" font-family="sans-serif">${totalText ? `Total ${totalText} GAS` : ""}</text>` +
     `<text x="36" y="220" fill="#ffe8c2" font-size="18" font-family="sans-serif">${safeBlessing}</text>` +
     `<text x="36" y="258" fill="#ffd9a0" font-size="15" font-family="monospace">Creator: ${safeCreator}</text>` +
+    `<text x="36" y="292" fill="#ffd35a" font-size="15" font-family="sans-serif">${gateText}</text>` +
+    `<text x="36" y="324" fill="#ffd35a" font-size="14" font-family="sans-serif">${t("shareGameplay", playText)}</text>` +
     `</svg>`;
 
   return `data:image/svg+xml;base64,${encodeBase64Utf8(svg)}`;
@@ -265,6 +284,14 @@ async function getCreateShareCanvas(): Promise<HTMLCanvasElement> {
   ctx.font = "600 21px monospace";
   ctx.fillText(creator, W / 2, 786);
 
+  ctx.fillStyle = "#ffe0b8";
+  ctx.font = "600 21px sans-serif";
+  ctx.fillText(getCreatedGateText(), W / 2, 818);
+
+  ctx.fillStyle = "#ffd089";
+  ctx.font = "500 18px sans-serif";
+  ctx.fillText(t("shareGameplay", getPlayIntroByType(createdEnvelopeType.value)), W / 2, 848);
+
   const qr = await QRCode.toDataURL(shareLink.value, {
     margin: 1,
     width: 280,
@@ -272,16 +299,16 @@ async function getCreateShareCanvas(): Promise<HTMLCanvasElement> {
   });
   const qrImage = await loadImage(qr);
   ctx.fillStyle = "#f8e7c1";
-  ctx.fillRect(W / 2 - 160, 820, 320, 320);
-  ctx.drawImage(qrImage, W / 2 - 140, 840, 280, 280);
+  ctx.fillRect(W / 2 - 160, 874, 320, 320);
+  ctx.drawImage(qrImage, W / 2 - 140, 894, 280, 280);
 
   ctx.fillStyle = "#ffe9c3";
   ctx.font = "500 18px sans-serif";
-  ctx.fillText(shareLink.value, W / 2, 1182);
+  ctx.fillText(shareLink.value, W / 2, 1234);
 
   ctx.fillStyle = "#ffd35a";
   ctx.font = "700 32px sans-serif";
-  ctx.fillText(`#${createdEnvelopeId.value}`, W / 2, 1250);
+  ctx.fillText(`#${createdEnvelopeId.value}`, W / 2, 1286);
 
   return canvas;
 }
@@ -349,16 +376,23 @@ const handleSubmit = async () => {
   shareImageCopied.value = false;
   shareImageSaved.value = false;
   const blessing = message.value || t("defaultBlessing");
+  const submitMinNeo = parseOptionalNumber(minNeo.value, 0);
+  const submitMinHoldDays = parseOptionalNumber(minHoldDays.value, 0);
+  const submitTotalGas = Number(amount.value);
   createdBlessing.value = blessing;
   createdByAddress.value = scriptHashHexToAddress(address.value) || address.value;
+  createdTotalGas.value = Number.isFinite(submitTotalGas) ? submitTotalGas : 0;
+  createdMinNeoRequired.value = submitMinNeo;
+  createdMinHoldDays.value = submitMinHoldDays;
+  createdEnvelopeType.value = envelopeType.value;
   try {
     const txid = await createEnvelope({
-      totalGas: Number(amount.value),
+      totalGas: submitTotalGas,
       packetCount: Number(count.value),
       expiryHours: Number(expiryHours.value) || 24,
       message: blessing,
-      minNeo: parseOptionalNumber(minNeo.value, 0),
-      minHoldDays: parseOptionalNumber(minHoldDays.value, 0),
+      minNeo: submitMinNeo,
+      minHoldDays: submitMinHoldDays,
       envelopeType: envelopeType.value,
     });
 
@@ -628,6 +662,12 @@ const copyShareLink = async () => {
         <a :href="shareLink" class="create-result-link mono-sm" target="_blank" rel="noopener noreferrer">
           {{ shareLink }}
         </a>
+        <div class="section-hint">
+          {{ getCreatedGateText() }}
+        </div>
+        <div class="section-hint">
+          {{ t("shareGameplay", getPlayIntroByType(createdEnvelopeType)) }}
+        </div>
         <div class="create-result-actions">
           <button class="btn btn-sm" @click="copyShareLink">
             {{ shareCopied ? t("shareCopied") : t("copyShareLink") }}

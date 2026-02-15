@@ -40,6 +40,17 @@ const shareLink = computed(() => {
 
 const modalTitle = computed(() => tokenName.value || t("nftPreviewTitle", props.envelope.id));
 const previewDescription = computed(() => tokenDescription.value || props.envelope.message || "");
+const gateText = computed(() => {
+  const neo = props.envelope.minNeoRequired;
+  const holdDays = Math.floor(props.envelope.minHoldSeconds / 86400);
+  if (neo <= 0 && holdDays <= 0) return t("shareGateNone");
+  return t("shareGateRequirement", neo, holdDays);
+});
+const gameplayText = computed(() => {
+  if (props.envelope.envelopeType === 2) return t("playIntroClaim");
+  if (props.envelope.envelopeType === 1) return t("playIntroPool");
+  return t("playIntroSpreading");
+});
 
 function encodeBase64Utf8(text: string): string {
   return btoa(String.fromCharCode(...new TextEncoder().encode(text)));
@@ -65,19 +76,23 @@ function buildFallbackImageDataUri(env: EnvelopeItem): string {
   const message = (env.message || "").slice(0, 56);
   const safeMsg = escapeXml(message || "Red Envelope");
   const safeCreator = escapeXml(creator);
+  const safeGate = escapeXml(gateText.value);
+  const safeGameplay = escapeXml(t("shareGameplay", gameplayText.value));
 
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 430">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 470">` +
     `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7a0000"/><stop offset="100%" stop-color="#250000"/></linearGradient></defs>` +
-    `<rect width="720" height="430" rx="24" fill="url(#bg)"/>` +
-    `<rect x="14" y="14" width="692" height="402" rx="18" fill="none" stroke="#ffd35a" stroke-width="2"/>` +
+    `<rect width="720" height="470" rx="24" fill="url(#bg)"/>` +
+    `<rect x="14" y="14" width="692" height="442" rx="18" fill="none" stroke="#ffd35a" stroke-width="2"/>` +
     `<text x="36" y="56" fill="#ffd35a" font-size="30" font-family="sans-serif" font-weight="700">Neo Red Envelope NFT</text>` +
     `<text x="36" y="95" fill="#fff2cc" font-size="22" font-family="sans-serif">#${env.id} · ${escapeXml(envelopeTypeLabel(env.envelopeType))}</text>` +
     `<text x="36" y="136" fill="#ffffff" font-size="20" font-family="sans-serif">Total: ${formatGas(env.totalAmount)} GAS</text>` +
     `<text x="36" y="170" fill="#ffffff" font-size="18" font-family="sans-serif">Opened: ${env.openedCount}/${env.packetCount}</text>` +
     `<text x="36" y="210" fill="#ffd9a0" font-size="15" font-family="monospace">Creator: ${safeCreator}</text>` +
     `<text x="36" y="254" fill="#ffe8c2" font-size="18" font-family="sans-serif">Message: ${safeMsg}</text>` +
-    `<text x="36" y="388" fill="#ffd35a" font-size="15" font-family="sans-serif">metadata fallback preview</text>` +
+    `<text x="36" y="292" fill="#ffd35a" font-size="15" font-family="sans-serif">${safeGate}</text>` +
+    `<text x="36" y="324" fill="#ffd35a" font-size="14" font-family="sans-serif">${safeGameplay}</text>` +
+    `<text x="36" y="424" fill="#ffd35a" font-size="15" font-family="sans-serif">metadata fallback preview</text>` +
     `</svg>`;
 
   return `data:image/svg+xml;base64,${encodeBase64Utf8(svg)}`;
@@ -250,6 +265,8 @@ async function saveImage() {
           </div>
 
           <div v-if="previewDescription" class="section-hint nft-preview-desc">{{ previewDescription }}</div>
+          <div class="section-hint nft-preview-desc">{{ gateText }}</div>
+          <div class="section-hint nft-preview-desc">{{ t("shareGameplay", gameplayText) }}</div>
         </template>
 
         <div class="nft-preview-actions">

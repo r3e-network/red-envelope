@@ -238,7 +238,9 @@ namespace RedEnvelope.Contract
                     PacketCount = packetCount,
                     Message = message,
                     EnvelopeType = envelopeType,
-                    ParentEnvelopeId = 0
+                    ParentEnvelopeId = 0,
+                    MinNeoRequired = effectiveMinNeo,
+                    MinHoldSeconds = effectiveMinHold
                 });
             }
 
@@ -346,6 +348,8 @@ namespace RedEnvelope.Contract
             map["totalAmount"] = token.TotalAmount;
             map["packetCount"] = token.PacketCount;
             map["parentEnvelopeId"] = token.ParentEnvelopeId;
+            map["minNeoRequired"] = token.MinNeoRequired;
+            map["minHoldSeconds"] = token.MinHoldSeconds;
             return map;
         }
 
@@ -384,8 +388,13 @@ namespace RedEnvelope.Contract
                 : token.EnvelopeType == ENVELOPE_TYPE_POOL
                     ? "Pool"
                     : "Spreading";
+            string gateText = "Gate: >= " + token.MinNeoRequired.ToString() + " NEO, >= " +
+                (token.MinHoldSeconds / 86400).ToString() + "d hold";
+            string flowText = token.EnvelopeType == ENVELOPE_TYPE_CLAIM
+                ? "Flow: Claim NFT -> Open before expiry -> Transfer collectible"
+                : "Flow: Hold NFT -> Open for GAS -> Share to next holder";
 
-            return "Red Envelope NFT #" + token.EnvelopeId.ToString() + " (" + envelopeType + ")";
+            return "Red Envelope NFT #" + token.EnvelopeId.ToString() + " (" + envelopeType + "); " + gateText + "; " + flowText;
         }
 
         [Safe]
@@ -399,25 +408,33 @@ namespace RedEnvelope.Contract
 
             string totalGas = Fixed8ToGasString(token.TotalAmount);
             string creator = EscapeXmlText(token.Creator.ToString());
+            string gate = EscapeXmlText(
+                ">= " + token.MinNeoRequired.ToString() + " NEO, >= " + (token.MinHoldSeconds / 86400).ToString() + "d hold");
+            string playIntro = token.EnvelopeType == ENVELOPE_TYPE_CLAIM
+                ? "Claim slot NFT, then open before expiry to receive GAS"
+                : "Hold NFT, open for GAS, then share NFT to continue";
             string message = token.Message == null ? "" : token.Message;
             if (message.Length > 40)
             {
                 message = message.Substring(0, 40) + "...";
             }
             message = EscapeXmlText(message);
+            playIntro = EscapeXmlText(playIntro);
 
-            return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 420 260\" preserveAspectRatio=\"xMidYMid meet\">" +
+            return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 420 300\" preserveAspectRatio=\"xMidYMid meet\">" +
                 "<defs><linearGradient id=\"bg\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#7a0000\"/><stop offset=\"100%\" stop-color=\"#2b0000\"/></linearGradient></defs>" +
-                "<rect width=\"420\" height=\"260\" rx=\"18\" fill=\"url(#bg)\"/>" +
-                "<rect x=\"10\" y=\"10\" width=\"400\" height=\"240\" rx=\"14\" fill=\"none\" stroke=\"#ffd35a\" stroke-width=\"2\"/>" +
+                "<rect width=\"420\" height=\"300\" rx=\"18\" fill=\"url(#bg)\"/>" +
+                "<rect x=\"10\" y=\"10\" width=\"400\" height=\"280\" rx=\"14\" fill=\"none\" stroke=\"#ffd35a\" stroke-width=\"2\"/>" +
                 "<text x=\"24\" y=\"40\" fill=\"#ffd35a\" font-size=\"20\" font-family=\"sans-serif\" font-weight=\"700\">Neo Red Envelope NFT</text>" +
                 "<text x=\"24\" y=\"70\" fill=\"#ffffff\" font-size=\"14\" font-family=\"sans-serif\">ID: #" + token.EnvelopeId.ToString() + "</text>" +
                 "<text x=\"24\" y=\"94\" fill=\"#ffffff\" font-size=\"14\" font-family=\"sans-serif\">Type: " + envelopeType + "</text>" +
                 "<text x=\"24\" y=\"118\" fill=\"#ffffff\" font-size=\"14\" font-family=\"sans-serif\">Total: " + totalGas + " GAS</text>" +
                 "<text x=\"24\" y=\"142\" fill=\"#ffffff\" font-size=\"14\" font-family=\"sans-serif\">Packets: " + token.PacketCount.ToString() + "</text>" +
                 "<text x=\"24\" y=\"166\" fill=\"#ffd9a0\" font-size=\"12\" font-family=\"monospace\">Creator: " + creator + "</text>" +
-                "<text x=\"24\" y=\"194\" fill=\"#ffe8c2\" font-size=\"12\" font-family=\"sans-serif\">Msg: " + message + "</text>" +
-                "<text x=\"24\" y=\"228\" fill=\"#ffd35a\" font-size=\"12\" font-family=\"sans-serif\">on-chain SVG metadata</text>" +
+                "<text x=\"24\" y=\"190\" fill=\"#ffe8c2\" font-size=\"12\" font-family=\"sans-serif\">Msg: " + message + "</text>" +
+                "<text x=\"24\" y=\"214\" fill=\"#ffd35a\" font-size=\"12\" font-family=\"sans-serif\">Gate: " + gate + "</text>" +
+                "<text x=\"24\" y=\"238\" fill=\"#ffd35a\" font-size=\"11\" font-family=\"sans-serif\">Play: " + playIntro + "</text>" +
+                "<text x=\"24\" y=\"272\" fill=\"#ffd35a\" font-size=\"12\" font-family=\"sans-serif\">on-chain SVG metadata</text>" +
                 "</svg>";
         }
 

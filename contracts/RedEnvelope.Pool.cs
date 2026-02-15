@@ -82,7 +82,9 @@ namespace RedEnvelope.Contract
                 PacketCount = 1,
                 Message = pool.Message,
                 EnvelopeType = ENVELOPE_TYPE_CLAIM,
-                ParentEnvelopeId = poolId
+                ParentEnvelopeId = poolId,
+                MinNeoRequired = pool.MinNeoRequired,
+                MinHoldSeconds = pool.MinHoldSeconds
             });
 
             StorePoolClaimId(poolId, pool.OpenedCount, claimId);
