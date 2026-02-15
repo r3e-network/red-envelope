@@ -37,6 +37,7 @@ const openResult = ref<number | null>(null);
 const error = ref("");
 const showShare = ref(false);
 const eligibilityWarning = ref("");
+const resultHint = computed(() => (props.envelope.envelopeType === 0 ? t("openResultHintSpreading") : t("openResultHintClaim")));
 
 const isLocked = computed(() => eligibility.value != null && !eligibility.value.eligible);
 const requiredHoldDays = computed(() => (eligibility.value ? Math.floor(eligibility.value.minHoldSeconds / 86400) : 0));
@@ -104,6 +105,7 @@ const handleOpen = async () => {
     }
 
     opened.value = true;
+    showShare.value = (openResult.value ?? 0) > 0;
     playOpenSound();
     emit("opened", openResult.value ?? 0);
   } catch (e: unknown) {
@@ -215,7 +217,11 @@ const handleOpen = async () => {
           {{ confirming ? t("confirming") : opening ? t("opening") : t("openEnvelope") }}
         </button>
 
-        <div v-else class="modal-actions">
+        <div v-if="openResult !== null" class="open-result-hint">
+          {{ resultHint }}
+        </div>
+
+        <div v-if="openResult !== null" class="modal-actions">
           <button v-if="openResult > 0" class="btn btn-open" @click="showShare = true">
             🎉 {{ t("shareYourLuck") }}
           </button>

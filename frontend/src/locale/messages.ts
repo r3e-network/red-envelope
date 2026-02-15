@@ -116,6 +116,14 @@ export const messages = {
   // ── Opening Modal ─────────────────────────────────
   opening: { en: "Opening...", zh: "开启中..." },
   confirming: { en: "Confirming on chain...", zh: "链上确认中..." },
+  openResultHintSpreading: {
+    en: "Opened successfully. Share your result or pass this NFT to a friend.",
+    zh: "打开成功。可分享结果，或继续把这个 NFT 转给朋友。",
+  },
+  openResultHintClaim: {
+    en: "Claim NFT opened successfully. Share your result with friends.",
+    zh: "Claim NFT 打开成功。可以把结果分享给朋友。",
+  },
 
   // ── Lucky Overlay ─────────────────────────────────
   congratulations: { en: "🎉 Congratulations!", zh: "🎉 恭喜发财！" },

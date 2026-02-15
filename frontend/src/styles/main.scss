@@ -1441,6 +1441,14 @@ body {
   margin-bottom: 1rem;
 }
 
+.open-result-hint {
+  margin-top: 0.25rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
 // ── CSS Envelope Shape (Opening Modal) ──────────────
 .envelope-shape {
   width: 200px;
