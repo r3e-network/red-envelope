@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useEnvelopeHistory } from "@/composables/useEnvelopeHistory";
@@ -31,7 +31,7 @@ const {
 } = useRedEnvelope();
 const { loading: historyLoading, history, loadHistory, clearHistory } = useEnvelopeHistory();
 
-const searchId = ref("");
+const urlEnvelopeId = ref("");
 const searching = ref(false);
 const envelope = ref<EnvelopeItem | null>(null);
 const notFound = ref(false);
@@ -112,7 +112,7 @@ const isExpiringSoon = (env: EnvelopeItem): boolean => {
   return remainingMs > 0 && remainingMs <= 6 * 60 * 60 * 1000;
 };
 
-const isValidSearchId = (val: string) => /^\d+$/.test(val) && Number(val) > 0;
+const isValidEnvelopeId = (val: string) => /^\d+$/.test(val) && Number(val) > 0;
 
 const ensureConnected = async (): Promise<boolean> => {
   if (connected.value) return true;
@@ -125,24 +125,30 @@ const ensureConnected = async (): Promise<boolean> => {
   }
 };
 
-const handleSearch = async () => {
-  const id = searchId.value.trim();
-  if (!id || !isValidSearchId(id)) return;
+const readEnvelopeIdFromUrl = (): string => new URLSearchParams(window.location.search).get("id")?.trim() || "";
 
-  searching.value = true;
+const loadEnvelopeFromUrl = async () => {
+  const id = readEnvelopeIdFromUrl();
+  urlEnvelopeId.value = id;
   notFound.value = false;
   envelope.value = null;
   status.value = null;
   clearHistory();
 
+  if (!id) {
+    return;
+  }
+
+  if (!isValidEnvelopeId(id)) {
+    status.value = { msg: t("invalidUrlEnvelopeId"), type: "error" };
+    return;
+  }
+
+  searching.value = true;
   try {
     const result = await fetchEnvelopeState(id);
     if (result) {
       envelope.value = result;
-      // Sync URL so the link is shareable
-      const url = new URL(window.location.href);
-      url.searchParams.set("id", id);
-      window.history.replaceState({}, "", url.toString());
       // Auto-load claim history for pool envelopes (use claimedCount, not openedCount)
       loadHistory(id, result.envelopeType, result.claimedCount);
     } else {
@@ -289,18 +295,21 @@ const onTransferred = async () => {
   await refreshWalletSpreadingList();
 };
 
-// Auto-search if URL contains ?id=
+const handlePopState = () => {
+  void loadEnvelopeFromUrl();
+};
+
 onMounted(() => {
-  const params = new URLSearchParams(window.location.search);
-  const urlId = params.get("id")?.trim();
-  if (urlId) {
-    searchId.value = urlId;
-    handleSearch();
-  }
+  loadEnvelopeFromUrl();
+  window.addEventListener("popstate", handlePopState);
 
   if (connected.value) {
     refreshWalletSpreadingList();
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener("popstate", handlePopState);
 });
 
 watch(connected, (isConnected) => {
@@ -329,30 +338,14 @@ watch(connected, (isConnected) => {
 
       <div v-else class="search-empty">
         <div class="search-empty-icon">🧧</div>
-        <div class="search-empty-text">{{ t("searchPrompt") }}</div>
+        <div class="search-empty-text">{{ t("urlEnvelopePrompt") }}</div>
       </div>
     </div>
 
-    <!-- RIGHT PANEL: Search + Actions -->
+    <!-- RIGHT PANEL: URL envelope + Actions -->
     <div class="panel-right">
-      <!-- Search bar -->
-      <div class="search-bar" role="search">
-        <input
-          v-model="searchId"
-          type="text"
-          inputmode="numeric"
-          :placeholder="t('searchPlaceholder')"
-          :aria-label="t('searchPlaceholder')"
-          class="input"
-          @keyup.enter="handleSearch"
-        />
-        <button
-          class="btn btn-primary"
-          :disabled="!searchId.trim() || !isValidSearchId(searchId.trim()) || searching"
-          @click="handleSearch"
-        >
-          {{ t("searchButton") }}
-        </button>
+      <div class="section-hint">
+        {{ urlEnvelopeId ? t("urlEnvelopeId", urlEnvelopeId) : t("urlEnvelopePrompt") }}
       </div>
 
       <div class="wallet-spreading-card">
