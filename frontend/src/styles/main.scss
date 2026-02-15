@@ -999,6 +999,10 @@ body {
   line-height: 1.35;
   cursor: pointer;
   transition: 0.2s ease;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   &:hover {
     border-color: rgba(255, 215, 0, 0.45);
@@ -1724,6 +1728,14 @@ body {
     color: var(--color-text);
   }
 
+  .detail-value.mono-sm {
+    max-width: 72%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+  }
+
   .detail-gas-big {
     font-size: 1.5rem;
     font-weight: 800;
@@ -1814,6 +1826,9 @@ body {
   font-family: monospace;
   font-size: 0.75rem;
   color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-amount {
@@ -2019,6 +2034,10 @@ body {
   font-size: 0.75rem;
   font-family: monospace;
   color: var(--color-text-muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .share-actions {

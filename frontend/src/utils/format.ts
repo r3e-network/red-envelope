@@ -19,14 +19,12 @@ export function fromFixed8(value: number | bigint | string): number {
   return Number(value) / FIXED8_FACTOR;
 }
 
-/** Format a Neo N3 address/hash for display (first 8 + last 6) */
+/** Format a Neo N3 address/hash for display (prefer full N3 address) */
 export function formatHash(hash: string): string {
   if (!hash) return "";
 
   const normalized = normalizeScriptHashHex(hash);
-  const display = normalized ? scriptHashHexToAddress(normalized) || hash : hash;
-  if (display.length < 14) return display;
-  return `${display.slice(0, 8)}...${display.slice(-6)}`;
+  return normalized ? scriptHashHexToAddress(normalized) || hash : hash;
 }
 
 /** Format GAS amount with up to 8 decimal places, trimming trailing zeros */
