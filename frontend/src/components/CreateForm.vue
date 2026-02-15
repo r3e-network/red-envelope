@@ -377,8 +377,13 @@ onUnmounted(() => {
 
 const handleSubmit = async () => {
   if (!connected.value) {
-    await connect();
-    return;
+    try {
+      await connect();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      status.value = { msg: msg.includes("No Neo wallet") ? t("walletNotDetected") : msg, type: "error" };
+      return;
+    }
   }
   status.value = null;
   createdEnvelopeId.value = "";
