@@ -7,13 +7,13 @@ import { useI18n } from "@/composables/useI18n";
 import { useAudio } from "@/composables/useAudio";
 import { extractError, formatGas } from "@/utils/format";
 import { addressToScriptHashHex } from "@/utils/neo";
-import { waitForConfirmation } from "@/utils/rpc";
+import { extractEnvelopeCreatedId, waitForConfirmation } from "@/utils/rpc";
 import { msUntilExpiry } from "@/utils/time";
+import { CONTRACT_HASH } from "@/config/contract";
 import EnvelopeDetail from "./EnvelopeDetail.vue";
 import EnvelopeHistory from "./EnvelopeHistory.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
-import ShareCard from "./ShareCard.vue";
 import NftPreviewModal from "./NftPreviewModal.vue";
 import { mapWalletConnectError } from "./searchClaim.logic";
 
@@ -40,13 +40,14 @@ const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 // Modals
 const showOpenModal = ref(false);
 const showTransferModal = ref(false);
-const showShareCard = ref(false);
 const showWalletNftModal = ref(false);
+const showClaimReadyModal = ref(false);
 const claimedAmount = ref(0);
 const claiming = ref(false);
 const reclaimingSearch = ref(false);
 const openTargetEnvelope = ref<EnvelopeItem | null>(null);
 const walletNftTarget = ref<EnvelopeItem | null>(null);
+const claimedNftEnvelope = ref<EnvelopeItem | null>(null);
 
 const currentAddressHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
 
@@ -187,11 +188,13 @@ const handlePoolClaim = async () => {
   status.value = null;
   claiming.value = true;
   claimedAmount.value = 0;
+  claimedNftEnvelope.value = null;
   try {
     const res = await claimFromPool(envelope.value.id);
     status.value = { msg: t("claimedTx", res.txid.slice(0, 12) + "..."), type: "success" };
     // Wait for TX confirmation before refreshing state (BUG-4 fix)
-    await waitForConfirmation(res.txid);
+    const appLog = await waitForConfirmation(res.txid);
+    const claimId = extractEnvelopeCreatedId(appLog, CONTRACT_HASH);
 
     try {
       claimedAmount.value = await getPoolClaimedAmount(envelope.value.id);
@@ -204,16 +207,32 @@ const handlePoolClaim = async () => {
       envelope.value = refreshed;
       loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
     }
-    // Show celebration share card only if we know the amount
-    playCoinSound();
-    if (claimedAmount.value > 0) {
-      showShareCard.value = true;
+
+    if (claimId) {
+      try {
+        const claimEnvelope = await fetchEnvelopeState(claimId);
+        if (claimEnvelope?.envelopeType === 2) {
+          claimedNftEnvelope.value = claimEnvelope;
+          showClaimReadyModal.value = true;
+        }
+      } catch {
+        // non-blocking: fallback to status only
+      }
     }
+
+    playCoinSound();
   } catch (e: unknown) {
     status.value = { msg: extractError(e), type: "error" };
   } finally {
     claiming.value = false;
   }
+};
+
+const handleOpenClaimNftNow = () => {
+  if (!claimedNftEnvelope.value) return;
+  openTargetEnvelope.value = claimedNftEnvelope.value;
+  showClaimReadyModal.value = false;
+  showOpenModal.value = true;
 };
 
 const handleTransfer = async () => {
@@ -430,17 +449,52 @@ watch(connected, (isConnected) => {
     @transferred="onTransferred"
   />
 
-  <ShareCard
-    v-if="showShareCard && envelope && address"
-    :amount="claimedAmount"
-    :envelope-id="envelope.id"
-    :address="address"
-    @close="showShareCard = false"
-  />
-
   <NftPreviewModal
     v-if="showWalletNftModal && walletNftTarget"
     :envelope="walletNftTarget"
     @close="showWalletNftModal = false"
   />
+
+  <div
+    v-if="showClaimReadyModal && claimedNftEnvelope"
+    class="modal-overlay"
+    role="dialog"
+    aria-modal="true"
+    @click.self="showClaimReadyModal = false"
+    @keydown.escape="showClaimReadyModal = false"
+  >
+    <div class="modal">
+      <div class="modal-header">
+        <h3>{{ t("claimNftReadyTitle") }}</h3>
+        <button class="btn-close" :aria-label="t('close')" @click="showClaimReadyModal = false">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-hint">
+          {{ t("claimNftReadyDesc", claimedNftEnvelope.id) }}
+        </div>
+        <div class="summary-card">
+          <div class="summary-row">
+            <span>{{ t("detailEnvelopeId", claimedNftEnvelope.id) }}</span>
+            <span class="summary-value">#{{ claimedNftEnvelope.id }}</span>
+          </div>
+          <div class="summary-row">
+            <span>{{ t("detailType") }}</span>
+            <span class="summary-value">{{ t("detailTypeClaim") }}</span>
+          </div>
+          <div class="summary-row">
+            <span>{{ t("historyAmount") }}</span>
+            <span class="summary-value">{{ formatGas(claimedNftEnvelope.remainingAmount) }} GAS</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-open" @click="handleOpenClaimNftNow">
+            {{ t("openEnvelope") }}
+          </button>
+          <button class="btn" @click="showClaimReadyModal = false">
+            {{ t("close") }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>

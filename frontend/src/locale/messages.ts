@@ -231,6 +231,11 @@ export const messages = {
   poolUseClaimNotOpen: { en: "Pool envelopes use Claim, not Open", zh: "池红包请使用「领取」而非「打开」" },
   alreadyOpenedByYou: { en: "You already opened this envelope before", zh: "你已打开过该红包，无法重复打开" },
   claimedTx: { en: "Claimed! TX: {0}", zh: "已领取！TX: {0}" },
+  claimNftReadyTitle: { en: "Claim NFT Ready", zh: "已获得 Claim NFT" },
+  claimNftReadyDesc: {
+    en: "You claimed Claim NFT #{0}. Open now to receive GAS.",
+    zh: "你已领取 Claim NFT #{0}，可立即打开领取 GAS。",
+  },
   contractLabel: { en: "Contract:", zh: "合约：" },
   hoursMinutes: { en: "{0}h {1}m", zh: "{0}时{1}分" },
   minutesOnly: { en: "{0}m", zh: "{0}分" },
