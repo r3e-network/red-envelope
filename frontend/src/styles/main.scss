@@ -158,6 +158,10 @@ body {
   font-family: monospace;
   color: var(--color-gold);
   box-shadow: var(--shadow-gold);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wallet-error {
@@ -303,6 +307,95 @@ body {
   .layout-two-col {
     grid-template-columns: 1fr;
     gap: 1rem;
+  }
+
+  .panel-right {
+    order: -1;
+  }
+
+  .panel-left {
+    padding: 1rem;
+  }
+
+  .tabs {
+    margin-bottom: 1rem;
+  }
+
+  .tab {
+    font-size: 0.82rem;
+    padding: 0.6rem 0.4rem;
+  }
+
+  .type-selector {
+    flex-direction: column;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .create-result-actions {
+    flex-direction: column;
+  }
+
+  .wallet-spreading-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .wallet-spreading-open {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .card-actions {
+    flex-wrap: wrap;
+  }
+
+  .card-actions .btn {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 0;
+  }
+
+  .share-actions,
+  .nft-preview-actions {
+    flex-wrap: wrap;
+  }
+
+  .share-actions .btn,
+  .nft-preview-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .search-bar {
+    flex-direction: column;
+  }
+
+  .search-bar .btn {
+    width: 100%;
+  }
+
+  .create-wait-card {
+    width: 94vw;
+    padding: 1rem;
+  }
+
+  .spring-couplet {
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .spring-couplet .couplet-half {
+    text-align: center;
+  }
+
+  body {
+    background-attachment: scroll;
+  }
+
+  .input {
+    font-size: 16px;
   }
 }
 
@@ -2313,6 +2406,64 @@ body {
 }
 
 @media (max-width: 480px) {
+  #app {
+    padding: 0.75rem;
+  }
+
+  .app-header {
+    padding-top: 2.25rem;
+  }
+
+  .btn-music {
+    top: 0.55rem;
+    left: 0.55rem;
+  }
+
+  .lang-toggle {
+    top: 0.55rem;
+    right: 0.55rem;
+  }
+
+  .app-title {
+    font-size: 1.48rem;
+  }
+
+  .wallet-pill {
+    font-size: 0.72rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .create-result-actions {
+    gap: 0.4rem;
+  }
+
+  .wallet-chip {
+    font-size: 0.68rem;
+    padding: 0.18rem 0.48rem;
+  }
+
+  .history-table-head,
+  .history-table-row {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .history-table-head {
+    display: none;
+  }
+
+  .history-table-row {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .create-wait-title {
+    font-size: 0.94rem;
+  }
+
+  .create-wait-countdown {
+    font-size: 0.8rem;
+  }
+
   .year-badge {
     font-size: 0.7rem;
   }

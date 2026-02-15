@@ -240,10 +240,10 @@ export const messages = {
   bgmOff: { en: "Music Off", zh: "音乐关" },
   volume: { en: "Volume", zh: "音量" },
   gongxifacai: { en: "Gong Xi Fa Cai", zh: "恭喜發財" },
-  snakeYearBadge: { en: "🐍 2026 Year of the Snake", zh: "🐍 2026 蛇年大吉" },
+  snakeYearBadge: { en: "🐎 2026 Year of the Horse", zh: "🐎 2026 马年大吉" },
   springCoupletLeft: { en: "Fortune flows like spring water", zh: "春回大地福满门" },
   springCoupletRight: { en: "Luck rises with the new year", zh: "蛇舞新春喜盈庭" },
-  snakeYearCelebration: { en: "Year of the Snake 🐍", zh: "蛇年大吉 🐍" },
+  snakeYearCelebration: { en: "Year of the Horse 🐎", zh: "马年大吉 🐎" },
 };
 
 export type MessageKey = keyof typeof messages;
