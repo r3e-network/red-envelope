@@ -1684,6 +1684,85 @@ body {
   }
 }
 
+.action-flow-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.action-flow-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.action-flow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.action-flow-text {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.action-flow-progress {
+  height: 5px;
+  border-radius: 999px;
+  margin-top: 0.55rem;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.action-flow-progress-fill {
+  height: 100%;
+  width: 45%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-red), var(--color-gold));
+  animation: actionFlowSlide 1.2s ease-in-out infinite;
+}
+
+.action-flow-card.flow-loading {
+  border-color: var(--border-gold-mid);
+
+  .action-flow-dot {
+    background: var(--color-gold);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+}
+
+.action-flow-card.flow-success {
+  border-color: rgba(102, 187, 106, 0.45);
+
+  .action-flow-dot {
+    background: var(--color-success);
+    box-shadow: 0 0 0 3px rgba(102, 187, 106, 0.12);
+  }
+}
+
+.action-flow-card.flow-error {
+  border-color: rgba(239, 83, 80, 0.45);
+
+  .action-flow-dot {
+    background: var(--color-error);
+    box-shadow: 0 0 0 3px rgba(239, 83, 80, 0.12);
+  }
+
+  .action-flow-text {
+    color: #ffb9b7;
+  }
+}
+
 .search-empty {
   display: flex;
   flex-direction: column;
@@ -2248,6 +2327,18 @@ body {
   color: var(--color-text-secondary);
 }
 
+.share-year {
+  margin-top: 0.55rem;
+  font-size: 0.74rem;
+  color: #d7bc94;
+}
+
+.share-blessing {
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+  color: #ffe6bf;
+}
+
 .share-divider {
   width: 60%;
   height: 1px;
@@ -2282,13 +2373,29 @@ body {
 }
 
 .share-address {
-  font-size: 0.75rem;
+  margin-top: 0.15rem;
+  font-size: 0.74rem;
   font-family: monospace;
-  color: var(--color-text-muted);
+  color: #f7dfb9;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.share-address-label {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: #c8a97c;
+}
+
+.share-info-block {
+  width: 100%;
+  margin-top: 0.15rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-gold-faint);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.65rem 0.7rem;
 }
 
 .share-gate {
@@ -2306,6 +2413,43 @@ body {
   line-height: 1.4;
   text-align: center;
   overflow-wrap: anywhere;
+}
+
+.share-qr-wrap {
+  margin-top: 0.55rem;
+  display: flex;
+  justify-content: center;
+}
+
+.share-qr-img {
+  width: 126px;
+  height: 126px;
+  background: #fff5dd;
+  padding: 0.35rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.share-link {
+  margin-top: 0.5rem;
+  display: block;
+  width: 100%;
+  text-align: center;
+  color: #dec39a;
+  text-decoration: none;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.share-link:hover {
+  text-decoration: underline;
+}
+
+.share-envelope-id {
+  margin-top: 0.35rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--color-gold);
 }
 
 .share-actions {
@@ -2362,6 +2506,18 @@ body {
   color: var(--color-text-secondary);
   border: 1px solid var(--border-light);
   font-size: 0.8rem;
+}
+
+@keyframes actionFlowSlide {
+  0% {
+    transform: translateX(-110%);
+  }
+  50% {
+    transform: translateX(85%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
 }
 
 // ── Floating Lanterns Background ─────────────────────

@@ -242,6 +242,8 @@ const handleOpen = async () => {
     :amount="openResult"
     :envelope-id="props.envelope.id"
     :address="address"
+    :message="props.envelope.message"
+    :creator-script-hash="props.envelope.creator"
     :min-neo-required="props.envelope.minNeoRequired"
     :min-hold-days="Math.floor(props.envelope.minHoldSeconds / 86400)"
     :envelope-type="props.envelope.envelopeType"

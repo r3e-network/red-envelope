@@ -111,6 +111,35 @@ const showTransferSecondary = computed(() => canTransfer.value && primaryAction.
 const showReclaimSecondary = computed(() => canReclaim.value && primaryAction.value !== "reclaim");
 const hasSecondaryActions = computed(() => showTransferSecondary.value || showReclaimSecondary.value);
 
+type ActionFlowPhase = "idle" | "loading" | "success" | "error";
+
+const actionFlowPhase = computed<ActionFlowPhase>(() => {
+  if (searching.value || claiming.value || reclaimingSearch.value || showOpenModal.value || showTransferModal.value) return "loading";
+  if (status.value?.type === "error") return "error";
+  if (status.value?.type === "success") return "success";
+  return "idle";
+});
+
+const actionFlowTitle = computed(() => {
+  if (actionFlowPhase.value === "error") return t("flowStatusError");
+  if (actionFlowPhase.value === "success") return t("flowStatusSuccess");
+  if (actionFlowPhase.value === "loading") return t("flowStatusLoading");
+  return t("flowStatusReady");
+});
+
+const actionFlowMessage = computed(() => {
+  if (searching.value) return t("flowHintLoadingEnvelope");
+  if (claiming.value) return t("flowHintClaimingOnChain");
+  if (reclaimingSearch.value) return t("flowHintReclaimingOnChain");
+  if (showOpenModal.value) return t("flowHintOpeningEnvelope");
+  if (showTransferModal.value) return t("flowHintTransferringEnvelope");
+  if (status.value?.msg) return status.value.msg;
+  if (!urlEnvelopeId.value) return t("flowHintWaitingUrl");
+  if (!envelope.value) return t("flowHintLoadingEnvelope");
+  if (!primaryAction.value) return t("flowHintNoAction");
+  return t("flowHintReadyAction");
+});
+
 const isValidEnvelopeId = (val: string) => /^\d+$/.test(val) && Number(val) > 0;
 
 const ensureConnected = async (): Promise<boolean> => {
@@ -341,6 +370,17 @@ onUnmounted(() => {
         {{ urlEnvelopeId ? t("urlEnvelopeId", urlEnvelopeId) : t("urlEnvelopePrompt") }}
       </div>
 
+      <div :class="['action-flow-card', `flow-${actionFlowPhase}`]" role="status" aria-live="polite">
+        <div class="action-flow-head">
+          <span class="action-flow-dot" aria-hidden="true"></span>
+          <span>{{ actionFlowTitle }}</span>
+        </div>
+        <div class="action-flow-text">{{ actionFlowMessage }}</div>
+        <div v-if="actionFlowPhase === 'loading'" class="action-flow-progress" aria-hidden="true">
+          <div class="action-flow-progress-fill"></div>
+        </div>
+      </div>
+
       <!-- Action buttons (only when envelope loaded) -->
       <div v-if="envelope && primaryAction" class="action-card">
         <button :class="['btn', primaryActionClass, 'action-primary-btn']" :disabled="primaryActionDisabled" @click="handlePrimaryAction">
@@ -364,10 +404,6 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Status message -->
-      <div v-if="status" :class="['status', status.type]" role="status">
-        {{ status.msg }}
-      </div>
     </div>
   </div>
 
