@@ -132,6 +132,51 @@ describe("useRedEnvelope", () => {
     expect(api.envelopes.value[17].id).toBe("1");
   });
 
+  it("discovers latest envelope ID by probing when storage lookup is unavailable", async () => {
+    vi.stubGlobal("window", {} as Window);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("storage blocked")));
+
+    mockInvokeRead.mockImplementation(async (req: { operation: string; args?: Array<{ value: string }> }) => {
+      if (req.operation === "getTotalEnvelopes") {
+        return { stack: [{ type: "Integer", value: "13" }] };
+      }
+      if (req.operation === "getEnvelopeState") {
+        const id = Number(req.args?.[0]?.value ?? "0");
+        if (id <= 0 || id > 27) {
+          return { stack: [{ type: "Map", value: [] }] };
+        }
+        return mapStack({
+          creator: { type: "String", value: `0xcreator${id}` },
+          envelopeType: { type: "Integer", value: id >= 20 ? "2" : "1" },
+          parentEnvelopeId: { type: "Integer", value: "0" },
+          totalAmount: { type: "Integer", value: "100000000" },
+          packetCount: { type: "Integer", value: "1" },
+          openedCount: { type: "Integer", value: "0" },
+          claimedCount: { type: "Integer", value: "0" },
+          remainingAmount: { type: "Integer", value: "100000000" },
+          remainingPackets: { type: "Integer", value: "1" },
+          minNeoRequired: { type: "Integer", value: "0" },
+          minHoldSeconds: { type: "Integer", value: "0" },
+          active: { type: "Boolean", value: true },
+          isExpired: { type: "Boolean", value: false },
+          isDepleted: { type: "Boolean", value: false },
+          currentHolder: { type: "String", value: "0xholder" },
+          message: { type: "String", value: `env-${id}` },
+          expiryTime: { type: "Integer", value: "9999999999" },
+        });
+      }
+
+      throw new Error(`Unexpected operation: ${req.operation}`);
+    });
+
+    const api = useRedEnvelope();
+    await api.loadEnvelopes();
+
+    expect(api.envelopes.value).toHaveLength(27);
+    expect(api.envelopes.value[0].id).toBe("27");
+    expect(api.envelopes.value[26].id).toBe("1");
+  });
+
   it("includes claim NFTs when loading envelopes", async () => {
     mockInvokeRead.mockImplementation(async (req: { operation: string; args?: Array<{ value: string }> }) => {
       if (req.operation === "getTotalEnvelopes") {

@@ -12,6 +12,7 @@ export const MIN_AMOUNT = 100_000_000; // 1 GAS fixed8
 export const MAX_PACKETS = 100;
 export const MIN_PER_PACKET = 10_000_000; // 0.1 GAS fixed8
 const ENVELOPE_ID_STORAGE_KEY_B64 = "Eg=="; // storage key 0x12 (PREFIX_ENVELOPE_ID)
+const MAX_ENVELOPE_ID_PROBE = 1_000_000;
 
 export type EnvelopeItem = {
   id: string;
@@ -221,8 +222,8 @@ export function useRedEnvelope() {
     );
   };
 
-  /** Fetch single envelope state from contract */
-  const fetchEnvelopeState = async (envelopeId: string): Promise<EnvelopeItem | null> => {
+  /** Fetch raw envelope map from contract */
+  const fetchEnvelopeMap = async (envelopeId: string): Promise<Record<string, unknown> | null> => {
     const res = await invokeRead({
       scriptHash: CONTRACT_HASH,
       operation: "getEnvelopeState",
@@ -230,6 +231,13 @@ export function useRedEnvelope() {
     });
     const data = parseInvokeResult(res) as Record<string, unknown>;
     if (!data || !data.creator) return null;
+    return data;
+  };
+
+  /** Fetch single envelope state from contract */
+  const fetchEnvelopeState = async (envelopeId: string): Promise<EnvelopeItem | null> => {
+    const data = await fetchEnvelopeMap(envelopeId);
+    if (!data) return null;
     return mapEnvelopeData(envelopeId, data);
   };
 
@@ -257,9 +265,19 @@ export function useRedEnvelope() {
       });
       const total = Number(parseInvokeResult(countRes) ?? 0);
       // Contract allocates IDs for claim NFTs too, so latest envelope ID can be
-      // higher than getTotalEnvelopes(). We must scan up to the latest allocated ID.
+      // higher than getTotalEnvelopes(). Use storage fast-path and on-chain probing
+      // fallback for browsers where getstorage is blocked (CORS/public RPC policy).
       const latestEnvelopeId = await getLatestEnvelopeIdFromStorage();
-      const upperBound = Math.max(total, latestEnvelopeId);
+      const shouldProbeLatestId = typeof window !== "undefined" && latestEnvelopeId === 0 && total > 0;
+      const upperBound = shouldProbeLatestId
+        ? await resolveLatestEnvelopeId(total, latestEnvelopeId, async (envelopeId) => {
+            try {
+              return (await fetchEnvelopeMap(String(envelopeId))) !== null;
+            } catch {
+              return false;
+            }
+          })
+        : Math.max(total, latestEnvelopeId);
       if (upperBound === 0) {
         envelopes.value = [];
         return;
@@ -395,4 +413,56 @@ async function getLatestEnvelopeIdFromStorage(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+async function resolveLatestEnvelopeId(
+  totalEnvelopes: number,
+  storageEnvelopeId: number,
+  exists: (id: number) => Promise<boolean>,
+): Promise<number> {
+  let lowerBound = Math.max(totalEnvelopes, storageEnvelopeId);
+
+  if (lowerBound <= 0) {
+    if (!(await exists(1))) return 0;
+    lowerBound = 1;
+  } else if (!(await exists(lowerBound))) {
+    // Defensive: if lower bound is stale, search downward for the last valid ID.
+    let low = 0;
+    let high = lowerBound;
+    while (low + 1 < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (await exists(mid)) low = mid;
+      else high = mid;
+    }
+    return low;
+  }
+
+  let low = lowerBound;
+  let high = lowerBound;
+  let foundMissingHigh = false;
+
+  while (high < MAX_ENVELOPE_ID_PROBE) {
+    const next = Math.min(MAX_ENVELOPE_ID_PROBE, Math.max(high + 1, high * 2));
+    if (next === high) break;
+
+    if (await exists(next)) {
+      low = next;
+      high = next;
+      continue;
+    }
+
+    high = next;
+    foundMissingHigh = true;
+    break;
+  }
+
+  if (!foundMissingHigh) return high;
+
+  while (low + 1 < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (await exists(mid)) low = mid;
+    else high = mid;
+  }
+
+  return low;
 }
