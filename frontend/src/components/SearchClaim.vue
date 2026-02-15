@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
-import { useEnvelopeHistory } from "@/composables/useEnvelopeHistory";
 import { useI18n } from "@/composables/useI18n";
 import { useAudio } from "@/composables/useAudio";
 import { extractError, formatGas } from "@/utils/format";
@@ -10,7 +9,6 @@ import { addressToScriptHashHex } from "@/utils/neo";
 import { extractEnvelopeCreatedId, waitForConfirmation } from "@/utils/rpc";
 import { CONTRACT_HASH } from "@/config/contract";
 import EnvelopeDetail from "./EnvelopeDetail.vue";
-import EnvelopeHistory from "./EnvelopeHistory.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
 import { mapWalletConnectError } from "./searchClaim.logic";
@@ -23,7 +21,6 @@ const {
   claimFromPool,
   reclaimEnvelope,
 } = useRedEnvelope();
-const { loading: historyLoading, history, loadHistory, clearHistory } = useEnvelopeHistory();
 
 const urlEnvelopeId = ref("");
 const searching = ref(false);
@@ -162,7 +159,6 @@ const loadEnvelopeFromUrl = async () => {
   envelope.value = null;
   status.value = null;
   showSecondaryActions.value = false;
-  clearHistory();
 
   if (!id) {
     return;
@@ -178,8 +174,6 @@ const loadEnvelopeFromUrl = async () => {
     const result = await fetchEnvelopeState(id);
     if (result) {
       envelope.value = result;
-      // Auto-load claim history for pool envelopes (use claimedCount, not openedCount)
-      loadHistory(id, result.envelopeType, result.claimedCount);
     } else {
       notFound.value = true;
     }
@@ -219,7 +213,6 @@ const handlePoolClaim = async () => {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) {
       envelope.value = refreshed;
-      loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
     }
 
     if (claimId) {
@@ -286,7 +279,6 @@ const handleReclaim = async () => {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) {
       envelope.value = refreshed;
-      loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
     }
   } catch (e: unknown) {
     status.value = { msg: extractError(e), type: "error" };
@@ -304,7 +296,6 @@ const onOpened = async () => {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) {
       envelope.value = refreshed;
-      loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
     }
   }
 };
@@ -342,8 +333,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="layout-two-col">
-    <!-- LEFT PANEL: Detail or empty state -->
+  <div class="search-single-layout">
     <div class="panel-left">
       <div v-if="searching" class="loading">{{ t("searching") }}</div>
 
@@ -355,17 +345,12 @@ onUnmounted(() => {
 
       <template v-else-if="envelope">
         <EnvelopeDetail :envelope="envelope" />
-        <EnvelopeHistory :envelope="envelope" :history="history" :loading="historyLoading" />
       </template>
 
       <div v-else class="search-empty">
         <div class="search-empty-icon">🧧</div>
         <div class="search-empty-text">{{ t("urlEnvelopePrompt") }}</div>
       </div>
-    </div>
-
-    <!-- RIGHT PANEL: URL envelope + Actions -->
-    <div class="panel-right">
       <div class="section-hint">
         {{ urlEnvelopeId ? t("urlEnvelopeId", urlEnvelopeId) : t("urlEnvelopePrompt") }}
       </div>
@@ -403,7 +388,6 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
-
     </div>
   </div>
 
