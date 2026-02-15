@@ -65,7 +65,9 @@ const canTransfer = computed(() => {
 const canReclaim = computed(() => {
   const env = envelope.value;
   if (!env) return false;
-  return env.envelopeType !== 2 && env.active && env.expired && env.remainingAmount > 0 && isCreator.value;
+  if (!isCreator.value || !env.expired || env.envelopeType === 2) return false;
+  if (env.envelopeType === 1) return true;
+  return env.active && env.remainingAmount > 0;
 });
 
 type PrimaryActionKind = "claimOrOpen" | "transfer" | "reclaim" | null;

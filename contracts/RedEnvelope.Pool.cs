@@ -170,6 +170,8 @@ namespace RedEnvelope.Contract
         /// Pool creator reclaims all unclaimed GAS:
         /// - remaining unclaimed pool balance
         /// - all unopened claim NFT balances
+        /// NOTE: Pool may already be "inactive" when all slots were claimed.
+        /// Reclaim must still be allowed after expiry to recover unopened claim balances.
         /// </summary>
         public static BigInteger ReclaimPool(BigInteger poolId, UInt160 creator)
         {
@@ -181,7 +183,6 @@ namespace RedEnvelope.Contract
             ExecutionEngine.Assert(EnvelopeExists(pool), "pool not found");
             ExecutionEngine.Assert(pool.EnvelopeType == ENVELOPE_TYPE_POOL, "not lucky pool");
             ExecutionEngine.Assert(pool.Creator == creator, "not creator");
-            ExecutionEngine.Assert(pool.Active, "already reclaimed");
             ExecutionEngine.Assert(Runtime.Time > (ulong)pool.ExpiryTime, "not expired");
 
             BigInteger refundAmount = pool.RemainingAmount;
