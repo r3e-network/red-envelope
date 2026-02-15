@@ -40,6 +40,7 @@ namespace RedEnvelope.Contract
         private const int PERCENT_BASE = 10_000;                // basis points (100.00%)
         private const int MAX_SINGLE_PACKET_BPS = 2_000;        // 20.00%
         private const long DEFAULT_EXPIRY_MS = 604_800_000;      // 7 days in ms
+        private const long MAX_EXPIRY_MS = 604_800_000;         // 7 days in ms
         private const long DEFAULT_MIN_NEO = 0;
         private const long DEFAULT_MIN_HOLD_SECONDS = 0;
 
@@ -206,6 +207,7 @@ namespace RedEnvelope.Contract
 
             BigInteger envelopeId = AllocateEnvelopeId();
             BigInteger effectiveExpiry = expiryMs > 0 ? expiryMs : DEFAULT_EXPIRY_MS;
+            ExecutionEngine.Assert(effectiveExpiry > 0 && effectiveExpiry <= MAX_EXPIRY_MS, "expiry out of range");
             BigInteger effectiveMinNeo = minNeo;
             BigInteger effectiveMinHold = minHold;
 

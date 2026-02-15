@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { address } = useWallet();
 const { openEnvelope, getOpenedAmount } = useRedEnvelope();
-const { checking, result: eligibility, checkEligibility } = useNeoEligibility();
+const { checking, result: eligibility, checkOpenEligibility } = useNeoEligibility();
 const { playOpenSound } = useAudio();
 
 const modalRef = ref<HTMLElement | null>(null);
@@ -40,6 +40,14 @@ const showShare = ref(false);
 const showNftPreview = ref(false);
 const eligibilityWarning = ref("");
 const resultHint = computed(() => (props.envelope.envelopeType === 0 ? t("openResultHintSpreading") : t("openResultHintClaim")));
+const eligibilityErrorText = computed(() => {
+  if (!eligibility.value || eligibility.value.eligible) return "";
+  if (eligibility.value.reason === "insufficient NEO") return t("insufficientNeo");
+  if (eligibility.value.reason === "hold duration not met") return t("holdNotMet");
+  if (eligibility.value.reason === "already opened") return t("alreadyOpenedByYou");
+  if (eligibility.value.reason === "already claimed") return t("alreadyClaimedPool");
+  return eligibility.value.reason || t("eligibilityCheckFailed");
+});
 
 const isLocked = computed(() => eligibility.value != null && !eligibility.value.eligible);
 const requiredHoldDays = computed(() => (eligibility.value ? Math.floor(eligibility.value.minHoldSeconds / 86400) : 0));
@@ -49,7 +57,7 @@ const hasGate = computed(
 
 onMounted(async () => {
   try {
-    await checkEligibility(props.envelope.id);
+    await checkOpenEligibility(props.envelope.id);
   } catch {
     eligibilityWarning.value = t("eligibilityCheckFailed");
   }
@@ -186,20 +194,15 @@ const handleOpen = async () => {
               <span>{{ t("neoRequirement") }}</span>
               <span>≥{{ eligibility.minNeoRequired }} NEO, ≥{{ requiredHoldDays }}d</span>
             </div>
-            <div v-if="!eligibility.eligible" class="status error">
-              {{
-                eligibility.reason === "insufficient NEO"
-                  ? t("insufficientNeo")
-                  : eligibility.reason === "hold duration not met"
-                    ? t("holdNotMet")
-                    : eligibility.reason
-              }}
-            </div>
           </template>
           <div v-else class="eligibility-row">
             <span>{{ t("neoRequirement") }}</span>
             <span>{{ t("detailNoGate") }}</span>
           </div>
+        </div>
+
+        <div v-if="eligibilityErrorText" class="status error">
+          {{ eligibilityErrorText }}
         </div>
 
         <div v-if="eligibilityWarning" class="status text-subtle-sm">

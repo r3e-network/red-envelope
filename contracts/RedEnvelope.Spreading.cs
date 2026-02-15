@@ -9,6 +9,34 @@ namespace RedEnvelope.Contract
 {
     public partial class RedEnvelope
     {
+        #region NEP-11 Standard Transfer
+
+        /// <summary>
+        /// Override NEP-11 standard transfer path so pause and recipient restrictions
+        /// cannot be bypassed through the base token entrypoint.
+        /// </summary>
+        public new static bool Transfer(UInt160 to, ByteString tokenId, object data)
+        {
+            AssertNotPaused();
+            AssertDirectUserInvocation();
+            ExecutionEngine.Assert(to != null && to.IsValid, "invalid recipient");
+            ExecutionEngine.Assert(!IsContractAccount(to), "contract recipient not allowed");
+
+            RedEnvelopeState token = GetTokenState(tokenId);
+            ExecutionEngine.Assert(token != null, "token not found");
+            ExecutionEngine.Assert(
+                token.EnvelopeType == ENVELOPE_TYPE_SPREADING || token.EnvelopeType == ENVELOPE_TYPE_CLAIM,
+                "unsupported token type");
+
+            UInt160 from = (UInt160)OwnerOf(tokenId);
+            ExecutionEngine.Assert(from != null && from.IsValid, "owner not found");
+            ExecutionEngine.Assert(Runtime.CheckWitness(from), "unauthorized");
+
+            return Nep11Token<RedEnvelopeState>.Transfer(to, tokenId, data);
+        }
+
+        #endregion
+
         #region Spreading Envelope
 
         /// <summary>

@@ -92,6 +92,7 @@ async function main() {
       check("maxSinglePacketPercent = 20", constants.maxSinglePacketPercent === 20);
       check("percentBase = 10000", constants.percentBase === 10000);
       check("defaultExpiryMs = 604800000 (7d)", constants.defaultExpiryMs === 604800000);
+      check("maxExpiryMs = 604800000 (7d)", constants.maxExpiryMs === 604800000);
       check("typeSpreading = 0", constants.typeSpreading === 0);
       check("typePool = 1", constants.typePool === 1);
       check("typeClaim = 2", constants.typeClaim === 2);

@@ -166,6 +166,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 | `GetEnvelopeState`        | `envelopeId`           | `Map`        | 红包完整元数据。          |
 | `GetClaimState`           | `claimId`              | `Map`        | Claim NFT 元数据。        |
 | `CheckEligibility`        | `envelopeId`, `user`   | `Map`        | 用户是否可打开/领取。     |
+| `CheckOpenEligibility`    | `envelopeId`, `user`   | `Map`        | 包含持有者与状态校验的完整打开/领取资格。 |
 | `HasOpened`               | `envelopeId`, `opener` | `bool`       | 地址是否已打开。          |
 | `GetOpenedAmount`         | `envelopeId`, `opener` | `BigInteger` | 打开者获得的 GAS。        |
 | `HasClaimedFromPool`      | `poolId`, `claimer`    | `bool`       | 地址是否已领取。          |

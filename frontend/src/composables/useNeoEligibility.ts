@@ -87,5 +87,34 @@ export function useNeoEligibility() {
     }
   };
 
-  return { checking, result, checkEligibility, checkEligibilityForAddress };
+  const checkOpenEligibility = async (envelopeId: string): Promise<EligibilityResult> => {
+    checking.value = true;
+    try {
+      if (!connected.value || !address.value) {
+        const r = failedResult("wallet not connected");
+        result.value = r;
+        return r;
+      }
+
+      const res = await invokeRead({
+        scriptHash: CONTRACT_HASH,
+        operation: "checkOpenEligibility",
+        args: [
+          { type: "Integer", value: envelopeId },
+          { type: "Hash160", value: address.value },
+        ],
+      });
+      const r = parseEligibility(res);
+      result.value = r;
+      return r;
+    } catch (err) {
+      const r = failedResult(err instanceof Error ? err.message : "check failed");
+      result.value = r;
+      return r;
+    } finally {
+      checking.value = false;
+    }
+  };
+
+  return { checking, result, checkEligibility, checkOpenEligibility, checkEligibilityForAddress };
 }

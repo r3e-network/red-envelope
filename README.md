@@ -166,6 +166,7 @@ To run E2E tests, set `KEY1_WIF` and `KEY2_WIF` and execute `node scripts/test-e
 | `GetEnvelopeState`        | `envelopeId`           | `Map`        | Full envelope metadata.      |
 | `GetClaimState`           | `claimId`              | `Map`        | Claim NFT metadata.          |
 | `CheckEligibility`        | `envelopeId`, `user`   | `Map`        | Whether user can open/claim. |
+| `CheckOpenEligibility`    | `envelopeId`, `user`   | `Map`        | Full open/claim eligibility with holder and state checks. |
 | `HasOpened`               | `envelopeId`, `opener` | `bool`       | Whether address has opened.  |
 | `GetOpenedAmount`         | `envelopeId`, `opener` | `BigInteger` | GAS received by opener.      |
 | `HasClaimedFromPool`      | `poolId`, `claimer`    | `bool`       | Whether address has claimed. |

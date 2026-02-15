@@ -182,6 +182,159 @@ namespace RedEnvelope.Contract
             return result;
         }
 
+        /// <summary>
+        /// Full action eligibility check for open/claim operations.
+        /// Includes envelope status, role checks, duplicate-open/claim checks and NEO gate checks.
+        /// </summary>
+        [Safe]
+        public static Map<string, object> CheckOpenEligibility(BigInteger envelopeId, UInt160 user)
+        {
+            Map<string, object> result = new Map<string, object>();
+
+            if (IsContractAccount(user))
+            {
+                result["eligible"] = false;
+                result["reason"] = "contracts cannot open/claim";
+                return result;
+            }
+
+            EnvelopeData envelope = GetEnvelopeData(envelopeId);
+            if (!EnvelopeExists(envelope))
+            {
+                result["eligible"] = false;
+                result["reason"] = "envelope not found";
+                return result;
+            }
+
+            result["minNeoRequired"] = envelope.MinNeoRequired;
+            result["minHoldSeconds"] = envelope.MinHoldSeconds;
+
+            if (!envelope.Active)
+            {
+                result["eligible"] = false;
+                result["reason"] = "not active";
+                return result;
+            }
+
+            if (Runtime.Time > (ulong)envelope.ExpiryTime)
+            {
+                result["eligible"] = false;
+                result["reason"] = "expired";
+                return result;
+            }
+
+            bool isDepleted = envelope.OpenedCount >= envelope.PacketCount || envelope.RemainingAmount <= 0;
+            if (isDepleted)
+            {
+                result["eligible"] = false;
+                result["reason"] = "depleted";
+                return result;
+            }
+
+            if (envelope.EnvelopeType == ENVELOPE_TYPE_POOL)
+            {
+                if (HasClaimedFromPool(envelopeId, user))
+                {
+                    result["eligible"] = false;
+                    result["reason"] = "already claimed";
+                    return result;
+                }
+            }
+            else if (envelope.EnvelopeType == ENVELOPE_TYPE_SPREADING || envelope.EnvelopeType == ENVELOPE_TYPE_CLAIM)
+            {
+                ByteString tokenId = (ByteString)envelopeId.ToByteArray();
+                RedEnvelopeState token = GetTokenState(tokenId);
+                if (token == null)
+                {
+                    result["eligible"] = false;
+                    result["reason"] = "token not found";
+                    return result;
+                }
+
+                UInt160 holder = (UInt160)OwnerOf(tokenId);
+                if (holder != user)
+                {
+                    result["eligible"] = false;
+                    result["reason"] = "not NFT holder";
+                    return result;
+                }
+
+                if (envelope.EnvelopeType == ENVELOPE_TYPE_SPREADING && HasOpened(envelopeId, user))
+                {
+                    result["eligible"] = false;
+                    result["reason"] = "already opened";
+                    return result;
+                }
+                if (envelope.EnvelopeType == ENVELOPE_TYPE_CLAIM && envelope.OpenedCount > 0)
+                {
+                    result["eligible"] = false;
+                    result["reason"] = "already opened";
+                    return result;
+                }
+            }
+            else
+            {
+                result["eligible"] = false;
+                result["reason"] = "invalid envelope type";
+                return result;
+            }
+
+            BigInteger neoBalance = (BigInteger)Neo.SmartContract.Framework.Services.Contract.Call(
+                NEO_HASH,
+                "balanceOf",
+                CallFlags.ReadOnly,
+                new object[] { user });
+            result["neoBalance"] = neoBalance;
+
+            if (envelope.MinNeoRequired > 0 && neoBalance < envelope.MinNeoRequired)
+            {
+                result["eligible"] = false;
+                result["reason"] = "insufficient NEO";
+                return result;
+            }
+
+            if (envelope.MinHoldSeconds <= 0)
+            {
+                result["holdDuration"] = 0;
+                result["holdDays"] = 0;
+                result["eligible"] = true;
+                result["reason"] = "ok";
+                return result;
+            }
+
+            object[] state = (object[])Neo.SmartContract.Framework.Services.Contract.Call(
+                NEO_HASH,
+                "getAccountState",
+                CallFlags.ReadOnly,
+                new object[] { user });
+
+            if (state == null)
+            {
+                result["eligible"] = false;
+                result["reason"] = "no NEO state";
+                return result;
+            }
+
+            BigInteger balanceHeight = (BigInteger)state[1];
+            BigInteger blockTs = (BigInteger)Ledger.GetBlock((uint)balanceHeight).Timestamp;
+            BigInteger holdDuration = (BigInteger)Runtime.Time - blockTs;
+            BigInteger holdDays = holdDuration / 86_400_000;
+
+            result["holdDuration"] = holdDuration;
+            result["holdDays"] = holdDays;
+
+            if (holdDuration < envelope.MinHoldSeconds * 1000)
+            {
+                result["eligible"] = false;
+                result["reason"] = "hold duration not met";
+                return result;
+            }
+
+            result["eligible"] = true;
+            result["reason"] = "ok";
+            return result;
+        }
+
         #endregion
 
         #region Open/Claim Checks
@@ -241,6 +394,7 @@ namespace RedEnvelope.Contract
             c["percentBase"] = PERCENT_BASE;
             c["maxSinglePacketPercent"] = (MAX_SINGLE_PACKET_BPS * 100) / PERCENT_BASE;
             c["defaultExpiryMs"] = DEFAULT_EXPIRY_MS;
+            c["maxExpiryMs"] = MAX_EXPIRY_MS;
             c["defaultMinNeo"] = DEFAULT_MIN_NEO;
             c["defaultMinHoldSeconds"] = DEFAULT_MIN_HOLD_SECONDS;
             c["typeSpreading"] = ENVELOPE_TYPE_SPREADING;
