@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useEnvelopeHistory } from "@/composables/useEnvelopeHistory";
@@ -8,22 +8,17 @@ import { useAudio } from "@/composables/useAudio";
 import { extractError, formatGas } from "@/utils/format";
 import { addressToScriptHashHex } from "@/utils/neo";
 import { extractEnvelopeCreatedId, waitForConfirmation } from "@/utils/rpc";
-import { msUntilExpiry } from "@/utils/time";
 import { CONTRACT_HASH } from "@/config/contract";
 import EnvelopeDetail from "./EnvelopeDetail.vue";
 import EnvelopeHistory from "./EnvelopeHistory.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
-import NftPreviewModal from "./NftPreviewModal.vue";
 import { mapWalletConnectError } from "./searchClaim.logic";
 
 const { t } = useI18n();
 const { playCoinSound } = useAudio();
 const { address, connected, connect } = useWallet();
 const {
-  envelopes,
-  loadingEnvelopes,
-  loadEnvelopes,
   fetchEnvelopeState,
   claimFromPool,
   getPoolClaimedAmount,
@@ -40,14 +35,12 @@ const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 // Modals
 const showOpenModal = ref(false);
 const showTransferModal = ref(false);
-const showWalletNftModal = ref(false);
 const autoOpenClaimAfterClaim = ref(false);
 const claimedAmount = ref(0);
 const claiming = ref(false);
 const reclaimingSearch = ref(false);
 const openTargetEnvelope = ref<EnvelopeItem | null>(null);
 const transferTargetEnvelope = ref<EnvelopeItem | null>(null);
-const walletNftTarget = ref<EnvelopeItem | null>(null);
 
 const currentAddressHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
 
@@ -78,39 +71,6 @@ const canReclaim = computed(() => {
   if (!env) return false;
   return env.envelopeType !== 2 && env.active && env.expired && env.remainingAmount > 0 && isCreator.value;
 });
-
-const walletSpreadingEnvelopes = computed(() => {
-  if (!currentAddressHash.value) return [];
-
-  return envelopes.value
-    .filter((env) => env.envelopeType === 0 && env.currentHolder === currentAddressHash.value)
-    .slice()
-    .sort((a, b) => {
-      const aClaimable = a.active && !a.expired && !a.depleted;
-      const bClaimable = b.active && !b.expired && !b.depleted;
-
-      if (aClaimable !== bClaimable) return aClaimable ? -1 : 1;
-
-      if (aClaimable && bClaimable) {
-        const aExpiry = a.expiryTime > 0 ? a.expiryTime : Number.MAX_SAFE_INTEGER;
-        const bExpiry = b.expiryTime > 0 ? b.expiryTime : Number.MAX_SAFE_INTEGER;
-        if (aExpiry !== bExpiry) return aExpiry - bExpiry;
-      }
-
-      return Number(b.id) - Number(a.id);
-    });
-});
-
-const refreshWalletSpreadingList = async () => {
-  if (!connected.value) return;
-  await loadEnvelopes();
-};
-
-const isExpiringSoon = (env: EnvelopeItem): boolean => {
-  if (!env.active || env.expired || env.depleted) return false;
-  const remainingMs = msUntilExpiry(env.expiryTime);
-  return remainingMs > 0 && remainingMs <= 6 * 60 * 60 * 1000;
-};
 
 const isValidEnvelopeId = (val: string) => /^\d+$/.test(val) && Number(val) > 0;
 
@@ -172,23 +132,6 @@ const handleOpen = async () => {
   autoOpenClaimAfterClaim.value = false;
   openTargetEnvelope.value = envelope.value;
   showOpenModal.value = true;
-};
-
-const handleWalletSpreadingClaim = async (target: EnvelopeItem) => {
-  if (!(await ensureConnected())) return;
-  if (!connected.value) {
-    await refreshWalletSpreadingList();
-    return;
-  }
-
-  autoOpenClaimAfterClaim.value = false;
-  openTargetEnvelope.value = target;
-  showOpenModal.value = true;
-};
-
-const handleWalletSpreadingNft = (target: EnvelopeItem) => {
-  walletNftTarget.value = target;
-  showWalletNftModal.value = true;
 };
 
 const handlePoolClaim = async () => {
@@ -281,7 +224,6 @@ const onOpened = async () => {
       loadHistory(refreshed.id, refreshed.envelopeType, refreshed.claimedCount);
     }
   }
-  await refreshWalletSpreadingList();
 };
 
 const handleTransferAfterOpen = () => {
@@ -299,7 +241,6 @@ const onTransferred = async () => {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) envelope.value = refreshed;
   }
-  await refreshWalletSpreadingList();
 };
 
 const handlePopState = () => {
@@ -309,20 +250,10 @@ const handlePopState = () => {
 onMounted(() => {
   loadEnvelopeFromUrl();
   window.addEventListener("popstate", handlePopState);
-
-  if (connected.value) {
-    refreshWalletSpreadingList();
-  }
 });
 
 onUnmounted(() => {
   window.removeEventListener("popstate", handlePopState);
-});
-
-watch(connected, (isConnected) => {
-  if (isConnected) {
-    refreshWalletSpreadingList();
-  }
 });
 </script>
 
@@ -353,60 +284,6 @@ watch(connected, (isConnected) => {
     <div class="panel-right">
       <div class="section-hint">
         {{ urlEnvelopeId ? t("urlEnvelopeId", urlEnvelopeId) : t("urlEnvelopePrompt") }}
-      </div>
-
-      <div class="wallet-spreading-card">
-        <div class="wallet-spreading-header">
-          <span>{{ t("searchWalletSpreadingTitle") }}</span>
-          <button class="btn btn-sm" :aria-label="t('refresh')" @click="refreshWalletSpreadingList">↻</button>
-        </div>
-
-        <div v-if="!connected" class="text-muted wallet-spreading-empty">
-          {{ t("searchWalletSpreadingConnectHint") }}
-        </div>
-
-        <div v-else-if="loadingEnvelopes" class="text-muted wallet-spreading-empty">
-          {{ t("searching") }}
-        </div>
-
-        <div v-else-if="walletSpreadingEnvelopes.length === 0" class="text-muted wallet-spreading-empty">
-          {{ t("searchWalletSpreadingEmpty") }}
-        </div>
-
-        <div v-else class="wallet-spreading-list">
-          <div
-            v-for="env in walletSpreadingEnvelopes"
-            :key="env.id"
-            :class="['wallet-spreading-item', { 'wallet-spreading-item-urgent': isExpiringSoon(env) }]"
-            role="button"
-            tabindex="0"
-            :title="t('viewNftHint')"
-            @click="handleWalletSpreadingNft(env)"
-            @keydown.enter.prevent="handleWalletSpreadingNft(env)"
-            @keydown.space.prevent="handleWalletSpreadingNft(env)"
-          >
-            <div class="wallet-spreading-meta">
-              <div class="wallet-spreading-id-row">
-                <div class="wallet-spreading-id">#{{ env.id }}</div>
-                <span v-if="isExpiringSoon(env)" class="wallet-spreading-badge-urgent">
-                  {{ t("expiringSoon") }}
-                </span>
-              </div>
-              <div class="wallet-spreading-info">
-                {{ t("packets", env.openedCount, env.packetCount) }} · {{ formatGas(env.remainingAmount) }} GAS
-              </div>
-            </div>
-
-            <button
-              class="btn btn-open wallet-spreading-open"
-              :disabled="!env.active || env.expired || env.depleted"
-              :aria-label="t('openEnvelope') + ' #' + env.id"
-              @click.stop="handleWalletSpreadingClaim(env)"
-            >
-              {{ t("openEnvelope") }}
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- Action buttons (only when envelope loaded) -->
@@ -453,12 +330,6 @@ watch(connected, (isConnected) => {
       transferTargetEnvelope = null;
     "
     @transferred="onTransferred"
-  />
-
-  <NftPreviewModal
-    v-if="showWalletNftModal && walletNftTarget"
-    :envelope="walletNftTarget"
-    @close="showWalletNftModal = false"
   />
 
 </template>
