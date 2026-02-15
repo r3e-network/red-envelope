@@ -4,7 +4,7 @@ import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
 import { useReactiveClock } from "@/composables/useReactiveClock";
-import { formatGas, extractError } from "@/utils/format";
+import { formatGas, extractError, formatHash } from "@/utils/format";
 import { waitForConfirmation } from "@/utils/rpc";
 import { computeCountdown, formatCountdownDisplay } from "@/utils/time";
 import { addressToScriptHashHex, normalizeScriptHashHex } from "@/utils/neo";
@@ -25,6 +25,12 @@ const showTransferModal = ref(false);
 const actionStatus = ref<{ msg: string; type: "success" | "error" } | null>(null);
 const reclaimingId = ref<string | null>(null);
 const inspectorInput = ref("");
+const snapshotCanvasRef = ref<HTMLCanvasElement | null>(null);
+const snapshotWorking = ref(false);
+
+const SNAPSHOT_W = 860;
+const SNAPSHOT_H = 1120;
+const SNAPSHOT_DPR = 2;
 
 const walletHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
 const inspectorHash = computed(() => normalizeScriptHashHex(inspectorInput.value));
@@ -125,6 +131,190 @@ const clearInspector = () => {
   inspectorInput.value = "";
 };
 
+const normalizeInspectorInput = (value: string): string => {
+  const normalized = normalizeScriptHashHex(value);
+  return normalized || value.trim();
+};
+
+const handleInspectWallet = (wallet: string) => {
+  const next = normalizeInspectorInput(wallet);
+  if (!next) return;
+  inspectorInput.value = next;
+};
+
+function envelopeTypeLabel(env: EnvelopeItem): string {
+  if (env.envelopeType === 0) return t("detailTypeSpreading");
+  if (env.envelopeType === 2) return t("detailTypeClaim");
+  return t("detailTypePool");
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let out = text;
+  while (out.length > 0 && ctx.measureText(`${out}...`).width > maxWidth) {
+    out = out.slice(0, -1);
+  }
+  return `${out}...`;
+}
+
+function drawWalletSnapshot(canvas: HTMLCanvasElement) {
+  const dpr = SNAPSHOT_DPR;
+  const W = SNAPSHOT_W;
+  const H = SNAPSHOT_H;
+
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = `${W}px`;
+  canvas.style.height = `${H}px`;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas context unavailable");
+  ctx.scale(dpr, dpr);
+
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#2a0f10");
+  bg.addColorStop(1, "#130809");
+  ctx.fillStyle = bg;
+  roundRect(ctx, 0, 0, W, H, 18);
+  ctx.fill();
+
+  const top = ctx.createLinearGradient(0, 0, W, 0);
+  top.addColorStop(0, "#e53935");
+  top.addColorStop(0.5, "#ffd700");
+  top.addColorStop(1, "#e53935");
+  ctx.fillStyle = top;
+  ctx.fillRect(0, 0, W, 8);
+
+  const target = inspectorHash.value || inspectorInput.value.trim();
+  const walletLabel = formatHash(target);
+
+  ctx.fillStyle = "#ffd76a";
+  ctx.font = "700 40px Georgia, serif";
+  ctx.textAlign = "left";
+  ctx.fillText(t("myTab"), 44, 66);
+
+  ctx.fillStyle = "#f1d4d4";
+  ctx.font = "600 24px sans-serif";
+  ctx.fillText(walletLabel, 44, 108);
+
+  const chips = [
+    [t("inspectorSpreadingNfts"), spreadingNfts.value.length],
+    [t("inspectorClaimNfts"), claimNfts.value.length],
+    [t("inspectorOtherEnvelopes"), otherEnvelopes.value.length],
+  ] as const;
+
+  let chipX = 44;
+  for (const [label, count] of chips) {
+    const text = `${label}: ${count}`;
+    ctx.font = "600 19px sans-serif";
+    const width = Math.ceil(ctx.measureText(text).width) + 36;
+    const height = 38;
+
+    ctx.fillStyle = "rgba(255, 215, 0, 0.12)";
+    roundRect(ctx, chipX, 132, width, height, 10);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 215, 0, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffd76a";
+    ctx.fillText(text, chipX + 16, 157);
+    chipX += width + 12;
+  }
+
+  const list = inspectedEnvelopes.value.slice(0, 12);
+  const listTop = 198;
+  const listBottom = H - 70;
+  const rowHeight = Math.max(62, Math.floor((listBottom - listTop) / Math.max(list.length, 1)));
+  let y = listTop;
+
+  if (list.length === 0) {
+    ctx.fillStyle = "#bfa2a2";
+    ctx.font = "500 24px sans-serif";
+    ctx.fillText(t("inspectorNoEnvelopes"), 44, listTop + 32);
+  } else {
+    for (const env of list) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+      roundRect(ctx, 34, y - 28, W - 68, rowHeight - 8, 10);
+      ctx.fill();
+
+      ctx.fillStyle = "#ffe08f";
+      ctx.font = "700 22px sans-serif";
+      const title = `#${env.id} · ${envelopeTypeLabel(env)} · ${env.status}`;
+      ctx.fillText(fitText(ctx, title, W - 120), 52, y);
+
+      ctx.fillStyle = "#cdb8b8";
+      ctx.font = "500 17px sans-serif";
+      const subtitle = `${t("gasRemaining", formatGas(env.remainingAmount))} · ${t("packets", env.openedCount, env.packetCount)}`;
+      ctx.fillText(fitText(ctx, subtitle, W - 120), 52, y + 27);
+      y += rowHeight;
+    }
+  }
+
+  ctx.fillStyle = "#7f6565";
+  ctx.font = "500 15px monospace";
+  ctx.fillText(target, 44, H - 28);
+}
+
+async function getSnapshotCanvas(): Promise<HTMLCanvasElement> {
+  const canvas = snapshotCanvasRef.value;
+  if (!canvas) throw new Error("Snapshot canvas unavailable");
+  drawWalletSnapshot(canvas);
+  return canvas;
+}
+
+async function saveWalletSnapshot() {
+  snapshotWorking.value = true;
+  try {
+    const canvas = await getSnapshotCanvas();
+    const link = document.createElement("a");
+    const hash = (inspectorHash.value || "wallet").replace(/^0x/i, "");
+    link.download = `red-envelope-wallet-${hash.slice(0, 10) || "snapshot"}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    actionStatus.value = { msg: t("shareSaved"), type: "success" };
+  } catch (e: unknown) {
+    actionStatus.value = { msg: extractError(e), type: "error" };
+  } finally {
+    snapshotWorking.value = false;
+  }
+}
+
+async function copyWalletSnapshot() {
+  snapshotWorking.value = true;
+  try {
+    const canvas = await getSnapshotCanvas();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("Failed to create snapshot image");
+
+    if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+      await saveWalletSnapshot();
+      return;
+    }
+
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    actionStatus.value = { msg: t("shareCopied"), type: "success" };
+  } catch (e: unknown) {
+    actionStatus.value = { msg: extractError(e), type: "error" };
+  } finally {
+    snapshotWorking.value = false;
+  }
+}
+
 // ── Actions ──
 const handleOpen = (env: EnvelopeItem) => {
   selectedEnvelope.value = env;
@@ -176,6 +366,14 @@ const handleReclaim = async (env: EnvelopeItem) => {
     <div v-if="isInspectorActive && isInspectorValid" class="section-hint inspector-hint">
       {{ t("inspectorViewing", inspectorInput.trim()) }}
     </div>
+    <div v-if="isInspectorActive && isInspectorValid" class="inspector-share-actions">
+      <button class="btn btn-sm" :disabled="snapshotWorking" @click="copyWalletSnapshot">
+        📋 {{ snapshotWorking ? t("creating") : t("shareCopyImage") }}
+      </button>
+      <button class="btn btn-sm" :disabled="snapshotWorking" @click="saveWalletSnapshot">
+        💾 {{ snapshotWorking ? t("creating") : t("shareSaveImage") }}
+      </button>
+    </div>
 
     <div v-if="loadingEnvelopes" class="loading">{{ t("searching") }}</div>
 
@@ -205,6 +403,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           @open="handleOpen"
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
+          @inspect-wallet="handleInspectWallet"
         />
       </div>
 
@@ -235,6 +434,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           @open="handleOpen"
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
+          @inspect-wallet="handleInspectWallet"
         />
       </div>
 
@@ -257,6 +457,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           @open="handleOpen"
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
+          @inspect-wallet="handleInspectWallet"
         />
       </div>
     </template>
@@ -278,5 +479,6 @@ const handleReclaim = async (env: EnvelopeItem) => {
       @close="showTransferModal = false"
       @transferred="loadEnvelopes()"
     />
+    <canvas ref="snapshotCanvasRef" class="d-none"></canvas>
   </div>
 </template>

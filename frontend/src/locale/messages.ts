@@ -181,6 +181,7 @@ export const messages = {
   detailTypePool: { en: "Pool", zh: "红包池" },
   detailTypeNft: { en: "NFT", zh: "NFT" },
   detailTypeSpreading: { en: "Spreading", zh: "传播型" },
+  detailTypeClaim: { en: "Claim NFT", zh: "Claim NFT" },
   detailGasTotal: { en: "Total GAS", zh: "GAS 总量" },
   detailExpiry: { en: "Expires", zh: "过期时间" },
   detailNeoGate: { en: "NEO Gate", zh: "NEO 门槛" },

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
-import { formatGas } from "@/utils/format";
+import { formatGas, formatHash } from "@/utils/format";
 import type { CountdownDisplay } from "@/utils/time";
 
 export type EnrichedEnvelope = EnvelopeItem & {
@@ -26,6 +26,7 @@ const emit = defineEmits<{
   open: [env: EnrichedEnvelope];
   transfer: [env: EnrichedEnvelope];
   reclaim: [env: EnrichedEnvelope];
+  inspectWallet: [walletHash: string];
 }>();
 
 const { t } = useI18n();
@@ -51,6 +52,27 @@ const { t } = useI18n();
 
     <div class="card-body">
       <div class="card-msg">{{ env.message || "🧧" }}</div>
+      <div class="wallet-chip-row">
+        <button
+          class="wallet-chip"
+          type="button"
+          :title="env.creator"
+          :aria-label="t('detailCreator') + ': ' + env.creator"
+          @click.stop="emit('inspectWallet', env.creator)"
+        >
+          {{ t("detailCreator") }} · {{ formatHash(env.creator) }}
+        </button>
+        <button
+          v-if="env.currentHolder && env.currentHolder !== env.creator"
+          class="wallet-chip wallet-chip-holder"
+          type="button"
+          :title="env.currentHolder"
+          :aria-label="t('historyHolder') + ': ' + env.currentHolder"
+          @click.stop="emit('inspectWallet', env.currentHolder)"
+        >
+          {{ t("historyHolder") }} · {{ formatHash(env.currentHolder) }}
+        </button>
+      </div>
       <div class="card-gas-remaining">
         {{ t("gasRemaining", formatGas(env.remainingAmount)) }}
       </div>

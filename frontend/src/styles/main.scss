@@ -784,6 +784,16 @@ body {
     margin-top: -0.1rem;
     margin-bottom: 0.5rem;
   }
+
+  .inspector-share-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+
+    .btn {
+      flex: 1;
+    }
+  }
 }
 
 .envelope-list {
@@ -883,6 +893,46 @@ body {
 .card-msg {
   font-size: 1rem;
   margin-bottom: 0.5rem;
+}
+
+.wallet-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.wallet-chip {
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  background: rgba(255, 215, 0, 0.09);
+  color: #f6d98d;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: 0.2s ease;
+
+  &:hover {
+    border-color: rgba(255, 215, 0, 0.45);
+    background: rgba(255, 215, 0, 0.16);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 1px;
+  }
+}
+
+.wallet-chip-holder {
+  border-color: rgba(100, 181, 246, 0.32);
+  background: rgba(100, 181, 246, 0.14);
+  color: #b0ddff;
+
+  &:hover {
+    border-color: rgba(100, 181, 246, 0.55);
+    background: rgba(100, 181, 246, 0.22);
+  }
 }
 
 .card-meta {
