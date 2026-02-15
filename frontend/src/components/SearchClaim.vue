@@ -14,6 +14,7 @@ import EnvelopeHistory from "./EnvelopeHistory.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
 import ShareCard from "./ShareCard.vue";
+import NftPreviewModal from "./NftPreviewModal.vue";
 import { mapWalletConnectError } from "./searchClaim.logic";
 
 const { t } = useI18n();
@@ -40,10 +41,12 @@ const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 const showOpenModal = ref(false);
 const showTransferModal = ref(false);
 const showShareCard = ref(false);
+const showWalletNftModal = ref(false);
 const claimedAmount = ref(0);
 const claiming = ref(false);
 const reclaimingSearch = ref(false);
 const openTargetEnvelope = ref<EnvelopeItem | null>(null);
+const walletNftTarget = ref<EnvelopeItem | null>(null);
 
 const currentAddressHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
 
@@ -172,6 +175,11 @@ const handleWalletSpreadingClaim = async (target: EnvelopeItem) => {
 
   openTargetEnvelope.value = target;
   showOpenModal.value = true;
+};
+
+const handleWalletSpreadingNft = (target: EnvelopeItem) => {
+  walletNftTarget.value = target;
+  showWalletNftModal.value = true;
 };
 
 const handlePoolClaim = async () => {
@@ -351,6 +359,12 @@ watch(connected, (isConnected) => {
             v-for="env in walletSpreadingEnvelopes"
             :key="env.id"
             :class="['wallet-spreading-item', { 'wallet-spreading-item-urgent': isExpiringSoon(env) }]"
+            role="button"
+            tabindex="0"
+            :title="t('viewNftHint')"
+            @click="handleWalletSpreadingNft(env)"
+            @keydown.enter.prevent="handleWalletSpreadingNft(env)"
+            @keydown.space.prevent="handleWalletSpreadingNft(env)"
           >
             <div class="wallet-spreading-meta">
               <div class="wallet-spreading-id-row">
@@ -368,7 +382,7 @@ watch(connected, (isConnected) => {
               class="btn btn-open wallet-spreading-open"
               :disabled="!env.active || env.expired || env.depleted"
               :aria-label="t('openEnvelope') + ' #' + env.id"
-              @click="handleWalletSpreadingClaim(env)"
+              @click.stop="handleWalletSpreadingClaim(env)"
             >
               {{ t("openEnvelope") }}
             </button>
@@ -422,5 +436,11 @@ watch(connected, (isConnected) => {
     :envelope-id="envelope.id"
     :address="address"
     @close="showShareCard = false"
+  />
+
+  <NftPreviewModal
+    v-if="showWalletNftModal && walletNftTarget"
+    :envelope="walletNftTarget"
+    @close="showWalletNftModal = false"
   />
 </template>

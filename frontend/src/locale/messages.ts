@@ -56,6 +56,7 @@ export const messages = {
   summaryNeoGate: { en: "NEO Gate", zh: "NEO 门槛" },
   creating: { en: "Creating...", zh: "创建中..." },
   creatingConfirming: { en: "Confirming on chain...", zh: "链上确认中..." },
+  createCountdown: { en: "Waiting for confirmation · {0}s", zh: "链上确认等待中 · {0}秒" },
   createSuccessWithId: { en: "Created envelope #{0}", zh: "已创建红包 #{0}" },
   createSuccessTx: { en: "Created! TX: {0}", zh: "创建成功！交易：{0}" },
   createdEnvelopeId: { en: "Envelope ID: #{0}", zh: "红包 ID：#{0}" },

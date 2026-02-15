@@ -42,11 +42,15 @@ describe("fromFixed8", () => {
 });
 
 describe("formatHash", () => {
-  it("truncates long hash", () => {
-    expect(formatHash("0x36a46aa95413029e340e57365cdadd3ae29244ff")).toBe("0x36a46a...9244ff");
+  it("formats script hash as Neo N3 address", () => {
+    expect(formatHash("0xa5de523ae9d99be784a536e9412b7a3cbe049e1a")).toBe("NNLi44dJ...zZrNEs");
   });
 
-  it("returns short strings unchanged", () => {
+  it("keeps Neo address style for address input", () => {
+    expect(formatHash("NNLi44dJNXtDNSBkofB48aTVYtb1zZrNEs")).toBe("NNLi44dJ...zZrNEs");
+  });
+
+  it("returns unrecognized strings unchanged", () => {
     expect(formatHash("0xabc")).toBe("0xabc");
   });
 

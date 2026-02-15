@@ -62,8 +62,8 @@ const { t } = useI18n();
         <button
           class="wallet-chip"
           type="button"
-          :title="env.creator"
-          :aria-label="t('detailCreator') + ': ' + env.creator"
+          :title="formatHash(env.creator)"
+          :aria-label="t('detailCreator') + ': ' + formatHash(env.creator)"
           @click.stop="emit('inspectWallet', env.creator)"
         >
           {{ t("detailCreator") }} · {{ formatHash(env.creator) }}
@@ -72,8 +72,8 @@ const { t } = useI18n();
           v-if="env.currentHolder && env.currentHolder !== env.creator"
           class="wallet-chip wallet-chip-holder"
           type="button"
-          :title="env.currentHolder"
-          :aria-label="t('historyHolder') + ': ' + env.currentHolder"
+          :title="formatHash(env.currentHolder)"
+          :aria-label="t('historyHolder') + ': ' + formatHash(env.currentHolder)"
           @click.stop="emit('inspectWallet', env.currentHolder)"
         >
           {{ t("historyHolder") }} · {{ formatHash(env.currentHolder) }}

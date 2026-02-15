@@ -1,3 +1,5 @@
+import { sha256 } from "js-sha256";
+
 // ── Base58 decode (Neo N3 address → script hash) ─────────────────
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const BASE58_MAP = new Map<string, number>();
@@ -5,6 +7,7 @@ for (let i = 0; i < BASE58_ALPHABET.length; i++) BASE58_MAP.set(BASE58_ALPHABET[
 const HASH160_RE = /^[0-9a-f]{40}$/;
 const HASH160_PREFIX_RE = /^0x[0-9a-f]{40}$/;
 const NEO_ADDRESS_RE = /^N[1-9A-HJ-NP-Za-km-z]{33}$/;
+const NEO_N3_ADDRESS_VERSION = 0x35;
 
 function bytesToScriptHashHex(bytes: Uint8Array): string {
   return (
@@ -14,6 +17,29 @@ function bytesToScriptHashHex(bytes: Uint8Array): string {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("")
   );
+}
+
+function scriptHashHexToBytes(hash: string): Uint8Array {
+  const h = hash.startsWith("0x") ? hash.slice(2) : hash;
+  if (!/^[0-9a-f]{40}$/i.test(h)) return new Uint8Array();
+  const bytes = new Uint8Array(20);
+  for (let i = 0; i < 20; i++) {
+    bytes[i] = Number.parseInt(h.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+function doubleSha256(input: Uint8Array): Uint8Array {
+  const first = Uint8Array.from(sha256.array(input));
+  return Uint8Array.from(sha256.array(first));
+}
+
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 function base58Decode(str: string): Uint8Array {
@@ -40,6 +66,33 @@ function base58Decode(str: string): Uint8Array {
   return new Uint8Array(bytes.reverse());
 }
 
+function base58Encode(input: Uint8Array): string {
+  if (input.length === 0) return "";
+  const digits = [0];
+
+  for (const byte of input) {
+    let carry = byte;
+    for (let j = 0; j < digits.length; j++) {
+      const value = digits[j] * 256 + carry;
+      digits[j] = value % 58;
+      carry = Math.floor(value / 58);
+    }
+    while (carry > 0) {
+      digits.push(carry % 58);
+      carry = Math.floor(carry / 58);
+    }
+  }
+
+  let leadingZeros = 0;
+  while (leadingZeros < input.length && input[leadingZeros] === 0) leadingZeros++;
+
+  let out = "1".repeat(leadingZeros);
+  for (let i = digits.length - 1; i >= 0; i--) {
+    out += BASE58_ALPHABET[digits[i]];
+  }
+  return out;
+}
+
 /**
  * Convert a Neo N3 address (e.g. "NLtL2v28d7T...") to the 0x-prefixed
  * little-endian hex script hash that parseStackItem returns for 20-byte values.
@@ -49,11 +102,40 @@ export function addressToScriptHashHex(address: string): string {
     const decoded = base58Decode(address);
     // Neo N3 address = 1 version + 20 script-hash + 4 checksum = 25 bytes
     if (decoded.length !== 25) return "";
+    if (decoded[0] !== NEO_N3_ADDRESS_VERSION) return "";
+
+    const payload = decoded.slice(0, 21);
+    const checksum = decoded.slice(21, 25);
+    const expected = doubleSha256(payload).slice(0, 4);
+    if (!bytesEqual(checksum, expected)) return "";
+
     const scriptHash = decoded.slice(1, 21);
     return bytesToScriptHashHex(scriptHash);
   } catch {
     return "";
   }
+}
+
+/**
+ * Convert 0x-prefixed little-endian UInt160 script hash to Neo N3 address.
+ */
+export function scriptHashHexToAddress(value: string): string {
+  const normalized = normalizeScriptHashHex(value);
+  if (!normalized) return "";
+
+  const littleEndian = scriptHashHexToBytes(normalized);
+  if (littleEndian.length !== 20) return "";
+  const scriptHash = Uint8Array.from(littleEndian).reverse();
+
+  const payload = new Uint8Array(21);
+  payload[0] = NEO_N3_ADDRESS_VERSION;
+  payload.set(scriptHash, 1);
+  const checksum = doubleSha256(payload).slice(0, 4);
+
+  const full = new Uint8Array(25);
+  full.set(payload, 0);
+  full.set(checksum, 21);
+  return base58Encode(full);
 }
 
 /**

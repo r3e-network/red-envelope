@@ -1,3 +1,5 @@
+import { normalizeScriptHashHex, scriptHashHexToAddress } from "./neo";
+
 const FIXED8_FACTOR = 100_000_000;
 
 /** Convert human-readable amount to fixed8 integer (e.g. 1.5 → 150000000). Truncates beyond 8 decimals. */
@@ -19,8 +21,12 @@ export function fromFixed8(value: number | bigint | string): number {
 
 /** Format a Neo N3 address/hash for display (first 8 + last 6) */
 export function formatHash(hash: string): string {
-  if (!hash || hash.length < 14) return hash || "";
-  return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
+  if (!hash) return "";
+
+  const normalized = normalizeScriptHashHex(hash);
+  const display = normalized ? scriptHashHexToAddress(normalized) || hash : hash;
+  if (display.length < 14) return display;
+  return `${display.slice(0, 8)}...${display.slice(-6)}`;
 }
 
 /** Format GAS amount with up to 8 decimal places, trimming trailing zeros */

@@ -659,6 +659,21 @@ body {
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(229, 57, 53, 0.08));
 }
 
+.create-result-nft-wrap {
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 0.55rem;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.create-result-nft {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+}
+
 .create-result-title {
   font-size: 0.85rem;
   font-weight: 700;
@@ -687,6 +702,69 @@ body {
   .btn {
     flex: 1;
   }
+}
+
+.create-result-actions-mt {
+  margin-top: 0.5rem;
+}
+
+.create-wait-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(10, 4, 4, 0.78);
+  backdrop-filter: blur(7px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.create-wait-card {
+  width: min(520px, 92vw);
+  background: linear-gradient(180deg, rgba(59, 11, 11, 0.95), rgba(28, 8, 8, 0.95));
+  border: 1px solid var(--border-gold-mid);
+  border-radius: var(--radius);
+  padding: 1.15rem 1.1rem;
+  box-shadow: var(--shadow-elevated);
+  text-align: center;
+}
+
+.create-wait-spinner {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 0.65rem;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 215, 0, 0.18);
+  border-top-color: var(--color-gold);
+  animation: spin 0.9s linear infinite;
+}
+
+.create-wait-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.create-wait-countdown {
+  margin-top: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+}
+
+.create-wait-progress {
+  margin-top: 0.7rem;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+  overflow: hidden;
+}
+
+.create-wait-progress-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--color-red), var(--color-gold));
+  transition: width 0.6s ease;
 }
 
 // ── Modals ───────────────────────────────────────────
@@ -1457,6 +1535,20 @@ body {
   background: var(--color-bg-input);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+
+  &:hover {
+    border-color: var(--border-gold-mid);
+    box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.18);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
 }
 
 .wallet-spreading-item-urgent {

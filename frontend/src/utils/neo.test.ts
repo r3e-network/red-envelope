@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseStackItem, parseInvokeResult, addressToScriptHashHex, normalizeScriptHashHex } from "./neo";
+import {
+  parseStackItem,
+  parseInvokeResult,
+  addressToScriptHashHex,
+  normalizeScriptHashHex,
+  scriptHashHexToAddress,
+} from "./neo";
 
 describe("parseStackItem", () => {
   it("parses Integer with string value as BigInt", () => {
@@ -142,6 +148,11 @@ describe("addressToScriptHashHex", () => {
     expect(addressToScriptHashHex("invalid")).toBe("");
   });
 
+  it("returns empty string for invalid checksum", () => {
+    // Valid address with last char altered.
+    expect(addressToScriptHashHex("NNLi44dJNXtDNSBkofB48aTVYtb1zZrNE1")).toBe("");
+  });
+
   it("produces hex that matches parseStackItem output for same script hash", () => {
     // Round-trip: address → hex should match what parseStackItem returns
     // for the same 20-byte script hash encoded as base64 ByteString
@@ -150,6 +161,19 @@ describe("addressToScriptHashHex", () => {
     expect(hex).toBeTruthy();
     expect(hex.startsWith("0x")).toBe(true);
     expect(hex.length).toBe(42); // "0x" + 40 hex chars
+  });
+});
+
+describe("scriptHashHexToAddress", () => {
+  it("converts a script hash back to Neo N3 address", () => {
+    expect(scriptHashHexToAddress("0xa5de523ae9d99be784a536e9412b7a3cbe049e1a")).toBe("NNLi44dJNXtDNSBkofB48aTVYtb1zZrNEs");
+  });
+
+  it("round-trips with addressToScriptHashHex", () => {
+    const addr = "NhWxcoEc9qtmnjsTLF1fVF6myJ5MZZhSMK";
+    const hash = addressToScriptHashHex(addr);
+    expect(hash).toMatch(/^0x[0-9a-f]{40}$/);
+    expect(scriptHashHexToAddress(hash)).toBe(addr);
   });
 });
 

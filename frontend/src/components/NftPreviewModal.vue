@@ -3,7 +3,8 @@ import { computed, onMounted, ref } from "vue";
 import { useFocusTrap } from "@/composables/useFocusTrap";
 import { useI18n } from "@/composables/useI18n";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
-import { extractError } from "@/utils/format";
+import { extractError, formatGas } from "@/utils/format";
+import { scriptHashHexToAddress } from "@/utils/neo";
 
 type TokenMetadata = {
   name?: string;
@@ -39,6 +40,55 @@ const shareLink = computed(() => {
 
 const modalTitle = computed(() => tokenName.value || t("nftPreviewTitle", props.envelope.id));
 const previewDescription = computed(() => tokenDescription.value || props.envelope.message || "");
+
+function encodeBase64Utf8(text: string): string {
+  return btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function envelopeTypeLabel(type: number): string {
+  if (type === 2) return t("detailTypeClaim");
+  if (type === 1) return t("detailTypePool");
+  return t("detailTypeSpreading");
+}
+
+function buildFallbackImageDataUri(env: EnvelopeItem): string {
+  const creator = scriptHashHexToAddress(env.creator) || env.creator;
+  const message = (env.message || "").slice(0, 56);
+  const safeMsg = escapeXml(message || "Red Envelope");
+  const safeCreator = escapeXml(creator);
+
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 430">` +
+    `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7a0000"/><stop offset="100%" stop-color="#250000"/></linearGradient></defs>` +
+    `<rect width="720" height="430" rx="24" fill="url(#bg)"/>` +
+    `<rect x="14" y="14" width="692" height="402" rx="18" fill="none" stroke="#ffd35a" stroke-width="2"/>` +
+    `<text x="36" y="56" fill="#ffd35a" font-size="30" font-family="sans-serif" font-weight="700">Neo Red Envelope NFT</text>` +
+    `<text x="36" y="95" fill="#fff2cc" font-size="22" font-family="sans-serif">#${env.id} · ${escapeXml(envelopeTypeLabel(env.envelopeType))}</text>` +
+    `<text x="36" y="136" fill="#ffffff" font-size="20" font-family="sans-serif">Total: ${formatGas(env.totalAmount)} GAS</text>` +
+    `<text x="36" y="170" fill="#ffffff" font-size="18" font-family="sans-serif">Opened: ${env.openedCount}/${env.packetCount}</text>` +
+    `<text x="36" y="210" fill="#ffd9a0" font-size="15" font-family="monospace">Creator: ${safeCreator}</text>` +
+    `<text x="36" y="254" fill="#ffe8c2" font-size="18" font-family="sans-serif">Message: ${safeMsg}</text>` +
+    `<text x="36" y="388" fill="#ffd35a" font-size="15" font-family="sans-serif">metadata fallback preview</text>` +
+    `</svg>`;
+
+  return `data:image/svg+xml;base64,${encodeBase64Utf8(svg)}`;
+}
+
+function applyFallbackPreview() {
+  tokenName.value = t("nftPreviewTitle", props.envelope.id);
+  tokenDescription.value = props.envelope.message || "";
+  imageUri.value = buildFallbackImageDataUri(props.envelope);
+  error.value = "";
+}
 
 onMounted(async () => {
   await loadNft();
@@ -97,17 +147,17 @@ async function loadNft() {
   try {
     const tokenUri = await getTokenURI(props.envelope.id);
     const metadata = await parseTokenUri(tokenUri);
-    if (!metadata) throw new Error(t("nftLoadFailed"));
-
-    tokenName.value = metadata.name ?? "";
-    tokenDescription.value = metadata.description ?? "";
-    imageUri.value = metadata.image ?? "";
-    if (!imageUri.value) {
-      error.value = t("nftNoImage");
+    if (metadata) {
+      tokenName.value = metadata.name ?? "";
+      tokenDescription.value = metadata.description ?? "";
+      imageUri.value = metadata.image ?? "";
     }
   } catch (e: unknown) {
-    error.value = extractError(e) || t("nftLoadFailed");
+    console.warn("[nft-preview] tokenURI unavailable, fallback preview will be used:", extractError(e));
   } finally {
+    if (!imageUri.value) {
+      applyFallbackPreview();
+    }
     loading.value = false;
   }
 }

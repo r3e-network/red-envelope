@@ -7,7 +7,7 @@ import { useReactiveClock } from "@/composables/useReactiveClock";
 import { formatGas, extractError, formatHash } from "@/utils/format";
 import { waitForConfirmation } from "@/utils/rpc";
 import { computeCountdown, formatCountdownDisplay } from "@/utils/time";
-import { addressToScriptHashHex, normalizeScriptHashHex } from "@/utils/neo";
+import { addressToScriptHashHex, normalizeScriptHashHex, scriptHashHexToAddress } from "@/utils/neo";
 import EnvelopeCard from "./EnvelopeCard.vue";
 import type { EnrichedEnvelope } from "./EnvelopeCard.vue";
 import OpeningModal from "./OpeningModal.vue";
@@ -136,7 +136,10 @@ const clearInspector = () => {
 
 const normalizeInspectorInput = (value: string): string => {
   const normalized = normalizeScriptHashHex(value);
-  return normalized || value.trim();
+  if (normalized) {
+    return scriptHashHexToAddress(normalized) || normalized;
+  }
+  return value.trim();
 };
 
 const handleInspectWallet = (wallet: string) => {
@@ -203,7 +206,8 @@ function drawWalletSnapshot(canvas: HTMLCanvasElement) {
   ctx.fillRect(0, 0, W, 8);
 
   const target = inspectorHash.value || inspectorInput.value.trim();
-  const walletLabel = formatHash(target);
+  const targetAddress = scriptHashHexToAddress(target) || target;
+  const walletLabel = formatHash(targetAddress);
 
   ctx.fillStyle = "#ffd76a";
   ctx.font = "700 40px Georgia, serif";
@@ -270,7 +274,7 @@ function drawWalletSnapshot(canvas: HTMLCanvasElement) {
 
   ctx.fillStyle = "#7f6565";
   ctx.font = "500 15px monospace";
-  ctx.fillText(target, 44, H - 28);
+  ctx.fillText(targetAddress, 44, H - 28);
 }
 
 async function getSnapshotCanvas(): Promise<HTMLCanvasElement> {
