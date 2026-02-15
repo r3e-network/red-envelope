@@ -9,7 +9,7 @@ import CreateForm from "@/components/CreateForm.vue";
 import MyEnvelopes from "@/components/MyEnvelopes.vue";
 
 const { t, lang, setLang } = useI18n();
-const { address, connected, connect } = useWallet();
+const { address, connected } = useWallet();
 const network = resolveNetwork(import.meta.env.VITE_NETWORK);
 
 type TabId = "search" | "create" | "my";
@@ -17,20 +17,9 @@ type SecondaryView = Exclude<TabId, "search"> | null;
 
 const secondaryView = ref<SecondaryView>(null);
 const showSecondaryMenu = ref(false);
-const walletError = ref("");
 const secondaryTitle = computed(() => (secondaryView.value === "create" ? t("createTab") : t("myTab")));
 
 const toggleLang = () => setLang(lang.value === "en" ? "zh" : "en");
-
-const handleConnect = async () => {
-  walletError.value = "";
-  try {
-    await connect();
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    walletError.value = msg.includes("No Neo wallet") ? t("walletNotDetected") : msg;
-  }
-};
 
 const toggleSecondaryMenu = () => {
   showSecondaryMenu.value = !showSecondaryMenu.value;
@@ -57,12 +46,7 @@ const backToEnvelope = () => {
       <h1 class="app-title">{{ t("title") }}</h1>
       <p class="app-subtitle">{{ t("subtitle") }}</p>
       <p class="app-subtitle text-dim">{{ network.label }}</p>
-
-      <button v-if="!connected" class="btn btn-primary" :aria-label="t('connectWallet')" @click="handleConnect">
-        {{ t("connectWallet") }}
-      </button>
-      <div v-else class="wallet-pill">{{ address }}</div>
-      <div v-if="walletError" class="wallet-error">{{ walletError }}</div>
+      <div v-if="connected" class="wallet-pill">{{ address }}</div>
     </header>
 
     <!-- Lang toggle (top-right) -->
