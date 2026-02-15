@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useI18n } from "@/composables/useI18n";
 import { useAudio } from "@/composables/useAudio";
@@ -15,34 +15,13 @@ const { toggleBGM, isBGMPlaying, bgmVolume, setBGMVolume } = useAudio();
 const network = resolveNetwork(import.meta.env.VITE_NETWORK);
 
 type TabId = "search" | "create" | "my";
-const TAB_ORDER: TabId[] = ["search", "create", "my"];
+type SecondaryView = Exclude<TabId, "search"> | null;
 
-const activeTab = ref<TabId>("search");
+const secondaryView = ref<SecondaryView>(null);
+const showSecondaryMenu = ref(false);
 const walletError = ref("");
 const showVolume = ref(false);
-
-const switchTab = (tab: TabId) => {
-  activeTab.value = tab;
-};
-
-const handleTabKeydown = (e: KeyboardEvent, current: TabId) => {
-  const idx = TAB_ORDER.indexOf(current);
-  let next: TabId | undefined;
-  if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-    next = TAB_ORDER[(idx + 1) % TAB_ORDER.length];
-  } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-    next = TAB_ORDER[(idx - 1 + TAB_ORDER.length) % TAB_ORDER.length];
-  } else if (e.key === "Home") {
-    next = TAB_ORDER[0];
-  } else if (e.key === "End") {
-    next = TAB_ORDER[TAB_ORDER.length - 1];
-  }
-  if (next) {
-    e.preventDefault();
-    activeTab.value = next;
-    (document.getElementById(`tab-${next}`) as HTMLElement | null)?.focus();
-  }
-};
+const secondaryTitle = computed(() => (secondaryView.value === "create" ? t("createTab") : t("myTab")));
 
 const toggleLang = () => setLang(lang.value === "en" ? "zh" : "en");
 
@@ -67,6 +46,20 @@ const handleConnect = async () => {
   }
 };
 
+const toggleSecondaryMenu = () => {
+  showSecondaryMenu.value = !showSecondaryMenu.value;
+};
+
+const openSecondaryView = (view: Exclude<TabId, "search">) => {
+  secondaryView.value = view;
+  showSecondaryMenu.value = false;
+};
+
+const backToEnvelope = () => {
+  secondaryView.value = null;
+  showSecondaryMenu.value = false;
+};
+
 // Generate golden particles with random properties
 const particles = Array.from({ length: 12 }, (_, i) => ({
   id: i,
@@ -76,12 +69,6 @@ const particles = Array.from({ length: 12 }, (_, i) => ({
   duration: `${6 + Math.random() * 6}s`,
   size: `${2 + Math.random() * 3}px`,
 }));
-
-onMounted(() => {
-  // Force search tab when URL contains ?id=
-  const urlId = new URLSearchParams(window.location.search).get("id");
-  if (urlId) activeTab.value = "search";
-});
 </script>
 
 <template>
@@ -171,46 +158,30 @@ onMounted(() => {
       <span class="couplet-half">{{ t("springCoupletRight") }}</span>
     </div>
 
-    <nav class="tabs" role="tablist">
-      <button
-        id="tab-search"
-        :class="['tab', { active: activeTab === 'search' }]"
-        role="tab"
-        :tabindex="activeTab === 'search' ? 0 : -1"
-        :aria-selected="activeTab === 'search'"
-        aria-controls="tabpanel-search"
-        @click="switchTab('search')"
-        @keydown="handleTabKeydown($event, 'search')"
-      >
-        {{ t("searchTab") }}
-      </button>
-      <button
-        id="tab-create"
-        :class="['tab', { active: activeTab === 'create' }]"
-        role="tab"
-        :tabindex="activeTab === 'create' ? 0 : -1"
-        :aria-selected="activeTab === 'create'"
-        aria-controls="tabpanel-create"
-        @click="switchTab('create')"
-        @keydown="handleTabKeydown($event, 'create')"
-      >
+    <div class="secondary-toolbar">
+      <div class="secondary-current">
+        {{ secondaryView ? secondaryTitle : t("mainEnvelopeMode") }}
+      </div>
+      <div class="secondary-actions">
+        <button v-if="secondaryView" class="btn btn-sm" @click="backToEnvelope">
+          {{ t("backToEnvelope") }}
+        </button>
+        <button class="btn btn-sm" @click="toggleSecondaryMenu">
+          {{ t("secondaryMenu") }}
+        </button>
+      </div>
+    </div>
+
+    <div v-if="showSecondaryMenu" class="secondary-menu-panel">
+      <button class="btn btn-sm" @click="openSecondaryView('create')">
         {{ t("createTab") }}
       </button>
-      <button
-        id="tab-my"
-        :class="['tab', { active: activeTab === 'my' }]"
-        role="tab"
-        :tabindex="activeTab === 'my' ? 0 : -1"
-        :aria-selected="activeTab === 'my'"
-        aria-controls="tabpanel-my"
-        @click="switchTab('my')"
-        @keydown="handleTabKeydown($event, 'my')"
-      >
+      <button class="btn btn-sm" @click="openSecondaryView('my')">
         {{ t("myTab") }}
       </button>
-    </nav>
+    </div>
 
-    <main :id="`tabpanel-${activeTab}`" class="app-content" role="tabpanel" :aria-labelledby="`tab-${activeTab}`">
+    <main class="app-content">
       <div class="contract-banner">
         {{ t("contractLabel") }}
         <a
@@ -222,8 +193,8 @@ onMounted(() => {
           {{ CONTRACT_HASH }}
         </a>
       </div>
-      <SearchClaim v-if="activeTab === 'search'" />
-      <CreateForm v-else-if="activeTab === 'create'" />
+      <SearchClaim v-if="!secondaryView" />
+      <CreateForm v-else-if="secondaryView === 'create'" />
       <MyEnvelopes v-else />
     </main>
   </div>

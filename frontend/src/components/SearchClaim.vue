@@ -41,13 +41,13 @@ const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 const showOpenModal = ref(false);
 const showTransferModal = ref(false);
 const showWalletNftModal = ref(false);
-const showClaimReadyModal = ref(false);
+const autoOpenClaimAfterClaim = ref(false);
 const claimedAmount = ref(0);
 const claiming = ref(false);
 const reclaimingSearch = ref(false);
 const openTargetEnvelope = ref<EnvelopeItem | null>(null);
+const transferTargetEnvelope = ref<EnvelopeItem | null>(null);
 const walletNftTarget = ref<EnvelopeItem | null>(null);
-const claimedNftEnvelope = ref<EnvelopeItem | null>(null);
 
 const currentAddressHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
 
@@ -169,6 +169,7 @@ const handleOpen = async () => {
     return;
   }
   status.value = null;
+  autoOpenClaimAfterClaim.value = false;
   openTargetEnvelope.value = envelope.value;
   showOpenModal.value = true;
 };
@@ -180,6 +181,7 @@ const handleWalletSpreadingClaim = async (target: EnvelopeItem) => {
     return;
   }
 
+  autoOpenClaimAfterClaim.value = false;
   openTargetEnvelope.value = target;
   showOpenModal.value = true;
 };
@@ -194,7 +196,7 @@ const handlePoolClaim = async () => {
   status.value = null;
   claiming.value = true;
   claimedAmount.value = 0;
-  claimedNftEnvelope.value = null;
+  autoOpenClaimAfterClaim.value = false;
   try {
     const res = await claimFromPool(envelope.value.id);
     status.value = { msg: t("claimedTx", res.txid.slice(0, 12) + "..."), type: "success" };
@@ -218,8 +220,9 @@ const handlePoolClaim = async () => {
       try {
         const claimEnvelope = await fetchEnvelopeState(claimId);
         if (claimEnvelope?.envelopeType === 2) {
-          claimedNftEnvelope.value = claimEnvelope;
-          showClaimReadyModal.value = true;
+          openTargetEnvelope.value = claimEnvelope;
+          autoOpenClaimAfterClaim.value = true;
+          showOpenModal.value = true;
         }
       } catch {
         // non-blocking: fallback to status only
@@ -234,15 +237,9 @@ const handlePoolClaim = async () => {
   }
 };
 
-const handleOpenClaimNftNow = () => {
-  if (!claimedNftEnvelope.value) return;
-  openTargetEnvelope.value = claimedNftEnvelope.value;
-  showClaimReadyModal.value = false;
-  showOpenModal.value = true;
-};
-
 const handleTransfer = async () => {
   if (!(await ensureConnected())) return;
+  transferTargetEnvelope.value = envelope.value;
   showTransferModal.value = true;
 };
 
@@ -275,6 +272,7 @@ const handleReclaim = async () => {
 
 const onOpened = async () => {
   showOpenModal.value = false;
+  autoOpenClaimAfterClaim.value = false;
   openTargetEnvelope.value = null;
   if (envelope.value) {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
@@ -286,8 +284,17 @@ const onOpened = async () => {
   await refreshWalletSpreadingList();
 };
 
+const handleTransferAfterOpen = () => {
+  if (!openTargetEnvelope.value) return;
+  transferTargetEnvelope.value = openTargetEnvelope.value;
+  showOpenModal.value = false;
+  autoOpenClaimAfterClaim.value = false;
+  showTransferModal.value = true;
+};
+
 const onTransferred = async () => {
   showTransferModal.value = false;
+  transferTargetEnvelope.value = null;
   if (envelope.value) {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) envelope.value = refreshed;
@@ -428,17 +435,23 @@ watch(connected, (isConnected) => {
   <OpeningModal
     v-if="showOpenModal && openTargetEnvelope"
     :envelope="openTargetEnvelope"
+    :auto-open="autoOpenClaimAfterClaim"
     @close="
       showOpenModal = false;
+      autoOpenClaimAfterClaim = false;
       openTargetEnvelope = null;
     "
     @opened="onOpened"
+    @transfer="handleTransferAfterOpen"
   />
 
   <TransferModal
-    v-if="showTransferModal && envelope"
-    :envelope="envelope"
-    @close="showTransferModal = false"
+    v-if="showTransferModal && transferTargetEnvelope"
+    :envelope="transferTargetEnvelope"
+    @close="
+      showTransferModal = false;
+      transferTargetEnvelope = null;
+    "
     @transferred="onTransferred"
   />
 
@@ -448,46 +461,4 @@ watch(connected, (isConnected) => {
     @close="showWalletNftModal = false"
   />
 
-  <div
-    v-if="showClaimReadyModal && claimedNftEnvelope"
-    class="modal-overlay"
-    role="dialog"
-    aria-modal="true"
-    @click.self="showClaimReadyModal = false"
-    @keydown.escape="showClaimReadyModal = false"
-  >
-    <div class="modal">
-      <div class="modal-header">
-        <h3>{{ t("claimNftReadyTitle") }}</h3>
-        <button class="btn-close" :aria-label="t('close')" @click="showClaimReadyModal = false">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="section-hint">
-          {{ t("claimNftReadyDesc", claimedNftEnvelope.id) }}
-        </div>
-        <div class="summary-card">
-          <div class="summary-row">
-            <span>{{ t("detailEnvelopeId", claimedNftEnvelope.id) }}</span>
-            <span class="summary-value">#{{ claimedNftEnvelope.id }}</span>
-          </div>
-          <div class="summary-row">
-            <span>{{ t("detailType") }}</span>
-            <span class="summary-value">{{ t("detailTypeClaim") }}</span>
-          </div>
-          <div class="summary-row">
-            <span>{{ t("historyAmount") }}</span>
-            <span class="summary-value">{{ formatGas(claimedNftEnvelope.remainingAmount) }} GAS</span>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button class="btn btn-open" @click="handleOpenClaimNftNow">
-            {{ t("openEnvelope") }}
-          </button>
-          <button class="btn" @click="showClaimReadyModal = false">
-            {{ t("close") }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 </template>

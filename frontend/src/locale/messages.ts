@@ -5,6 +5,9 @@ export const messages = {
   searchTab: { en: "🧧 Red Envelope", zh: "🧧 红包" },
   createTab: { en: "🎁 Create", zh: "🎁 创建" },
   myTab: { en: "🧧 My Envelopes", zh: "🧧 我的红包" },
+  secondaryMenu: { en: "☰ More", zh: "☰ 更多" },
+  backToEnvelope: { en: "← Envelope", zh: "← 红包" },
+  mainEnvelopeMode: { en: "Main: URL Envelope", zh: "主界面：URL 红包" },
   connectWallet: { en: "Connect Wallet", zh: "连接钱包" },
   walletNotDetected: {
     en: "No Neo wallet detected. Please install OneGate or NeoLine extension.",

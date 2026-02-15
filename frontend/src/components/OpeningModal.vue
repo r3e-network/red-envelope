@@ -11,10 +11,14 @@ import { waitForConfirmation } from "@/utils/rpc";
 import LuckyOverlay from "./LuckyOverlay.vue";
 import ShareCard from "./ShareCard.vue";
 
-const props = defineProps<{ envelope: EnvelopeItem }>();
+const props = defineProps<{
+  envelope: EnvelopeItem;
+  autoOpen?: boolean;
+}>();
 const emit = defineEmits<{
   close: [];
   opened: [amount: number];
+  transfer: [];
 }>();
 
 const { t } = useI18n();
@@ -45,6 +49,12 @@ onMounted(async () => {
     await checkEligibility(props.envelope.id);
   } catch {
     eligibilityWarning.value = t("eligibilityCheckFailed");
+  }
+
+  // Pool flow can pass a claim NFT here with auto-open enabled
+  // so user finishes claim + open in one guided sequence.
+  if (props.autoOpen && props.envelope.envelopeType !== 1) {
+    void handleOpen();
   }
 });
 
@@ -208,6 +218,9 @@ const handleOpen = async () => {
         <div v-else class="modal-actions">
           <button v-if="openResult > 0" class="btn btn-open" @click="showShare = true">
             🎉 {{ t("shareYourLuck") }}
+          </button>
+          <button v-if="props.envelope.envelopeType === 0" class="btn btn-transfer" @click="emit('transfer')">
+            {{ t("sendToFriend") }}
           </button>
           <button class="btn btn-primary" @click="emit('close')">
             {{ t("close") }}

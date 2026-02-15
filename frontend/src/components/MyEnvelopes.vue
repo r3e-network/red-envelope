@@ -338,6 +338,12 @@ const handleViewNft = (env: EnvelopeItem) => {
   showNftModal.value = true;
 };
 
+const handleTransferAfterOpen = () => {
+  if (!selectedEnvelope.value) return;
+  showOpenModal.value = false;
+  showTransferModal.value = true;
+};
+
 const handleReclaim = async (env: EnvelopeItem) => {
   actionStatus.value = null;
   reclaimingId.value = env.id;
@@ -486,6 +492,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
       :envelope="selectedEnvelope"
       @close="showOpenModal = false"
       @opened="loadEnvelopes()"
+      @transfer="handleTransferAfterOpen"
     />
 
     <TransferModal
