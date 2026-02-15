@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { waitForConfirmation } from "./rpc";
+import { extractEnvelopeCreatedId, waitForConfirmation } from "./rpc";
 
 describe("waitForConfirmation", () => {
   beforeEach(() => {
@@ -45,5 +45,44 @@ describe("waitForConfirmation", () => {
 
     await expect(waitForConfirmation("0xtest")).rejects.toThrow("Transaction FAULT: boom");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("extractEnvelopeCreatedId", () => {
+  it("extracts id from EnvelopeCreated notification", () => {
+    const id = extractEnvelopeCreatedId(
+      {
+        executions: [
+          {
+            notifications: [
+              {
+                contract: "0xABCDEF",
+                eventname: "EnvelopeCreated",
+                state: {
+                  type: "Array",
+                  value: [
+                    { type: "Integer", value: "42" },
+                    { type: "ByteString", value: "ignored" },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+      "0xabcdef",
+    );
+    expect(id).toBe("42");
+  });
+
+  it("returns null when no matching notification exists", () => {
+    const id = extractEnvelopeCreatedId({
+      executions: [
+        {
+          notifications: [{ eventname: "Transfer", state: { type: "Array", value: [] } }],
+        },
+      ],
+    });
+    expect(id).toBe(null);
   });
 });

@@ -3,8 +3,9 @@ import { ref, computed, nextTick } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
+import { CONTRACT_HASH } from "@/config/contract";
 import { extractError } from "@/utils/format";
-import { waitForConfirmation } from "@/utils/rpc";
+import { extractEnvelopeCreatedId, waitForConfirmation } from "@/utils/rpc";
 import { parseOptionalNumber } from "./createForm.logic";
 
 const { t } = useI18n();
@@ -20,6 +21,15 @@ const minHoldDays = ref("");
 const envelopeType = ref(1); // 0=spreading (Lucky NFT), 1=pool (Red Envelope Pool)
 const confirming = ref(false);
 const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
+const createdEnvelopeId = ref("");
+const shareCopied = ref(false);
+
+const shareLink = computed(() => {
+  if (!createdEnvelopeId.value || typeof window === "undefined") return "";
+  const url = new URL(window.location.href);
+  url.searchParams.set("id", createdEnvelopeId.value);
+  return url.toString();
+});
 
 const radioPoolRef = ref<HTMLElement | null>(null);
 const radioNftRef = ref<HTMLElement | null>(null);
@@ -82,6 +92,8 @@ const handleSubmit = async () => {
     return;
   }
   status.value = null;
+  createdEnvelopeId.value = "";
+  shareCopied.value = false;
   try {
     const txid = await createEnvelope({
       totalGas: Number(amount.value),
@@ -94,8 +106,14 @@ const handleSubmit = async () => {
     });
     confirming.value = true;
     status.value = { msg: t("confirming"), type: "success" };
-    await waitForConfirmation(txid);
-    status.value = { msg: `TX: ${txid.slice(0, 12)}...`, type: "success" };
+    const appLog = await waitForConfirmation(txid);
+    const envelopeId = extractEnvelopeCreatedId(appLog, CONTRACT_HASH);
+    if (envelopeId) {
+      createdEnvelopeId.value = envelopeId;
+      status.value = { msg: t("createSuccessWithId", envelopeId), type: "success" };
+    } else {
+      status.value = { msg: t("createSuccessTx", txid.slice(0, 12) + "..."), type: "success" };
+    }
     amount.value = "";
     count.value = "";
     message.value = "";
@@ -105,6 +123,19 @@ const handleSubmit = async () => {
     status.value = { msg: extractError(e), type: "error" };
   } finally {
     confirming.value = false;
+  }
+};
+
+const copyShareLink = async () => {
+  if (!shareLink.value) return;
+  try {
+    await navigator.clipboard.writeText(shareLink.value);
+    shareCopied.value = true;
+    setTimeout(() => {
+      shareCopied.value = false;
+    }, 1800);
+  } catch (e: unknown) {
+    status.value = { msg: extractError(e), type: "error" };
   }
 };
 </script>
@@ -312,6 +343,21 @@ const handleSubmit = async () => {
 
       <div v-if="status" :class="['status', status.type]" role="status">
         {{ status.msg }}
+      </div>
+
+      <div v-if="createdEnvelopeId" class="create-result-card">
+        <div class="create-result-title">{{ t("createdEnvelopeId", createdEnvelopeId) }}</div>
+        <a :href="shareLink" class="create-result-link mono-sm" target="_blank" rel="noopener noreferrer">
+          {{ shareLink }}
+        </a>
+        <div class="create-result-actions">
+          <button class="btn btn-sm" @click="copyShareLink">
+            {{ shareCopied ? t("shareCopied") : t("copyShareLink") }}
+          </button>
+          <a :href="shareLink" class="btn btn-sm btn-primary" target="_blank" rel="noopener noreferrer">
+            {{ t("openShareLink") }}
+          </a>
+        </div>
       </div>
     </div>
   </div>

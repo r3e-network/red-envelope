@@ -651,6 +651,44 @@ body {
   }
 }
 
+.create-result-card {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-gold-faint);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(229, 57, 53, 0.08));
+}
+
+.create-result-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-gold);
+  margin-bottom: 0.4rem;
+}
+
+.create-result-link {
+  display: block;
+  word-break: break-all;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: 0.78rem;
+  margin-bottom: 0.55rem;
+
+  &:hover {
+    color: var(--color-gold);
+    text-decoration: underline;
+  }
+}
+
+.create-result-actions {
+  display: flex;
+  gap: 0.5rem;
+
+  .btn {
+    flex: 1;
+  }
+}
+
 // ── Modals ───────────────────────────────────────────
 .modal-overlay {
   position: fixed;
