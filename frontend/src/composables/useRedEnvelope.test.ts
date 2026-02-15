@@ -286,6 +286,94 @@ describe("useRedEnvelope", () => {
     expect(claimed).toBe(1.23);
   });
 
+  it("estimates pool reclaimable amount including active claim NFTs", async () => {
+    mockInvokeRead.mockImplementation(async (req: { operation: string; args?: Array<{ value: string }> }) => {
+      if (req.operation === "getEnvelopeState") {
+        const id = req.args?.[0]?.value;
+        if (id === "10") {
+          return mapStack({
+            creator: { type: "String", value: "0xcreator" },
+            envelopeType: { type: "Integer", value: "1" },
+            parentEnvelopeId: { type: "Integer", value: "0" },
+            totalAmount: { type: "Integer", value: "200000000" },
+            packetCount: { type: "Integer", value: "2" },
+            openedCount: { type: "Integer", value: "2" },
+            claimedCount: { type: "Integer", value: "2" },
+            remainingAmount: { type: "Integer", value: "100000000" },
+            remainingPackets: { type: "Integer", value: "0" },
+            minNeoRequired: { type: "Integer", value: "0" },
+            minHoldSeconds: { type: "Integer", value: "0" },
+            active: { type: "Boolean", value: true },
+            isExpired: { type: "Boolean", value: true },
+            isDepleted: { type: "Boolean", value: true },
+            currentHolder: { type: "String", value: "0x0000000000000000000000000000000000000000" },
+            message: { type: "String", value: "pool" },
+            expiryTime: { type: "Integer", value: "9999999999" },
+          });
+        }
+        if (id === "11") {
+          return mapStack({
+            creator: { type: "String", value: "0xcreator" },
+            envelopeType: { type: "Integer", value: "2" },
+            parentEnvelopeId: { type: "Integer", value: "10" },
+            totalAmount: { type: "Integer", value: "50000000" },
+            packetCount: { type: "Integer", value: "1" },
+            openedCount: { type: "Integer", value: "0" },
+            claimedCount: { type: "Integer", value: "0" },
+            remainingAmount: { type: "Integer", value: "50000000" },
+            remainingPackets: { type: "Integer", value: "1" },
+            minNeoRequired: { type: "Integer", value: "0" },
+            minHoldSeconds: { type: "Integer", value: "0" },
+            active: { type: "Boolean", value: true },
+            isExpired: { type: "Boolean", value: true },
+            isDepleted: { type: "Boolean", value: false },
+            currentHolder: { type: "String", value: "0xholder" },
+            message: { type: "String", value: "claim-active" },
+            expiryTime: { type: "Integer", value: "9999999999" },
+          });
+        }
+        if (id === "12") {
+          return mapStack({
+            creator: { type: "String", value: "0xcreator" },
+            envelopeType: { type: "Integer", value: "2" },
+            parentEnvelopeId: { type: "Integer", value: "10" },
+            totalAmount: { type: "Integer", value: "70000000" },
+            packetCount: { type: "Integer", value: "1" },
+            openedCount: { type: "Integer", value: "1" },
+            claimedCount: { type: "Integer", value: "1" },
+            remainingAmount: { type: "Integer", value: "70000000" },
+            remainingPackets: { type: "Integer", value: "0" },
+            minNeoRequired: { type: "Integer", value: "0" },
+            minHoldSeconds: { type: "Integer", value: "0" },
+            active: { type: "Boolean", value: false },
+            isExpired: { type: "Boolean", value: true },
+            isDepleted: { type: "Boolean", value: true },
+            currentHolder: { type: "String", value: "0xholder" },
+            message: { type: "String", value: "claim-opened" },
+            expiryTime: { type: "Integer", value: "9999999999" },
+          });
+        }
+      }
+
+      if (req.operation === "getPoolClaimIdByIndex") {
+        const index = req.args?.[1]?.value;
+        if (index === "1") return { stack: [{ type: "Integer", value: "11" }] };
+        if (index === "2") return { stack: [{ type: "Integer", value: "12" }] };
+        return { stack: [{ type: "Integer", value: "0" }] };
+      }
+
+      throw new Error(`Unexpected operation: ${req.operation}`);
+    });
+
+    const api = useRedEnvelope() as unknown as {
+      getPoolReclaimableAmount?: (poolEnvelope: { id: string; envelopeType: number }) => Promise<number>;
+    };
+
+    expect(typeof api.getPoolReclaimableAmount).toBe("function");
+    const amount = await api.getPoolReclaimableAmount!({ id: "10", envelopeType: 1 });
+    expect(amount).toBe(1.5);
+  });
+
   it("propagates fetchEnvelopeState read errors to caller", async () => {
     mockInvokeRead.mockImplementation(async (req: { operation: string }) => {
       if (req.operation === "getEnvelopeState") {

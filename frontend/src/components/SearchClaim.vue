@@ -20,6 +20,7 @@ const {
   fetchEnvelopeState,
   claimFromPool,
   getPoolClaimedAmount,
+  getPoolReclaimableAmount,
   reclaimEnvelope,
 } = useRedEnvelope();
 
@@ -329,6 +330,15 @@ const handleReclaim = async () => {
   status.value = null;
   reclaimingSearch.value = true;
   try {
+    if (envelope.value.envelopeType === 1) {
+      const reclaimable = await getPoolReclaimableAmount(envelope.value);
+      if (reclaimable <= 0) {
+        status.value = { msg: t("noGasToReclaim"), type: "error" };
+        const refreshed = await fetchEnvelopeState(envelope.value.id);
+        if (refreshed) envelope.value = refreshed;
+        return;
+      }
+    }
     const reclaimAmount = formatGas(envelope.value.remainingAmount);
     const res = await reclaimEnvelope(envelope.value);
     status.value = { msg: t("reclaimSuccess", reclaimAmount), type: "success" };

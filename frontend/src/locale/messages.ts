@@ -173,6 +173,7 @@ export const messages = {
   cancel: { en: "Cancel", zh: "取消" },
   transferSuccess: { en: "Transferred!", zh: "转让成功！" },
   reclaimSuccess: { en: "Reclaimed {0} GAS", zh: "已回收 {0} GAS" },
+  noGasToReclaim: { en: "No GAS remaining to reclaim", zh: "没有可回收的 GAS" },
   viewNftHint: { en: "Click card to view NFT", zh: "点击卡片查看 NFT" },
   viewNftDetail: { en: "View NFT Detail", zh: "查看 NFT 详情" },
   expired: { en: "Expired", zh: "已过期" },

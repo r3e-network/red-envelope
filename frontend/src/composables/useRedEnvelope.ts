@@ -222,6 +222,47 @@ export function useRedEnvelope() {
     );
   };
 
+  /**
+   * Estimate reclaimable GAS for an expired pool:
+   * pool.remainingAmount + all active/unopened claim NFT balances.
+   */
+  const getPoolReclaimableAmount = async (poolEnvelope: EnvelopeItem): Promise<number> => {
+    if (poolEnvelope.envelopeType !== 1) {
+      throw new Error("Only pool envelopes support pool reclaim estimation");
+    }
+
+    const poolData = await fetchEnvelopeMap(poolEnvelope.id);
+    if (!poolData || Number(poolData.envelopeType ?? 0) !== 1) return 0;
+
+    let reclaimable = parseIntegerLike(poolData.remainingAmount);
+    const openedCount = Number(poolData.openedCount ?? 0);
+
+    for (let i = 1; i <= openedCount; i++) {
+      const claimIdRes = await invokeRead({
+        scriptHash: CONTRACT_HASH,
+        operation: "getPoolClaimIdByIndex",
+        args: [
+          { type: "Integer", value: poolEnvelope.id },
+          { type: "Integer", value: String(i) },
+        ],
+      });
+      const claimId = parseIntegerLike(parseInvokeResult(claimIdRes));
+      if (claimId <= 0n) continue;
+
+      const claimData = await fetchEnvelopeMap(claimId.toString());
+      if (!claimData || Number(claimData.envelopeType ?? 0) !== 2) continue;
+
+      const isActive = Boolean(claimData.active);
+      const remaining = parseIntegerLike(claimData.remainingAmount);
+      if (isActive && remaining > 0n) {
+        reclaimable += remaining;
+      }
+    }
+
+    const capped = reclaimable > BigInt(Number.MAX_SAFE_INTEGER) ? BigInt(Number.MAX_SAFE_INTEGER) : reclaimable;
+    return fromFixed8(Number(capped));
+  };
+
   /** Fetch raw envelope map from contract */
   const fetchEnvelopeMap = async (envelopeId: string): Promise<Record<string, unknown> | null> => {
     const res = await invokeRead({
@@ -316,6 +357,7 @@ export function useRedEnvelope() {
     getPoolClaimedAmount,
     transferEnvelope,
     reclaimEnvelope,
+    getPoolReclaimableAmount,
     getOpenedAmount,
     getTokenURI,
     fetchEnvelopeState,
@@ -377,6 +419,19 @@ function assertTxResult(res: unknown): { txid: string } {
     return res as { txid: string };
   }
   throw new Error("Unexpected wallet response: missing txid");
+}
+
+function parseIntegerLike(value: unknown): bigint {
+  if (typeof value === "bigint") return value;
+  if (typeof value === "number") return BigInt(Math.trunc(value));
+  if (typeof value === "string") {
+    try {
+      return BigInt(value);
+    } catch {
+      return 0n;
+    }
+  }
+  return 0n;
 }
 
 async function getLatestEnvelopeIdFromStorage(): Promise<number> {

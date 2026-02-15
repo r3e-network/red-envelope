@@ -17,7 +17,7 @@ import { countActionableClaimNfts, partitionEnvelopeSections } from "./myEnvelop
 
 const { t } = useI18n();
 const { address, connected } = useWallet();
-const { envelopes, loadingEnvelopes, loadEnvelopes, reclaimEnvelope } = useRedEnvelope();
+const { envelopes, loadingEnvelopes, loadEnvelopes, reclaimEnvelope, getPoolReclaimableAmount } = useRedEnvelope();
 const { now } = useReactiveClock();
 
 const selectedEnvelope = ref<EnvelopeItem | null>(null);
@@ -351,6 +351,14 @@ const handleReclaim = async (env: EnvelopeItem) => {
   actionStatus.value = null;
   reclaimingId.value = env.id;
   try {
+    if (env.envelopeType === 1) {
+      const reclaimable = await getPoolReclaimableAmount(env);
+      if (reclaimable <= 0) {
+        actionStatus.value = { msg: t("noGasToReclaim"), type: "error" };
+        await loadEnvelopes();
+        return;
+      }
+    }
     const res = await reclaimEnvelope(env);
     actionStatus.value = { msg: t("reclaimSuccess", formatGas(env.remainingAmount)), type: "success" };
     // Wait for TX confirmation before refreshing state (BUG-4 fix)
