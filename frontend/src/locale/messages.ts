@@ -6,6 +6,8 @@ export const messages = {
   createTab: { en: "🎁 Create", zh: "🎁 创建" },
   myTab: { en: "🧧 My Envelopes", zh: "🧧 我的红包" },
   secondaryMenu: { en: "☰ More", zh: "☰ 更多" },
+  secondaryMenuTitle: { en: "Manage Red Envelope", zh: "红包管理" },
+  secondaryMenuHint: { en: "Create new envelope or manage your envelopes", zh: "创建红包或管理你的红包" },
   backToEnvelope: { en: "← Envelope", zh: "← 红包" },
   mainEnvelopeMode: { en: "Main: URL Envelope", zh: "主界面：URL 红包" },
   connectWallet: { en: "Connect Wallet", zh: "连接钱包" },

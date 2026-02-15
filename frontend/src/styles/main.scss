@@ -390,6 +390,11 @@ body {
     width: 100%;
   }
 
+  .secondary-drawer {
+    width: min(440px, 94vw);
+    padding: 1rem 0.95rem;
+  }
+
   .my-envelopes .inspector-controls,
   .my-envelopes .inspector-share-actions {
     flex-direction: column;
@@ -464,6 +469,40 @@ body {
     flex: 1;
     min-width: 150px;
   }
+}
+
+.secondary-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  background: rgba(12, 4, 4, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(6px);
+}
+
+.secondary-drawer {
+  width: min(460px, 92vw);
+  background: linear-gradient(180deg, rgba(46, 16, 16, 0.98), rgba(24, 10, 10, 0.98));
+  border: 1px solid var(--border-gold-mid);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-elevated);
+  padding: 1.1rem 1rem;
+}
+
+.secondary-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.secondary-drawer-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-gold);
 }
 
 .tabs {

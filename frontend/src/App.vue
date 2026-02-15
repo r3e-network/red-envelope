@@ -50,14 +50,18 @@ const toggleSecondaryMenu = () => {
   showSecondaryMenu.value = !showSecondaryMenu.value;
 };
 
+const closeSecondaryMenu = () => {
+  showSecondaryMenu.value = false;
+};
+
 const openSecondaryView = (view: Exclude<TabId, "search">) => {
   secondaryView.value = view;
-  showSecondaryMenu.value = false;
+  closeSecondaryMenu();
 };
 
 const backToEnvelope = () => {
   secondaryView.value = null;
-  showSecondaryMenu.value = false;
+  closeSecondaryMenu();
 };
 
 // Generate golden particles with random properties
@@ -172,13 +176,27 @@ const particles = Array.from({ length: 12 }, (_, i) => ({
       </div>
     </div>
 
-    <div v-if="showSecondaryMenu" class="secondary-menu-panel">
-      <button class="btn btn-sm" @click="openSecondaryView('create')">
-        {{ t("createTab") }}
-      </button>
-      <button class="btn btn-sm" @click="openSecondaryView('my')">
-        {{ t("myTab") }}
-      </button>
+    <div v-if="showSecondaryMenu" class="secondary-drawer-overlay" role="dialog" aria-modal="true" @click.self="closeSecondaryMenu">
+      <div class="secondary-drawer">
+        <div class="secondary-drawer-head">
+          <div class="secondary-drawer-title">{{ t("secondaryMenuTitle") }}</div>
+          <button class="btn-close" :aria-label="t('close')" @click="closeSecondaryMenu">&times;</button>
+        </div>
+        <div class="section-hint">
+          {{ t("secondaryMenuHint") }}
+        </div>
+        <div class="secondary-menu-panel">
+          <button class="btn btn-sm" @click="openSecondaryView('create')">
+            {{ t("createTab") }}
+          </button>
+          <button class="btn btn-sm" @click="openSecondaryView('my')">
+            {{ t("myTab") }}
+          </button>
+          <button class="btn btn-sm" @click="backToEnvelope">
+            {{ t("backToEnvelope") }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <main class="app-content">
