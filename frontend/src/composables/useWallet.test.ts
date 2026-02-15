@@ -114,16 +114,24 @@ describe("useWallet", () => {
       expect(result).toBe("0");
     });
 
-    it("invokeRead throws when no wallet detected", async () => {
+    it("invokeRead works via rpc even when no wallet detected", async () => {
       const { useWallet } = await import("./useWallet");
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          result: { stack: [{ type: "Integer", value: "1" }] },
+        }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
 
       const wallet = useWallet();
-      await expect(
-        wallet.invokeRead({
-          scriptHash: "0x1234567890abcdef",
-          operation: "testMethod",
-        }),
-      ).rejects.toThrow("No Neo wallet detected");
+      const result = await wallet.invokeRead({
+        scriptHash: "0x1234567890abcdef",
+        operation: "testMethod",
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ stack: [{ type: "Integer", value: "1" }] });
     });
   });
 

@@ -9,7 +9,7 @@ import CreateForm from "@/components/CreateForm.vue";
 import MyEnvelopes from "@/components/MyEnvelopes.vue";
 
 const { t, lang, setLang } = useI18n();
-const { address, connected } = useWallet();
+const { address, connected, connect } = useWallet();
 const network = resolveNetwork(import.meta.env.VITE_NETWORK);
 
 type TabId = "search" | "create" | "my";
@@ -18,6 +18,7 @@ type SecondaryView = Exclude<TabId, "search"> | null;
 const secondaryView = ref<SecondaryView>(null);
 const showSecondaryMenu = ref(false);
 const secondaryTitle = computed(() => (secondaryView.value === "create" ? t("createTab") : t("myTab")));
+const shellStatus = ref<{ msg: string; type: "success" | "error" } | null>(null);
 
 const toggleLang = () => setLang(lang.value === "en" ? "zh" : "en");
 
@@ -29,7 +30,25 @@ const closeSecondaryMenu = () => {
   showSecondaryMenu.value = false;
 };
 
-const openSecondaryView = (view: Exclude<TabId, "search">) => {
+const mapWalletConnectError = (err: unknown): string => {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes("No Neo wallet") ? t("walletNotDetected") : msg;
+};
+
+const ensureConnectedForSecondaryView = async (): Promise<boolean> => {
+  if (connected.value) return true;
+  try {
+    await connect();
+    return true;
+  } catch (e: unknown) {
+    shellStatus.value = { msg: mapWalletConnectError(e), type: "error" };
+    return false;
+  }
+};
+
+const openSecondaryView = async (view: Exclude<TabId, "search">) => {
+  if (!(await ensureConnectedForSecondaryView())) return;
+  shellStatus.value = null;
   secondaryView.value = view;
   closeSecondaryMenu();
 };
@@ -87,6 +106,10 @@ const backToEnvelope = () => {
           </button>
         </div>
       </div>
+    </div>
+
+    <div v-if="shellStatus" :class="['status', shellStatus.type]" role="status">
+      {{ shellStatus.msg }}
     </div>
 
     <main class="app-content">

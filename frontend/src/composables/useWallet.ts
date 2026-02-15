@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { addressToScriptHashHex } from "@/utils/neo";
+import { resolveNetwork } from "@/config/networks";
 
 const address = ref("");
 const connected = ref(false);
@@ -194,18 +195,34 @@ export function useWallet() {
   };
 
   const invokeRead = async (params: { scriptHash: string; operation: string; args?: unknown[] }): Promise<unknown> => {
-    const dapi = await waitForDapi();
-    if (!dapi) throw new Error("No Neo wallet detected");
-
-    return dapi.request({
-      method: "invokeRead",
-      params: {
-        scriptHash: params.scriptHash,
-        operation: params.operation,
-        args: params.args ?? [],
-        signers: [],
-      },
+    const { defaultRpc } = resolveNetwork();
+    const rpcArgs = neolineArgs(params.args ?? []);
+    const res = await fetch(defaultRpc, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "invokefunction",
+        params: [params.scriptHash, params.operation, rpcArgs],
+      }),
     });
+
+    if (!res.ok) {
+      throw new Error(`RPC HTTP ${res.status}`);
+    }
+
+    const json = (await res.json()) as {
+      result?: unknown;
+      error?: { message?: string; data?: string };
+    };
+
+    if (json.error) {
+      const details = [json.error.message, json.error.data].filter(Boolean).join(": ");
+      throw new Error(details || "RPC invokeRead failed");
+    }
+    if (!json.result) throw new Error("RPC invokeRead returned no result");
+    return json.result;
   };
 
   const getBalance = async (asset: string): Promise<string> => {

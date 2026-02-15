@@ -136,6 +136,7 @@ type ActionFlowPhase = "idle" | "loading" | "success" | "error";
 const actionFlowPhase = computed<ActionFlowPhase>(() => {
   if (searching.value || claiming.value || reclaimingSearch.value || showOpenModal.value || showTransferModal.value) return "loading";
   if (status.value?.type === "error") return "error";
+  if (notFound.value) return "error";
   if (status.value?.type === "success") return "success";
   return "idle";
 });
@@ -155,6 +156,7 @@ const actionFlowMessage = computed(() => {
   if (showOpenModal.value) return t("flowHintOpeningEnvelope");
   if (showTransferModal.value) return t("flowHintTransferringEnvelope");
   if (status.value?.msg) return status.value.msg;
+  if (notFound.value) return t("notFound");
   if (!urlEnvelopeId.value) return t("flowHintWaitingUrl");
   if (!envelope.value) return t("flowHintLoadingEnvelope");
   if (!primaryAction.value) return t("flowHintNoAction");
