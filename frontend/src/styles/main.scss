@@ -324,6 +324,9 @@ body {
   .tab {
     font-size: 0.82rem;
     padding: 0.6rem 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .type-selector {
@@ -378,6 +381,14 @@ body {
 
   .create-wait-card {
     width: 94vw;
+    padding: 1rem;
+  }
+
+  .modal {
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .modal-body {
     padding: 1rem;
   }
 
@@ -880,6 +891,9 @@ body {
   box-shadow: var(--shadow-elevated);
   width: 100%;
   max-width: 400px;
+  max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
   animation: slideUp 0.3s ease;
   border: 1px solid var(--border-gold-faint);
   position: relative;
@@ -911,6 +925,7 @@ body {
 
 .modal-body {
   padding: 1.25rem;
+  overflow-y: auto;
 }
 
 .modal-actions {
@@ -2428,6 +2443,19 @@ body {
     font-size: 1.48rem;
   }
 
+  .app-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .contract-banner {
+    font-size: 0.7rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .contract-link {
+    font-size: 0.66rem;
+  }
+
   .wallet-pill {
     font-size: 0.72rem;
     padding: 0.35rem 0.7rem;
@@ -2435,6 +2463,10 @@ body {
 
   .create-result-actions {
     gap: 0.4rem;
+  }
+
+  .create-result-nft {
+    max-height: 220px;
   }
 
   .wallet-chip {
@@ -2464,11 +2496,65 @@ body {
     font-size: 0.8rem;
   }
 
+  .share-card-preview {
+    padding: 1rem 0.75rem;
+  }
+
+  .share-amount-value {
+    font-size: 2.1rem;
+  }
+
   .year-badge {
     font-size: 0.7rem;
   }
   .spring-couplet .couplet-half {
     font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .tab {
+    font-size: 0.76rem;
+    padding: 0.55rem 0.3rem;
+  }
+
+  .panel-left {
+    padding: 0.85rem;
+  }
+
+  .form-section {
+    padding: 0.8rem;
+  }
+
+  .btn-send,
+  .btn-open {
+    padding: 0.78rem;
+    font-size: 0.92rem;
+  }
+
+  .create-wait-card {
+    width: 96vw;
+    padding: 0.9rem 0.8rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .app-title {
+    font-size: 1.34rem;
+  }
+
+  .tab {
+    font-size: 0.71rem;
+  }
+
+  .wallet-pill {
+    font-size: 0.68rem;
+    padding: 0.3rem 0.55rem;
+  }
+
+  .year-badge {
+    font-size: 0.64rem;
+    padding: 0.2rem 0.65rem;
   }
 }
 
