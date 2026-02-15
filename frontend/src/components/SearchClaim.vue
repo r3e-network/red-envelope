@@ -2,9 +2,11 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
+import { useNeoEligibility } from "@/composables/useNeoEligibility";
 import { useI18n } from "@/composables/useI18n";
 import { useAudio } from "@/composables/useAudio";
 import { extractError, formatGas } from "@/utils/format";
+import { mapEligibilityReason } from "@/utils/eligibility";
 import { addressToScriptHashHex } from "@/utils/neo";
 import { extractEnvelopeCreatedId, waitForConfirmation } from "@/utils/rpc";
 import { CONTRACT_HASH } from "@/config/contract";
@@ -16,6 +18,7 @@ import { mapWalletConnectError } from "./searchClaim.logic";
 const { t } = useI18n();
 const { playCoinSound } = useAudio();
 const { address, connected, connect } = useWallet();
+const { checkOpenEligibility } = useNeoEligibility();
 const {
   fetchEnvelopeState,
   claimFromPool,
@@ -259,6 +262,15 @@ const handlePoolClaim = async () => {
   showSecondaryActions.value = false;
   autoOpenClaimAfterClaim.value = false;
   try {
+    const eligibility = await checkOpenEligibility(envelope.value.id);
+    if (!eligibility.eligible) {
+      if (eligibility.reason === "already claimed") {
+        claimedPoolByCurrentWallet.value = true;
+      }
+      status.value = { msg: mapEligibilityReason(eligibility.reason, t), type: "error" };
+      return;
+    }
+
     const res = await claimFromPool(envelope.value.id);
     status.value = { msg: t("claimedTx", res.txid.slice(0, 12) + "..."), type: "success" };
     // Wait for TX confirmation before refreshing state (BUG-4 fix)

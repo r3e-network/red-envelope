@@ -7,6 +7,7 @@ import { useI18n } from "@/composables/useI18n";
 import { useAudio } from "@/composables/useAudio";
 import { useFocusTrap } from "@/composables/useFocusTrap";
 import { extractError, formatGas } from "@/utils/format";
+import { mapEligibilityReason } from "@/utils/eligibility";
 import { waitForConfirmation } from "@/utils/rpc";
 import LuckyOverlay from "./LuckyOverlay.vue";
 import ShareCard from "./ShareCard.vue";
@@ -42,11 +43,7 @@ const eligibilityWarning = ref("");
 const resultHint = computed(() => (props.envelope.envelopeType === 0 ? t("openResultHintSpreading") : t("openResultHintClaim")));
 const eligibilityErrorText = computed(() => {
   if (!eligibility.value || eligibility.value.eligible) return "";
-  if (eligibility.value.reason === "insufficient NEO") return t("insufficientNeo");
-  if (eligibility.value.reason === "hold duration not met") return t("holdNotMet");
-  if (eligibility.value.reason === "already opened") return t("alreadyOpenedByYou");
-  if (eligibility.value.reason === "already claimed") return t("alreadyClaimedPool");
-  return eligibility.value.reason || t("eligibilityCheckFailed");
+  return mapEligibilityReason(eligibility.value.reason, t);
 });
 
 const isLocked = computed(() => eligibility.value != null && !eligibility.value.eligible);

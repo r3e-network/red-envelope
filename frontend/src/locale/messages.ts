@@ -76,6 +76,7 @@ export const messages = {
   validationIntegerOnly: { en: "Must be a whole number", zh: "必须是整数" },
   validationNonNegativeInteger: { en: "Must be an integer ≥ 0", zh: "必须是大于等于 0 的整数" },
   validationExpiryMin: { en: "Expiry must be at least 1 hour", zh: "过期时间至少为 1 小时" },
+  validationExpiryMax: { en: "Expiry must be at most {0} hours (7 days)", zh: "过期时间最多 {0} 小时（7 天）" },
 
   // ── My Envelopes ──────────────────────────────────
   noEnvelopes: { en: "No envelopes yet", zh: "暂无红包" },
@@ -219,6 +220,9 @@ export const messages = {
   insufficientNeo: { en: "Insufficient NEO", zh: "NEO 不足" },
   holdNotMet: { en: "Hold duration not met", zh: "持有时间不足" },
   eligibilityCheckFailed: { en: "Could not verify eligibility", zh: "无法验证资格" },
+  eligibilityNotActive: { en: "Envelope is not active", zh: "红包当前不可用" },
+  eligibilityNotHolder: { en: "Current wallet is not the NFT holder", zh: "当前钱包不是该 NFT 持有者" },
+  eligibilityContractBlocked: { en: "Contract accounts are not allowed", zh: "合约账户不可参与" },
   neoBalance: { en: "NEO Balance", zh: "NEO 余额" },
   holdingDays: { en: "Holding Days", zh: "持有天数" },
 

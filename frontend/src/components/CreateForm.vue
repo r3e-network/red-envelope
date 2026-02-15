@@ -2,7 +2,7 @@
 import { ref, computed, nextTick, onUnmounted } from "vue";
 import QRCode from "qrcode";
 import { useWallet } from "@/composables/useWallet";
-import { useRedEnvelope } from "@/composables/useRedEnvelope";
+import { MAX_EXPIRY_HOURS, useRedEnvelope } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
 import { CONTRACT_HASH } from "@/config/contract";
 import { extractError, formatGas } from "@/utils/format";
@@ -69,6 +69,7 @@ const canSubmit = computed(() => {
     Number.isInteger(c) &&
     a >= c * 0.1 &&
     e >= 1 &&
+    e <= MAX_EXPIRY_HOURS &&
     Number.isInteger(e) &&
     minNeoInputValid.value &&
     minHoldDaysInputValid.value
@@ -639,6 +640,7 @@ const copyShareLink = async () => {
             v-model="expiryHours"
             type="number"
             min="1"
+            :max="MAX_EXPIRY_HOURS"
             :placeholder="t('expiryPlaceholder')"
             class="input"
           />
@@ -647,6 +649,9 @@ const copyShareLink = async () => {
           </div>
           <div v-if="expiryHours && Number(expiryHours) < 1" class="field-hint text-fail">
             {{ t("validationExpiryMin") }}
+          </div>
+          <div v-if="expiryHours && Number(expiryHours) > MAX_EXPIRY_HOURS" class="field-hint text-fail">
+            {{ t("validationExpiryMax", MAX_EXPIRY_HOURS) }}
           </div>
         </div>
         <div class="form-group">

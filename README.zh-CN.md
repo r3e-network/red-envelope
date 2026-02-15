@@ -127,6 +127,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 - **仅真实用户可打开/领取**：合约账户不能执行打开或领取动作。
 - **必须打开才会到账**：仅持有或领取 NFT 不会自动转出 GAS。
 - **过期严格生效**：红包过期后不能再打开或领取。
+- **过期上限**：创建红包时过期时长最多 `7 天`（`604800000 ms`）。
 - **打开/回收流程不会销毁 NFT**：已结算红包仍可作为收藏品持续转让。
 - **最小金额限制**：每个红包总额至少 `1 GAS`，每个份额至少 `0.1 GAS`。
 - **防暴击上限**：单次打开/领取不会超过该红包的单次上限（默认 20%，低份数场景会自动做可行性调整）。
@@ -165,7 +166,7 @@ KEY1_WIF=... KEY2_WIF=... node scripts/test-e2e.js
 | ------------------------- | ---------------------- | ------------ | ------------------------- |
 | `GetEnvelopeState`        | `envelopeId`           | `Map`        | 红包完整元数据。          |
 | `GetClaimState`           | `claimId`              | `Map`        | Claim NFT 元数据。        |
-| `CheckEligibility`        | `envelopeId`, `user`   | `Map`        | 用户是否可打开/领取。     |
+| `CheckEligibility`        | `envelopeId`, `user`   | `Map`        | 仅校验 NEO 门槛（余额/持有时长）。 |
 | `CheckOpenEligibility`    | `envelopeId`, `user`   | `Map`        | 包含持有者与状态校验的完整打开/领取资格。 |
 | `HasOpened`               | `envelopeId`, `opener` | `bool`       | 地址是否已打开。          |
 | `GetOpenedAmount`         | `envelopeId`, `opener` | `BigInteger` | 打开者获得的 GAS。        |

@@ -406,6 +406,23 @@ describe("useRedEnvelope", () => {
     ).rejects.toThrow("packet count must be an integer");
   });
 
+  it("rejects expiry longer than 7 days when creating envelope", async () => {
+    mockInvoke.mockResolvedValue({ txid: "0xabc" });
+    const api = useRedEnvelope();
+
+    await expect(
+      api.createEnvelope({
+        totalGas: 10,
+        packetCount: 2,
+        expiryHours: 169,
+        message: "test",
+        minNeo: 0,
+        minHoldDays: 0,
+        envelopeType: 1,
+      }),
+    ).rejects.toThrow("expiry must be <= 168 hours (7 days)");
+  });
+
   it("rejects non-integer NEO gate values when creating envelope", async () => {
     mockInvoke.mockResolvedValue({ txid: "0xabc" });
     const api = useRedEnvelope();

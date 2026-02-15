@@ -127,6 +127,7 @@ To reduce extreme outcomes, each open/claim amount is capped:
 - **Only real users can open/claim**: contract accounts are rejected for open/claim actions.
 - **Open is required to receive GAS**: holding or claiming NFT alone does not transfer GAS.
 - **Expiry is enforced**: open/claim operations are blocked after expiry.
+- **Expiry is bounded**: creation accepts at most `7 days` (`604800000 ms`).
 - **NFTs are never burned by open/reclaim flows**: settled envelopes can still be transferred as collectibles.
 - **Minimum amounts**: total per envelope is at least `1 GAS`, and each packet/slot is at least `0.1 GAS`.
 - **Anti-spike cap**: one open/claim cannot exceed the configured per-envelope cap (default 20%, with low-packet feasibility adjustment).
@@ -165,7 +166,7 @@ To run E2E tests, set `KEY1_WIF` and `KEY2_WIF` and execute `node scripts/test-e
 | ------------------------- | ---------------------- | ------------ | ---------------------------- |
 | `GetEnvelopeState`        | `envelopeId`           | `Map`        | Full envelope metadata.      |
 | `GetClaimState`           | `claimId`              | `Map`        | Claim NFT metadata.          |
-| `CheckEligibility`        | `envelopeId`, `user`   | `Map`        | Whether user can open/claim. |
+| `CheckEligibility`        | `envelopeId`, `user`   | `Map`        | NEO gate eligibility only (balance/hold checks). |
 | `CheckOpenEligibility`    | `envelopeId`, `user`   | `Map`        | Full open/claim eligibility with holder and state checks. |
 | `HasOpened`               | `envelopeId`, `opener` | `bool`       | Whether address has opened.  |
 | `GetOpenedAmount`         | `envelopeId`, `opener` | `BigInteger` | GAS received by opener.      |

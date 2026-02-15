@@ -11,6 +11,7 @@ export const GAS_HASH = "0xd2a4cff31913016155e38e474a2c06d08be276cf";
 export const MIN_AMOUNT = 100_000_000; // 1 GAS fixed8
 export const MAX_PACKETS = 100;
 export const MIN_PER_PACKET = 10_000_000; // 0.1 GAS fixed8
+export const MAX_EXPIRY_HOURS = 168; // 7 days
 const ENVELOPE_ID_STORAGE_KEY_B64 = "Eg=="; // storage key 0x12 (PREFIX_ENVELOPE_ID)
 const MAX_ENVELOPE_ID_PROBE = 1_000_000;
 
@@ -372,6 +373,9 @@ function validate(amount: number, packets: number, expiryHours?: number, message
   if (amount < packets * MIN_PER_PACKET) throw new Error("min 0.1 GAS/packet");
   if (expiryHours !== undefined && !Number.isInteger(expiryHours)) throw new Error("expiry hours must be an integer");
   if (expiryHours !== undefined && expiryHours <= 0) throw new Error("expiry must be positive");
+  if (expiryHours !== undefined && expiryHours > MAX_EXPIRY_HOURS) {
+    throw new Error(`expiry must be <= ${MAX_EXPIRY_HOURS} hours (7 days)`);
+  }
   if (minNeo !== undefined && !Number.isInteger(minNeo)) throw new Error("NEO gate values must be integers");
   if (minHoldDays !== undefined && !Number.isInteger(minHoldDays)) throw new Error("NEO gate values must be integers");
   if (minNeo !== undefined && minNeo < 0) throw new Error("NEO gate values cannot be negative");
