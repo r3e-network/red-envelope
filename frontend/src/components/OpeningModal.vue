@@ -10,6 +10,7 @@ import { extractError, formatGas } from "@/utils/format";
 import { waitForConfirmation } from "@/utils/rpc";
 import LuckyOverlay from "./LuckyOverlay.vue";
 import ShareCard from "./ShareCard.vue";
+import NftPreviewModal from "./NftPreviewModal.vue";
 
 const props = defineProps<{
   envelope: EnvelopeItem;
@@ -36,6 +37,7 @@ const opened = ref(false);
 const openResult = ref<number | null>(null);
 const error = ref("");
 const showShare = ref(false);
+const showNftPreview = ref(false);
 const eligibilityWarning = ref("");
 const resultHint = computed(() => (props.envelope.envelopeType === 0 ? t("openResultHintSpreading") : t("openResultHintClaim")));
 
@@ -106,6 +108,10 @@ const handleOpen = async () => {
 
     opened.value = true;
     showShare.value = (openResult.value ?? 0) > 0;
+    if (props.envelope.envelopeType === 2) {
+      // Claim NFT flow: automatically surface NFT details for immediate sharing.
+      showNftPreview.value = true;
+    }
     playOpenSound();
     emit("opened", openResult.value ?? 0);
   } catch (e: unknown) {
@@ -225,6 +231,9 @@ const handleOpen = async () => {
           <button v-if="openResult > 0" class="btn btn-open" @click="showShare = true">
             🎉 {{ t("shareYourLuck") }}
           </button>
+          <button v-if="props.envelope.envelopeType !== 1" class="btn btn-primary" @click="showNftPreview = true">
+            🖼️ {{ t("viewNftDetail") }}
+          </button>
           <button v-if="props.envelope.envelopeType === 0" class="btn btn-transfer" @click="emit('transfer')">
             {{ t("sendToFriend") }}
           </button>
@@ -249,4 +258,6 @@ const handleOpen = async () => {
     :envelope-type="props.envelope.envelopeType"
     @close="showShare = false"
   />
+
+  <NftPreviewModal v-if="showNftPreview" :envelope="props.envelope" @close="showNftPreview = false" />
 </template>

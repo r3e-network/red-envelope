@@ -174,6 +174,7 @@ export const messages = {
   transferSuccess: { en: "Transferred!", zh: "转让成功！" },
   reclaimSuccess: { en: "Reclaimed {0} GAS", zh: "已回收 {0} GAS" },
   viewNftHint: { en: "Click card to view NFT", zh: "点击卡片查看 NFT" },
+  viewNftDetail: { en: "View NFT Detail", zh: "查看 NFT 详情" },
   expired: { en: "Expired", zh: "已过期" },
   depleted: { en: "All opened", zh: "已领完" },
   active: { en: "Active", zh: "进行中" },

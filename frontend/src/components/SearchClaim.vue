@@ -290,10 +290,9 @@ const handleReclaim = async () => {
 };
 
 const onOpened = async () => {
-  showOpenModal.value = false;
-  autoOpenClaimAfterClaim.value = false;
-  openTargetEnvelope.value = null;
   showSecondaryActions.value = false;
+  // Keep the opening modal visible so users can inspect/share the NFT result.
+  // Modal lifecycle is controlled by explicit close action.
   if (envelope.value) {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) {
