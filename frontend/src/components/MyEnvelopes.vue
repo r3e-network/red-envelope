@@ -12,6 +12,7 @@ import EnvelopeCard from "./EnvelopeCard.vue";
 import type { EnrichedEnvelope } from "./EnvelopeCard.vue";
 import OpeningModal from "./OpeningModal.vue";
 import TransferModal from "./TransferModal.vue";
+import NftPreviewModal from "./NftPreviewModal.vue";
 import { countActionableClaimNfts, partitionEnvelopeSections } from "./myEnvelopes.logic";
 
 const { t } = useI18n();
@@ -20,8 +21,10 @@ const { envelopes, loadingEnvelopes, loadEnvelopes, reclaimEnvelope } = useRedEn
 const { now } = useReactiveClock();
 
 const selectedEnvelope = ref<EnvelopeItem | null>(null);
+const selectedNftEnvelope = ref<EnvelopeItem | null>(null);
 const showOpenModal = ref(false);
 const showTransferModal = ref(false);
+const showNftModal = ref(false);
 const actionStatus = ref<{ msg: string; type: "success" | "error" } | null>(null);
 const reclaimingId = ref<string | null>(null);
 const inspectorInput = ref("");
@@ -326,6 +329,11 @@ const handleTransfer = (env: EnvelopeItem) => {
   showTransferModal.value = true;
 };
 
+const handleViewNft = (env: EnvelopeItem) => {
+  selectedNftEnvelope.value = env;
+  showNftModal.value = true;
+};
+
 const handleReclaim = async (env: EnvelopeItem) => {
   actionStatus.value = null;
   reclaimingId.value = env.id;
@@ -404,6 +412,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
           @inspect-wallet="handleInspectWallet"
+          @view-nft="handleViewNft"
         />
       </div>
 
@@ -435,6 +444,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
           @inspect-wallet="handleInspectWallet"
+          @view-nft="handleViewNft"
         />
       </div>
 
@@ -458,6 +468,7 @@ const handleReclaim = async (env: EnvelopeItem) => {
           @transfer="handleTransfer"
           @reclaim="handleReclaim"
           @inspect-wallet="handleInspectWallet"
+          @view-nft="handleViewNft"
         />
       </div>
     </template>
@@ -478,6 +489,12 @@ const handleReclaim = async (env: EnvelopeItem) => {
       :envelope="selectedEnvelope"
       @close="showTransferModal = false"
       @transferred="loadEnvelopes()"
+    />
+
+    <NftPreviewModal
+      v-if="showNftModal && selectedNftEnvelope"
+      :envelope="selectedNftEnvelope"
+      @close="showNftModal = false"
     />
     <canvas ref="snapshotCanvasRef" class="d-none"></canvas>
   </div>

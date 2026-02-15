@@ -27,6 +27,7 @@ const emit = defineEmits<{
   transfer: [env: EnrichedEnvelope];
   reclaim: [env: EnrichedEnvelope];
   inspectWallet: [walletHash: string];
+  viewNft: [env: EnrichedEnvelope];
 }>();
 
 const { t } = useI18n();
@@ -34,9 +35,14 @@ const { t } = useI18n();
 
 <template>
   <div
-    :class="['envelope-card', { 'spreading-card': spreading, 'card-inactive': !env.isActive }]"
+    :class="['envelope-card', 'envelope-card-clickable', { 'spreading-card': spreading, 'card-inactive': !env.isActive }]"
     role="article"
     :aria-label="t('detailEnvelopeId', env.id)"
+    :title="t('viewNftHint')"
+    tabindex="0"
+    @click="emit('viewNft', env)"
+    @keydown.enter.prevent="emit('viewNft', env)"
+    @keydown.space.prevent="emit('viewNft', env)"
   >
     <div class="card-header">
       <div class="card-header-left">
@@ -96,7 +102,7 @@ const { t } = useI18n();
         v-if="env.showOpen"
         class="btn btn-open"
         :aria-label="t('openEnvelope') + ' #' + env.id"
-        @click="emit('open', env)"
+        @click.stop="emit('open', env)"
       >
         {{ t("openEnvelope") }}
       </button>
@@ -104,7 +110,7 @@ const { t } = useI18n();
         v-if="env.showTransfer"
         :class="['btn', spreading ? 'btn-send-friend' : 'btn-transfer']"
         :aria-label="(spreading ? t('sendToFriend') : t('transferEnvelope')) + ' #' + env.id"
-        @click="emit('transfer', env)"
+        @click.stop="emit('transfer', env)"
       >
         {{ spreading ? t("sendToFriend") : t("transferEnvelope") }}
       </button>
@@ -113,7 +119,7 @@ const { t } = useI18n();
         class="btn btn-reclaim"
         :disabled="reclaiming"
         :aria-label="t('reclaimEnvelope') + ' #' + env.id"
-        @click="emit('reclaim', env)"
+        @click.stop="emit('reclaim', env)"
       >
         {{ reclaiming ? t("reclaiming") : t("reclaimEnvelope") }}
       </button>

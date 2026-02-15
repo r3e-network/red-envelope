@@ -19,14 +19,14 @@ describe("partitionEnvelopeSections", () => {
   it("places claim NFTs into dedicated claims section", () => {
     const input: SectionEnvelope[] = [
       env("10", 0, "role-holder", true),
-      env("9", 2, "role-holder", true),
+      env("9", 2, "role-holder", false),
       env("8", 1, "role-creator", true),
-      env("7", 2, "role-holder", false),
+      env("7", 2, "role-holder", true),
     ];
 
     const sections = partitionEnvelopeSections(input);
 
-    expect(sections.claimNfts.map((item) => item.id)).toEqual(["9", "7"]);
+    expect(sections.claimNfts.map((item) => item.id)).toEqual(["7", "9"]);
     expect(sections.otherEnvelopes.map((item) => item.id)).toEqual(["8"]);
     expect(sections.spreadingNfts.map((item) => item.id)).toEqual(["10"]);
   });
@@ -46,6 +46,17 @@ describe("partitionEnvelopeSections", () => {
     ];
 
     const ids = partitionEnvelopeSections(input).spreadingNfts.map((e) => e.id);
+    expect(ids).toEqual(["3", "2", "1"]);
+  });
+
+  it("sorts other envelopes active-first then newest", () => {
+    const input: SectionEnvelope[] = [
+      env("1", 1, "role-creator", false),
+      env("3", 1, "role-creator", true),
+      env("2", 1, "role-creator", true),
+    ];
+
+    const ids = partitionEnvelopeSections(input).otherEnvelopes.map((e) => e.id);
     expect(ids).toEqual(["3", "2", "1"]);
   });
 

@@ -125,6 +125,10 @@ export const messages = {
   shareSaveImage: { en: "Save Image", zh: "保存图片" },
   shareCopied: { en: "Copied!", zh: "已复制！" },
   shareSaved: { en: "Saved!", zh: "已保存！" },
+  nftPreviewTitle: { en: "Envelope NFT #{0}", zh: "红包 NFT #{0}" },
+  nftLoading: { en: "Loading NFT...", zh: "正在加载 NFT..." },
+  nftLoadFailed: { en: "Failed to load NFT metadata", zh: "加载 NFT 元数据失败" },
+  nftNoImage: { en: "No NFT image found", zh: "未找到 NFT 图片" },
   shareTweetText: {
     en: "🧧 I just received {0} GAS from Neo Red Envelope #{1}! Lucky me! 🎉",
     zh: "🧧 我刚从 Neo 红包 #{1} 领到了 {0} GAS！太幸运了！🎉",
@@ -138,6 +142,7 @@ export const messages = {
   cancel: { en: "Cancel", zh: "取消" },
   transferSuccess: { en: "Transferred!", zh: "转让成功！" },
   reclaimSuccess: { en: "Reclaimed {0} GAS", zh: "已回收 {0} GAS" },
+  viewNftHint: { en: "Click card to view NFT", zh: "点击卡片查看 NFT" },
   expired: { en: "Expired", zh: "已过期" },
   depleted: { en: "All opened", zh: "已领完" },
   active: { en: "Active", zh: "进行中" },

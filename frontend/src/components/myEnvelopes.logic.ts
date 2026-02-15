@@ -14,6 +14,14 @@ export function sortSpreadingNfts(
   return sortByNewest(a, b);
 }
 
+export function sortByActivityThenNewest(
+  a: Pick<EnrichedEnvelope, "id" | "isActive">,
+  b: Pick<EnrichedEnvelope, "id" | "isActive">,
+): number {
+  if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+  return sortByNewest(a, b);
+}
+
 export function partitionEnvelopeSections<T extends SectionEnvelope>(
   envelopes: T[],
 ): {
@@ -25,8 +33,10 @@ export function partitionEnvelopeSections<T extends SectionEnvelope>(
   const isClaimHolder = (env: T) => env.envelopeType === 2 && env.role?.cls === "role-holder";
 
   const spreadingNfts = envelopes.filter(isSpreadingHolder).sort(sortSpreadingNfts);
-  const claimNfts = envelopes.filter(isClaimHolder).sort(sortByNewest);
-  const otherEnvelopes = envelopes.filter((env) => !isSpreadingHolder(env) && !isClaimHolder(env)).sort(sortByNewest);
+  const claimNfts = envelopes.filter(isClaimHolder).sort(sortByActivityThenNewest);
+  const otherEnvelopes = envelopes
+    .filter((env) => !isSpreadingHolder(env) && !isClaimHolder(env))
+    .sort(sortByActivityThenNewest);
 
   return { spreadingNfts, claimNfts, otherEnvelopes };
 }
