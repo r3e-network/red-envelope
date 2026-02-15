@@ -232,6 +232,7 @@ export const messages = {
   invalidUrlEnvelopeId: { en: "Invalid URL id parameter", zh: "URL 中的 id 参数无效" },
   claimButton: { en: "🧧 Claim", zh: "🧧 领取" },
   claiming: { en: "Claiming...", zh: "领取中..." },
+  alreadyClaimedPool: { en: "Already claimed", zh: "已领取过" },
   moreActions: { en: "More actions", zh: "更多操作" },
   hideActions: { en: "Hide actions", zh: "收起操作" },
   flowStatusReady: { en: "Ready", zh: "就绪" },

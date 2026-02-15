@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useWallet } from "@/composables/useWallet";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
 import { useI18n } from "@/composables/useI18n";
@@ -19,6 +19,7 @@ const { address, connected, connect } = useWallet();
 const {
   fetchEnvelopeState,
   claimFromPool,
+  getPoolClaimedAmount,
   reclaimEnvelope,
 } = useRedEnvelope();
 
@@ -37,6 +38,9 @@ const claiming = ref(false);
 const reclaimingSearch = ref(false);
 const openTargetEnvelope = ref<EnvelopeItem | null>(null);
 const transferTargetEnvelope = ref<EnvelopeItem | null>(null);
+const checkingClaimedPool = ref(false);
+const claimedPoolByCurrentWallet = ref(false);
+let claimStatusSeq = 0;
 
 const currentAddressHash = computed(() => (address.value ? addressToScriptHashHex(address.value) : ""));
 
@@ -50,10 +54,19 @@ const isCreator = computed(() => {
   return envelope.value.creator === currentAddressHash.value;
 });
 
+const alreadyClaimedPool = computed(() => {
+  const env = envelope.value;
+  if (!env || env.envelopeType !== 1) return false;
+  if (!connected.value || !currentAddressHash.value) return false;
+  return claimedPoolByCurrentWallet.value;
+});
+
 const canOpenOrClaim = computed(() => {
   const env = envelope.value;
   if (!env) return false;
-  return env.active && !env.expired && !env.depleted && (env.envelopeType === 1 || isHolder.value);
+  if (!env.active || env.expired || env.depleted) return false;
+  if (env.envelopeType === 1) return !alreadyClaimedPool.value;
+  return isHolder.value;
 });
 
 const canTransfer = computed(() => {
@@ -70,12 +83,13 @@ const canReclaim = computed(() => {
   return env.active && env.remainingAmount > 0;
 });
 
-type PrimaryActionKind = "claimOrOpen" | "transfer" | "reclaim" | null;
+type PrimaryActionKind = "claimOrOpen" | "transfer" | "reclaim" | "alreadyClaimed" | null;
 
 const primaryAction = computed<PrimaryActionKind>(() => {
   if (canOpenOrClaim.value) return "claimOrOpen";
   if (canTransfer.value) return "transfer";
   if (canReclaim.value) return "reclaim";
+  if (alreadyClaimedPool.value) return "alreadyClaimed";
   return null;
 });
 
@@ -89,14 +103,20 @@ const primaryActionLabel = computed(() => {
       return t("transferEnvelope");
     case "reclaim":
       return reclaimingSearch.value ? t("reclaiming") : t("reclaimEnvelope");
+    case "alreadyClaimed":
+      return t("alreadyClaimedPool");
     default:
       return "";
   }
 });
 
 const primaryActionDisabled = computed(() => {
-  if (primaryAction.value === "claimOrOpen") return claiming.value;
+  if (primaryAction.value === "claimOrOpen") {
+    const isPoolClaim = envelope.value?.envelopeType === 1;
+    return claiming.value || (isPoolClaim && checkingClaimedPool.value);
+  }
   if (primaryAction.value === "reclaim") return reclaimingSearch.value;
+  if (primaryAction.value === "alreadyClaimed") return true;
   return false;
 });
 
@@ -128,6 +148,7 @@ const actionFlowTitle = computed(() => {
 
 const actionFlowMessage = computed(() => {
   if (searching.value) return t("flowHintLoadingEnvelope");
+  if (checkingClaimedPool.value) return t("searching");
   if (claiming.value) return t("flowHintClaimingOnChain");
   if (reclaimingSearch.value) return t("flowHintReclaimingOnChain");
   if (showOpenModal.value) return t("flowHintOpeningEnvelope");
@@ -138,6 +159,29 @@ const actionFlowMessage = computed(() => {
   if (!primaryAction.value) return t("flowHintNoAction");
   return t("flowHintReadyAction");
 });
+
+const refreshPoolClaimStatus = async () => {
+  const seq = ++claimStatusSeq;
+  claimedPoolByCurrentWallet.value = false;
+  checkingClaimedPool.value = false;
+
+  const env = envelope.value;
+  if (!env || env.envelopeType !== 1 || !connected.value || !currentAddressHash.value) {
+    return;
+  }
+
+  checkingClaimedPool.value = true;
+  try {
+    const claimedAmount = await getPoolClaimedAmount(env.id);
+    if (seq !== claimStatusSeq) return;
+    claimedPoolByCurrentWallet.value = claimedAmount > 0;
+  } catch {
+    if (seq !== claimStatusSeq) return;
+    claimedPoolByCurrentWallet.value = false;
+  } finally {
+    if (seq === claimStatusSeq) checkingClaimedPool.value = false;
+  }
+};
 
 const isValidEnvelopeId = (val: string) => /^\d+$/.test(val) && Number(val) > 0;
 
@@ -176,6 +220,7 @@ const loadEnvelopeFromUrl = async () => {
     const result = await fetchEnvelopeState(id);
     if (result) {
       envelope.value = result;
+      await refreshPoolClaimStatus();
     } else {
       notFound.value = true;
     }
@@ -188,6 +233,10 @@ const loadEnvelopeFromUrl = async () => {
 
 const handleOpen = async () => {
   if (!(await ensureConnected())) return;
+  if (alreadyClaimedPool.value) {
+    status.value = { msg: t("alreadyClaimedPool"), type: "error" };
+    return;
+  }
   // Pool envelopes use claimFromPool directly (no modal needed for claiming a slot)
   if (envelope.value?.envelopeType === 1) {
     await handlePoolClaim();
@@ -216,6 +265,7 @@ const handlePoolClaim = async () => {
     if (refreshed) {
       envelope.value = refreshed;
     }
+    claimedPoolByCurrentWallet.value = true;
 
     if (claimId) {
       try {
@@ -241,6 +291,11 @@ const handlePoolClaim = async () => {
 const handlePrimaryAction = async () => {
   if (!envelope.value) return;
   showSecondaryActions.value = false;
+
+  if (primaryAction.value === "alreadyClaimed") {
+    status.value = { msg: t("alreadyClaimedPool"), type: "error" };
+    return;
+  }
 
   if (primaryAction.value === "claimOrOpen") {
     await handleOpen();
@@ -327,6 +382,14 @@ onMounted(() => {
   loadEnvelopeFromUrl();
   window.addEventListener("popstate", handlePopState);
 });
+
+watch(
+  [connected, currentAddressHash, () => envelope.value?.id, () => envelope.value?.envelopeType],
+  () => {
+    void refreshPoolClaimStatus();
+  },
+  { immediate: true },
+);
 
 onUnmounted(() => {
   window.removeEventListener("popstate", handlePopState);
