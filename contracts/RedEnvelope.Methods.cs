@@ -57,7 +57,12 @@ namespace RedEnvelope.Contract
             BigInteger remainingAmount = envelope.RemainingAmount;
             if (remainingAmount <= 0) return 0;
 
-            return CalculateRuntimeRandomPacketAmount(remainingAmount, remainingPackets, 0);
+            return CalculateRuntimeRandomPacketAmount(
+                remainingAmount,
+                remainingPackets,
+                0,
+                envelope.TotalAmount,
+                envelope.PacketCount);
         }
 
         /// <summary>
@@ -71,10 +76,14 @@ namespace RedEnvelope.Contract
         private static BigInteger CalculateRuntimeRandomPacketAmount(
             BigInteger remainingAmount,
             BigInteger packetsLeft,
-            BigInteger neoBalance)
+            BigInteger neoBalance,
+            BigInteger totalAmount,
+            BigInteger totalPackets)
         {
             ExecutionEngine.Assert(remainingAmount > 0, "no GAS remaining");
             ExecutionEngine.Assert(packetsLeft > 0, "no packets left");
+            ExecutionEngine.Assert(totalAmount > 0, "invalid total amount");
+            ExecutionEngine.Assert(totalPackets > 0, "invalid total packets");
 
             if (packetsLeft == 1)
                 return remainingAmount;
@@ -85,7 +94,28 @@ namespace RedEnvelope.Contract
             if (maxForThis <= minPerPacket)
                 return minPerPacket;
 
-            BigInteger range = maxForThis - minPerPacket + 1;
+            // Cap single open/claim amount:
+            // - Base cap: 20% of envelope total amount
+            // - Feasibility floor: at least ceil(total/packetCount), otherwise low packet counts
+            //   would make strict 20% mathematically impossible.
+            BigInteger capByPercent = CeilingDiv(totalAmount * MAX_SINGLE_PACKET_BPS, PERCENT_BASE);
+            BigInteger capByAverage = CeilingDiv(totalAmount, totalPackets);
+            BigInteger effectiveCap = capByPercent > capByAverage ? capByPercent : capByAverage;
+            if (effectiveCap < minPerPacket)
+                effectiveCap = minPerPacket;
+
+            if (effectiveCap < maxForThis)
+                maxForThis = effectiveCap;
+
+            // Keep enough room so remaining packets can still stay under the same cap.
+            BigInteger minForThis = minPerPacket;
+            BigInteger minToKeepCapFeasible = remainingAmount - (packetsLeft - 1) * effectiveCap;
+            if (minToKeepCapFeasible > minForThis)
+                minForThis = minToKeepCapFeasible;
+            if (minForThis > maxForThis)
+                minForThis = maxForThis;
+
+            BigInteger range = maxForThis - minForThis + 1;
             BigInteger randomValue = Runtime.GetRandom();
             if (randomValue < 0)
                 randomValue = -randomValue;
@@ -108,7 +138,14 @@ namespace RedEnvelope.Contract
                     bestRoll = roll3;
             }
 
-            return minPerPacket + bestRoll;
+            return minForThis + bestRoll;
+        }
+
+        private static BigInteger CeilingDiv(BigInteger numerator, BigInteger denominator)
+        {
+            ExecutionEngine.Assert(denominator > 0, "invalid denominator");
+            if (numerator <= 0) return 0;
+            return (numerator + denominator - 1) / denominator;
         }
 
         #endregion

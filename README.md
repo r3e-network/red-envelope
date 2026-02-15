@@ -118,6 +118,10 @@ The random GAS distribution uses a "best-of-N" roll mechanism based on the opene
 
 More NEO improves your odds of a larger reward but never guarantees the maximum. All rolls are extracted from a single `Runtime.GetRandom()` call using bit-shifted division.
 
+To reduce extreme outcomes, each open/claim amount is capped:
+- Baseline cap is `20%` of the envelope total.
+- For low packet counts, the cap is auto-raised to at least `ceil(total / packetCount)` so distribution always remains feasible.
+
 ## Core Rules
 
 - **Only real users can open/claim**: contract accounts are rejected for open/claim actions.
@@ -125,6 +129,7 @@ More NEO improves your odds of a larger reward but never guarantees the maximum.
 - **Expiry is enforced**: open/claim operations are blocked after expiry.
 - **NFTs are never burned by open/reclaim flows**: settled envelopes can still be transferred as collectibles.
 - **Minimum amounts**: total per envelope is at least `1 GAS`, and each packet/slot is at least `0.1 GAS`.
+- **Anti-spike cap**: one open/claim cannot exceed the configured per-envelope cap (default 20%, with low-packet feasibility adjustment).
 
 ## Contract API
 

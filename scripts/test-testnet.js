@@ -89,6 +89,8 @@ async function main() {
       check("minAmount = 100000000 (1 GAS)", constants.minAmount === 100000000);
       check("maxPackets = 100", constants.maxPackets === 100);
       check("minPerPacket = 10000000 (0.1 GAS)", constants.minPerPacket === 10000000);
+      check("maxSinglePacketPercent = 20", constants.maxSinglePacketPercent === 20);
+      check("percentBase = 10000", constants.percentBase === 10000);
       check("defaultExpiryMs = 604800000 (7d)", constants.defaultExpiryMs === 604800000);
       check("typeSpreading = 0", constants.typeSpreading === 0);
       check("typePool = 1", constants.typePool === 1);

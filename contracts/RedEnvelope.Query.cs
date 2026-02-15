@@ -237,6 +237,9 @@ namespace RedEnvelope.Contract
             c["minAmount"] = MIN_AMOUNT;
             c["maxPackets"] = MAX_PACKETS;
             c["minPerPacket"] = MIN_PER_PACKET;
+            c["maxSinglePacketBps"] = MAX_SINGLE_PACKET_BPS;
+            c["percentBase"] = PERCENT_BASE;
+            c["maxSinglePacketPercent"] = (MAX_SINGLE_PACKET_BPS * 100) / PERCENT_BASE;
             c["defaultExpiryMs"] = DEFAULT_EXPIRY_MS;
             c["defaultMinNeo"] = DEFAULT_MIN_NEO;
             c["defaultMinHoldSeconds"] = DEFAULT_MIN_HOLD_SECONDS;

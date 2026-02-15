@@ -39,7 +39,9 @@ namespace RedEnvelope.Contract
             BigInteger amount = CalculateRuntimeRandomPacketAmount(
                 pool.RemainingAmount,
                 remainingPacketsBeforeClaim,
-                claimerNeo);
+                claimerNeo,
+                pool.TotalAmount,
+                pool.PacketCount);
             ExecutionEngine.Assert(amount > 0, "invalid amount");
 
             Storage.Put(Storage.CurrentContext, claimerKey, amount);
