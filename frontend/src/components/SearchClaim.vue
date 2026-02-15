@@ -233,12 +233,13 @@ const loadEnvelopeFromUrl = async () => {
 
 const handleOpen = async () => {
   if (!(await ensureConnected())) return;
-  if (alreadyClaimedPool.value) {
-    status.value = { msg: t("alreadyClaimedPool"), type: "error" };
-    return;
-  }
   // Pool envelopes use claimFromPool directly (no modal needed for claiming a slot)
   if (envelope.value?.envelopeType === 1) {
+    await refreshPoolClaimStatus();
+    if (alreadyClaimedPool.value) {
+      status.value = { msg: t("alreadyClaimedPool"), type: "error" };
+      return;
+    }
     await handlePoolClaim();
     return;
   }
