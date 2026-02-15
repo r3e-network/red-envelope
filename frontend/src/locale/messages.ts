@@ -192,6 +192,10 @@ export const messages = {
     en: "Recipient does not meet this NFT's NEO eligibility requirements.",
     zh: "接收方不满足该 NFT 的 NEO 资格要求。",
   },
+  transferRecipientEligible: {
+    en: "Recipient meets this NFT's NEO eligibility requirements.",
+    zh: "接收方满足该 NFT 的 NEO 资格要求。",
+  },
   transferRecipientInsufficientNeo: {
     en: "Recipient has {0} NEO, requires at least {1} NEO.",
     zh: "接收方当前 {0} NEO，至少需要 {1} NEO。",

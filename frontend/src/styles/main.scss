@@ -1418,6 +1418,12 @@ body {
     background: rgba(239, 83, 80, 0.12);
     color: var(--color-error);
   }
+
+  &.transfer-eligibility-pending {
+    background: rgba(255, 215, 0, 0.08);
+    color: #f6d38e;
+    border: 1px solid rgba(255, 215, 0, 0.24);
+  }
 }
 
 // ── Envelope Preview (Opening Modal) ────────────────
