@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from "vue";
 import { useRedEnvelope, type EnvelopeItem } from "@/composables/useRedEnvelope";
+import { useNeoEligibility } from "@/composables/useNeoEligibility";
 import { useI18n } from "@/composables/useI18n";
 import { useFocusTrap } from "@/composables/useFocusTrap";
 import { extractError } from "@/utils/format";
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const { transferEnvelope } = useRedEnvelope();
+const { checkEligibilityForAddress } = useNeoEligibility();
 
 const modalRef = ref<HTMLElement | null>(null);
 useFocusTrap(modalRef);
@@ -22,12 +24,15 @@ const recipient = ref("");
 const recipientRef = ref<HTMLInputElement | null>(null);
 const sending = ref(false);
 const confirming = ref(false);
+const checkingRecipientEligibility = ref(false);
 const error = ref("");
 const success = ref(false);
 
 const isValidAddress = (addr: string) => /^N[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr);
 const addressValid = computed(() => !recipient.value || isValidAddress(recipient.value));
-const canSubmit = computed(() => recipient.value.length === 34 && addressValid.value && !sending.value);
+const canSubmit = computed(
+  () => recipient.value.length === 34 && addressValid.value && !sending.value && !confirming.value && !checkingRecipientEligibility.value,
+);
 
 onMounted(() => nextTick(() => recipientRef.value?.focus()));
 
@@ -36,6 +41,32 @@ const handleTransfer = async () => {
     error.value = t("invalidAddress");
     return;
   }
+
+  if (props.envelope.envelopeType === 0) {
+    checkingRecipientEligibility.value = true;
+    try {
+      const eligibility = await checkEligibilityForAddress(props.envelope.id, recipient.value);
+      if (!eligibility.eligible) {
+        const minHoldDays = Math.floor(eligibility.minHoldSeconds / 86400);
+        if (eligibility.reason === "insufficient NEO") {
+          error.value = t("transferRecipientInsufficientNeo", eligibility.neoBalance, eligibility.minNeoRequired);
+        } else if (eligibility.reason === "hold duration not met") {
+          error.value = t("transferRecipientHoldNotMet", eligibility.holdDays, minHoldDays);
+        } else if (eligibility.reason && eligibility.reason !== "unknown") {
+          error.value = t("transferRecipientNotEligibleReason", eligibility.reason);
+        } else {
+          error.value = t("transferRecipientNotEligible");
+        }
+        return;
+      }
+    } catch {
+      error.value = t("transferRecipientCheckFailed");
+      return;
+    } finally {
+      checkingRecipientEligibility.value = false;
+    }
+  }
+
   sending.value = true;
   error.value = "";
   try {
@@ -77,6 +108,10 @@ const handleTransfer = async () => {
         </div>
 
         <template v-else>
+          <div v-if="envelope.envelopeType === 0" class="section-hint">
+            {{ t("transferRecipientCheckHint") }}
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="recipient-address">{{ t("labelRecipient") }}</label>
             <input
@@ -98,7 +133,15 @@ const handleTransfer = async () => {
               {{ t("cancel") }}
             </button>
             <button class="btn btn-primary" :disabled="!canSubmit || confirming" @click="handleTransfer">
-              {{ confirming ? t("confirming") : sending ? t("transferring") : t("confirm") }}
+              {{
+                confirming
+                  ? t("confirming")
+                  : sending
+                    ? t("transferring")
+                    : checkingRecipientEligibility
+                      ? t("checkingRecipientEligibility")
+                      : t("confirm")
+              }}
             </button>
           </div>
         </template>

@@ -183,6 +183,31 @@ export const messages = {
   invalidAddress: { en: "Invalid Neo N3 address", zh: "无效的 Neo N3 地址" },
   labelRecipient: { en: "Recipient address", zh: "接收方地址" },
   transferring: { en: "Transferring...", zh: "转让中..." },
+  checkingRecipientEligibility: { en: "Checking recipient eligibility...", zh: "检查接收方资格中..." },
+  transferRecipientCheckHint: {
+    en: "For spreading NFTs, recipient NEO eligibility will be verified before transfer.",
+    zh: "传播型 NFT 转发前会校验接收方 NEO 资格。",
+  },
+  transferRecipientNotEligible: {
+    en: "Recipient does not meet this NFT's NEO eligibility requirements.",
+    zh: "接收方不满足该 NFT 的 NEO 资格要求。",
+  },
+  transferRecipientInsufficientNeo: {
+    en: "Recipient has {0} NEO, requires at least {1} NEO.",
+    zh: "接收方当前 {0} NEO，至少需要 {1} NEO。",
+  },
+  transferRecipientHoldNotMet: {
+    en: "Recipient hold duration is {0}d, requires at least {1}d.",
+    zh: "接收方持有时长为 {0} 天，至少需要 {1} 天。",
+  },
+  transferRecipientNotEligibleReason: {
+    en: "Recipient not eligible: {0}",
+    zh: "接收方资格不通过：{0}",
+  },
+  transferRecipientCheckFailed: {
+    en: "Could not verify recipient eligibility. Transfer blocked for safety.",
+    zh: "无法验证接收方资格，已为安全起见阻止转发。",
+  },
   langToggle: { en: "中文", zh: "EN" },
   neoRequirement: { en: "NEO Requirement", zh: "NEO 要求" },
   insufficientNeo: { en: "Insufficient NEO", zh: "NEO 不足" },
