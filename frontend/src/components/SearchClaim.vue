@@ -21,7 +21,6 @@ const { address, connected, connect } = useWallet();
 const {
   fetchEnvelopeState,
   claimFromPool,
-  getPoolClaimedAmount,
   reclaimEnvelope,
 } = useRedEnvelope();
 const { loading: historyLoading, history, loadHistory, clearHistory } = useEnvelopeHistory();
@@ -36,7 +35,7 @@ const status = ref<{ msg: string; type: "success" | "error" } | null>(null);
 const showOpenModal = ref(false);
 const showTransferModal = ref(false);
 const autoOpenClaimAfterClaim = ref(false);
-const claimedAmount = ref(0);
+const showSecondaryActions = ref(false);
 const claiming = ref(false);
 const reclaimingSearch = ref(false);
 const openTargetEnvelope = ref<EnvelopeItem | null>(null);
@@ -72,6 +71,46 @@ const canReclaim = computed(() => {
   return env.envelopeType !== 2 && env.active && env.expired && env.remainingAmount > 0 && isCreator.value;
 });
 
+type PrimaryActionKind = "claimOrOpen" | "transfer" | "reclaim" | null;
+
+const primaryAction = computed<PrimaryActionKind>(() => {
+  if (canOpenOrClaim.value) return "claimOrOpen";
+  if (canTransfer.value) return "transfer";
+  if (canReclaim.value) return "reclaim";
+  return null;
+});
+
+const primaryActionLabel = computed(() => {
+  switch (primaryAction.value) {
+    case "claimOrOpen":
+      return envelope.value?.envelopeType === 1
+        ? (claiming.value ? t("claiming") : t("claimButton"))
+        : t("openEnvelope");
+    case "transfer":
+      return t("transferEnvelope");
+    case "reclaim":
+      return reclaimingSearch.value ? t("reclaiming") : t("reclaimEnvelope");
+    default:
+      return "";
+  }
+});
+
+const primaryActionDisabled = computed(() => {
+  if (primaryAction.value === "claimOrOpen") return claiming.value;
+  if (primaryAction.value === "reclaim") return reclaimingSearch.value;
+  return false;
+});
+
+const primaryActionClass = computed(() => {
+  if (primaryAction.value === "transfer") return "btn-transfer";
+  if (primaryAction.value === "reclaim") return "btn-reclaim";
+  return "btn-open";
+});
+
+const showTransferSecondary = computed(() => canTransfer.value && primaryAction.value !== "transfer");
+const showReclaimSecondary = computed(() => canReclaim.value && primaryAction.value !== "reclaim");
+const hasSecondaryActions = computed(() => showTransferSecondary.value || showReclaimSecondary.value);
+
 const isValidEnvelopeId = (val: string) => /^\d+$/.test(val) && Number(val) > 0;
 
 const ensureConnected = async (): Promise<boolean> => {
@@ -93,6 +132,7 @@ const loadEnvelopeFromUrl = async () => {
   notFound.value = false;
   envelope.value = null;
   status.value = null;
+  showSecondaryActions.value = false;
   clearHistory();
 
   if (!id) {
@@ -138,7 +178,7 @@ const handlePoolClaim = async () => {
   if (!envelope.value) return;
   status.value = null;
   claiming.value = true;
-  claimedAmount.value = 0;
+  showSecondaryActions.value = false;
   autoOpenClaimAfterClaim.value = false;
   try {
     const res = await claimFromPool(envelope.value.id);
@@ -146,12 +186,6 @@ const handlePoolClaim = async () => {
     // Wait for TX confirmation before refreshing state (BUG-4 fix)
     const appLog = await waitForConfirmation(res.txid);
     const claimId = extractEnvelopeCreatedId(appLog, CONTRACT_HASH);
-
-    try {
-      claimedAmount.value = await getPoolClaimedAmount(envelope.value.id);
-    } catch {
-      // Non-critical: claim succeeded but amount query failed; leave claimedAmount at 0
-    }
 
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) {
@@ -177,6 +211,25 @@ const handlePoolClaim = async () => {
     status.value = { msg: extractError(e), type: "error" };
   } finally {
     claiming.value = false;
+  }
+};
+
+const handlePrimaryAction = async () => {
+  if (!envelope.value) return;
+  showSecondaryActions.value = false;
+
+  if (primaryAction.value === "claimOrOpen") {
+    await handleOpen();
+    return;
+  }
+
+  if (primaryAction.value === "transfer") {
+    await handleTransfer();
+    return;
+  }
+
+  if (primaryAction.value === "reclaim") {
+    await handleReclaim();
   }
 };
 
@@ -217,6 +270,7 @@ const onOpened = async () => {
   showOpenModal.value = false;
   autoOpenClaimAfterClaim.value = false;
   openTargetEnvelope.value = null;
+  showSecondaryActions.value = false;
   if (envelope.value) {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) {
@@ -237,6 +291,7 @@ const handleTransferAfterOpen = () => {
 const onTransferred = async () => {
   showTransferModal.value = false;
   transferTargetEnvelope.value = null;
+  showSecondaryActions.value = false;
   if (envelope.value) {
     const refreshed = await fetchEnvelopeState(envelope.value.id);
     if (refreshed) envelope.value = refreshed;
@@ -287,19 +342,27 @@ onUnmounted(() => {
       </div>
 
       <!-- Action buttons (only when envelope loaded) -->
-      <template v-if="envelope">
-        <button v-if="canOpenOrClaim" class="btn btn-open" :disabled="claiming" @click="handleOpen">
-          {{ claiming ? t("claiming") : envelope.envelopeType === 1 ? t("claimButton") : t("openEnvelope") }}
+      <div v-if="envelope && primaryAction" class="action-card">
+        <button :class="['btn', primaryActionClass, 'action-primary-btn']" :disabled="primaryActionDisabled" @click="handlePrimaryAction">
+          {{ primaryActionLabel }}
         </button>
-
-        <button v-if="canTransfer" class="btn btn-transfer" @click="handleTransfer">
-          {{ t("transferEnvelope") }}
+        <button
+          v-if="hasSecondaryActions"
+          class="btn btn-sm action-secondary-toggle"
+          :aria-expanded="showSecondaryActions"
+          @click="showSecondaryActions = !showSecondaryActions"
+        >
+          {{ showSecondaryActions ? t("hideActions") : t("moreActions") }}
         </button>
-
-        <button v-if="canReclaim" class="btn btn-reclaim" :disabled="reclaimingSearch" @click="handleReclaim">
-          {{ reclaimingSearch ? t("reclaiming") : t("reclaimEnvelope") }}
-        </button>
-      </template>
+        <div v-if="showSecondaryActions && hasSecondaryActions" class="action-secondary-list">
+          <button v-if="showTransferSecondary" class="btn btn-transfer" @click="handleTransfer">
+            {{ t("transferEnvelope") }}
+          </button>
+          <button v-if="showReclaimSecondary" class="btn btn-reclaim" :disabled="reclaimingSearch" @click="handleReclaim">
+            {{ reclaimingSearch ? t("reclaiming") : t("reclaimEnvelope") }}
+          </button>
+        </div>
+      </div>
 
       <!-- Status message -->
       <div v-if="status" :class="['status', status.type]" role="status">

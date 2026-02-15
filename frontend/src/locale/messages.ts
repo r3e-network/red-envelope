@@ -192,6 +192,8 @@ export const messages = {
   invalidUrlEnvelopeId: { en: "Invalid URL id parameter", zh: "URL 中的 id 参数无效" },
   claimButton: { en: "🧧 Claim", zh: "🧧 领取" },
   claiming: { en: "Claiming...", zh: "领取中..." },
+  moreActions: { en: "More actions", zh: "更多操作" },
+  hideActions: { en: "Hide actions", zh: "收起操作" },
   searching: { en: "Searching...", zh: "搜索中..." },
   searchWalletSpreadingTitle: { en: "My Spreading NFTs", zh: "我的传播型 NFT" },
   searchWalletSpreadingConnectHint: {

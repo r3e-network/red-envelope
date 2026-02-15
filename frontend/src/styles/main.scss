@@ -379,6 +379,15 @@ body {
     width: 100%;
   }
 
+  .action-card {
+    padding: 0.65rem;
+  }
+
+  .action-secondary-toggle {
+    width: 100%;
+    align-self: stretch;
+  }
+
   .secondary-toolbar,
   .secondary-actions {
     flex-direction: column;
@@ -1632,6 +1641,38 @@ body {
   .btn {
     white-space: nowrap;
     padding: 0.75rem 1.25rem;
+  }
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--border-gold-faint);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+.action-primary-btn {
+  width: 100%;
+  min-height: 44px;
+}
+
+.action-secondary-toggle {
+  align-self: flex-end;
+  border: 1px solid var(--border-light);
+  color: var(--color-text-secondary);
+  background: var(--bg-white-faint);
+}
+
+.action-secondary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .btn {
+    width: 100%;
   }
 }
 
