@@ -189,7 +189,7 @@ impl RedEnvelopeRustContract {
     pub fn destroy() {}
 
     #[neo_method(name = "_deploy")]
-    pub fn deploy(data: i64, update: bool) {
+    pub fn contract_deploy(data: i64, update: bool) {
         let Some(ctx) = ctx() else {
             return;
         };

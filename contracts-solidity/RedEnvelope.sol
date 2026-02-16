@@ -4,8 +4,6 @@ pragma solidity ^0.8.20;
 import "../.toolchains/neo-solidity/devpack/contracts/Syscalls.sol";
 import "../.toolchains/neo-solidity/devpack/contracts/NativeCalls.sol";
 
-type Any is bytes;
-
 contract RedEnvelope {
     uint256 private constant MIN_AMOUNT = 100_000_000;
     uint256 private constant MAX_PACKETS = 100;
@@ -37,7 +35,6 @@ contract RedEnvelope {
     uint256 private nextEnvelopeId;
     uint256 private totalEnvelopes;
     uint256 private totalDistributed;
-    uint256 private timeOverride;
 
     mapping(uint256 => address) private envelopeCreator;
     mapping(uint256 => uint256) private envelopeTotalAmount;
@@ -218,11 +215,13 @@ contract RedEnvelope {
     function setOwner(address newOwner) external {
         require(newOwner != address(0), "invalid address");
 
+        // Compatibility shim: some neo-solidity deploy paths may not expose
+        // transaction sender during _deploy, leaving owner unset.
         if (owner == address(0)) {
             require(Syscalls.checkWitness(newOwner), "bootstrap owner must self-set");
-            address initialOwner = owner;
+            address oldOwner = owner;
             owner = newOwner;
-            emit OwnerChanged(initialOwner, newOwner);
+            emit OwnerChanged(oldOwner, newOwner);
             return;
         }
 
@@ -236,7 +235,7 @@ contract RedEnvelope {
         return owner != address(0) && Syscalls.checkWitness(owner);
     }
 
-    function verify() external view returns (bool) {
+    function verify() external returns (bool) {
         return owner != address(0) && Syscalls.checkWitness(owner);
     }
 
@@ -266,7 +265,7 @@ contract RedEnvelope {
         Syscalls.contractDestroy();
     }
 
-    function _deploy(Any calldata data, bool update_) external {
+    function _deploy(bytes calldata data, bool update_) external {
         data;
 
         address sender = _txSender();
@@ -283,14 +282,13 @@ contract RedEnvelope {
         nextEnvelopeId = 0;
         totalEnvelopes = 0;
         totalDistributed = 0;
-        timeOverride = 0;
     }
 
     function _initialize() external {
         // Kept for ABI parity with the C# NEP-11 base contract surface.
     }
 
-    function onNEP17Payment(address from, uint256 amount, uint256 dataConfig) external {
+    function onNEP17Payment(address from, uint256 amount, bytes calldata data) external {
         require(Syscalls.getCallingScriptHash() == GAS_HASH, "only GAS accepted");
 
         if (from == address(0)) {
@@ -307,27 +305,16 @@ contract RedEnvelope {
         uint256 minHoldSeconds = DEFAULT_MIN_HOLD_SECONDS;
         uint256 envelopeType_ = ENVELOPE_TYPE_SPREADING;
 
-        if (dataConfig > 0) {
-            uint256 packedCount = dataConfig / 1_000_000_000;
-            if (packedCount > 0) {
-                packetCount = packedCount;
-            }
-            uint256 packedExpiryMs = (dataConfig / 10) % 100_000_000;
-            if (packedExpiryMs > 0) {
-                expiryMs = packedExpiryMs;
-            }
-            uint256 packedType = dataConfig % 10;
-            if (packedType == ENVELOPE_TYPE_POOL) {
-                envelopeType_ = ENVELOPE_TYPE_POOL;
-            }
-        }
+        (
+            packetCount,
+            expiryMs,
+            message,
+            minNeoRequired,
+            minHoldSeconds,
+            envelopeType_
+        ) = _parseOnPaymentConfig(data);
 
         _createEnvelope(from, amount, packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
-    }
-
-    function setTimeOverride(uint256 timestamp) external {
-        _validateOwner();
-        timeOverride = timestamp;
     }
 
     function tokenURI(uint256 tokenId) external view returns (string memory) {
@@ -335,12 +322,15 @@ contract RedEnvelope {
             return "";
         }
 
+        string memory imageData = _buildTokenSvgDataUri(tokenId);
         string memory json = string(
             abi.encodePacked(
                 '{"name":"',
-                _tokenName(tokenId),
+                _escapeJsonString(_tokenName(tokenId)),
                 '","description":"',
-                _buildTokenDescription(tokenId),
+                _escapeJsonString(_buildTokenDescription(tokenId)),
+                '","image":"',
+                imageData,
                 '"}'
             )
         );
@@ -490,7 +480,7 @@ contract RedEnvelope {
         require(_tokenExists(claimId), "claim not found");
         require(tokenOwner[claimId] == from, "not NFT holder");
 
-        require(transfer(to, _idToTokenId(claimId), Any.wrap("")), "transfer failed");
+        require(transfer(to, _idToTokenId(claimId), bytes("")), "transfer failed");
     }
 
     function reclaimPool(uint256 poolId, address creator) external returns (uint256) {
@@ -673,7 +663,7 @@ contract RedEnvelope {
         return poolClaimIndex[poolId][claimIndex];
     }
 
-    function transfer(address to, bytes calldata tokenIdBytes, Any calldata data) public returns (bool) {
+    function transfer(address to, bytes calldata tokenIdBytes, bytes calldata data) public returns (bool) {
         _assertNotPaused();
         _assertDirectUserInvocation();
 
@@ -756,7 +746,7 @@ contract RedEnvelope {
         return amount;
     }
 
-    function transferEnvelope(uint256 envelopeId, address from, address to, Any calldata data) external {
+    function transferEnvelope(uint256 envelopeId, address from, address to, bytes calldata data) external {
         _assertNotPaused();
         _assertDirectUserInvocation();
 
@@ -847,6 +837,119 @@ contract RedEnvelope {
         emit EnvelopeCreated(envelopeId, from, amount, packetCount, envelopeType_);
 
         return envelopeId;
+    }
+
+    function _parseOnPaymentConfig(bytes calldata data)
+        internal
+        pure
+        returns (
+            uint256 packetCount,
+            uint256 expiryMs,
+            string memory message,
+            uint256 minNeoRequired,
+            uint256 minHoldSeconds,
+            uint256 envelopeType_
+        )
+    {
+        packetCount = 1;
+        expiryMs = DEFAULT_EXPIRY_MS;
+        message = "";
+        minNeoRequired = DEFAULT_MIN_NEO;
+        minHoldSeconds = DEFAULT_MIN_HOLD_SECONDS;
+        envelopeType_ = ENVELOPE_TYPE_SPREADING;
+
+        bytes memory raw = data;
+        if (raw.length == 0) {
+            return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
+        }
+
+        // ABI-encoded config:
+        // [packetCount, expiryMs, messageOffset, minNeoRequired, minHoldSeconds, envelopeType, messageLength, message...]
+        if (raw.length >= 192) {
+            uint256 parsedPacketCount = _bytesToUintBE(raw, 0);
+            uint256 parsedExpiryMs = _bytesToUintBE(raw, 32);
+            uint256 messageOffset = _bytesToUintBE(raw, 64);
+            uint256 parsedMinNeoRequired = _bytesToUintBE(raw, 96);
+            uint256 parsedMinHoldSeconds = _bytesToUintBE(raw, 128);
+            uint256 parsedEnvelopeType = _bytesToUintBE(raw, 160);
+
+            if (parsedPacketCount > 0) {
+                packetCount = parsedPacketCount;
+            }
+            if (parsedExpiryMs > 0) {
+                expiryMs = parsedExpiryMs;
+            }
+            minNeoRequired = parsedMinNeoRequired;
+            minHoldSeconds = parsedMinHoldSeconds;
+
+            if (parsedEnvelopeType == ENVELOPE_TYPE_POOL) {
+                envelopeType_ = ENVELOPE_TYPE_POOL;
+            }
+
+            if (messageOffset + 32 <= raw.length) {
+                uint256 messageLength = _bytesToUintBE(raw, messageOffset);
+                if (messageOffset + 32 + messageLength <= raw.length) {
+                    message = _bytesToString(raw, messageOffset + 32, messageLength);
+                }
+            }
+
+            return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
+        }
+
+        // Packed integer config:
+        // dataConfig = packetCount * 1_000_000_000 + expiryMs * 10 + envelopeType
+        uint256 dataConfig = _bytesToUintLE(raw);
+        if (dataConfig > 0) {
+            uint256 packedCount = dataConfig / 1_000_000_000;
+            if (packedCount > 0) {
+                packetCount = packedCount;
+            }
+
+            uint256 packedExpiryMs = (dataConfig / 10) % 100_000_000;
+            if (packedExpiryMs > 0) {
+                expiryMs = packedExpiryMs;
+            }
+
+            uint256 packedType = dataConfig % 10;
+            if (packedType == ENVELOPE_TYPE_POOL) {
+                envelopeType_ = ENVELOPE_TYPE_POOL;
+            }
+        }
+
+        return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
+    }
+
+    function _bytesToUintBE(bytes memory raw, uint256 start) internal pure returns (uint256 value) {
+        if (start + 32 > raw.length) {
+            return 0;
+        }
+
+        for (uint256 i = 0; i < 32; i++) {
+            value = (value << 8) | uint256(uint8(raw[start + i]));
+        }
+    }
+
+    function _bytesToString(bytes memory raw, uint256 start, uint256 len) internal pure returns (string memory) {
+        if (start + len > raw.length) {
+            return "";
+        }
+
+        bytes memory out = new bytes(len);
+        for (uint256 i = 0; i < len; i++) {
+            out[i] = raw[start + i];
+        }
+        return string(out);
+    }
+
+    function _bytesToUintLE(bytes memory raw) internal pure returns (uint256 value) {
+        uint256 len = raw.length;
+        if (len > 32) {
+            len = 32;
+        }
+
+        for (uint256 i = 0; i < len; i++) {
+            value |= uint256(uint8(raw[i])) << (8 * i);
+        }
     }
 
     function _mintToken(uint256 tokenId, address to) internal {
@@ -1076,9 +1179,9 @@ contract RedEnvelope {
 
     function _tokenName(uint256 tokenId) internal view returns (string memory) {
         if (envelopeType[tokenId] == ENVELOPE_TYPE_CLAIM) {
-            return string(abi.encodePacked("ClaimEnvelope #", _toString(tokenId)));
+            return "ClaimEnvelope";
         }
-        return string(abi.encodePacked("RedEnvelope #", _toString(tokenId)));
+        return "RedEnvelope";
     }
 
     function _buildTokenDescription(uint256 tokenId) internal view returns (string memory) {
@@ -1088,19 +1191,31 @@ contract RedEnvelope {
                 ? "Pool"
                 : "Spreading";
 
+        string memory flowText = envelopeType[tokenId] == ENVELOPE_TYPE_CLAIM
+            ? "Flow: Claim NFT -> Open before expiry -> Transfer collectible"
+            : "Flow: Hold NFT -> Open for GAS -> Share to next holder";
+
         return string(
             abi.encodePacked(
-                "Red Envelope NFT #",
-                _toString(tokenId),
-                " (",
+                "Red Envelope NFT (",
                 typeText,
-                "); Gate: >= ",
-                _toString(envelopeMinNeoRequired[tokenId]),
-                " NEO, >= ",
-                _toString(envelopeMinHoldSeconds[tokenId] / 86400),
-                "d hold"
+                "); Gate rules enforced by contract; ",
+                flowText
             )
         );
+    }
+
+    function _buildTokenSvgDataUri(uint256 tokenId) internal pure returns (string memory) {
+        tokenId;
+        return "";
+    }
+
+    function _escapeXmlText(string memory value) internal pure returns (string memory) {
+        return value;
+    }
+
+    function _escapeJsonString(string memory value) internal pure returns (string memory) {
+        return value;
     }
 
     function _ceilingDiv(uint256 numerator, uint256 denominator) internal pure returns (uint256) {
@@ -1271,35 +1386,32 @@ contract RedEnvelope {
         }
     }
 
-    function _toString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
-            return "0";
-        }
+    function _toHexAddress(address account) internal pure returns (string memory) {
+        bytes20 value = bytes20(account);
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory out = new bytes(42);
 
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
+        out[0] = "0";
+        out[1] = "x";
 
-        bytes memory buffer = new bytes(digits);
-        while (value != 0) {
-            digits -= 1;
-            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
-            value /= 10;
+        for (uint256 i = 0; i < 20; i++) {
+            uint8 b = uint8(value[i]);
+            out[2 + (i * 2)] = alphabet[b >> 4];
+            out[3 + (i * 2)] = alphabet[b & 0x0f];
         }
-        return string(buffer);
+        return string(out);
     }
 
     function _now() internal view returns (uint256) {
-        if (timeOverride > 0) {
-            return timeOverride;
-        }
         return Syscalls.getTime();
     }
 
     function _txSender() internal view returns (address) {
+        Syscalls.Signer[] memory signers = Syscalls.getCurrentSigners();
+        if (signers.length > 0 && signers[0].account != address(0)) {
+            return signers[0].account;
+        }
+
         Syscalls.Transaction memory txInfo = Syscalls.getScriptContainer();
         if (txInfo.sender != address(0)) {
             return txInfo.sender;
