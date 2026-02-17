@@ -266,9 +266,10 @@ contract RedEnvelope {
     }
 
     function _deploy(bytes calldata data, bool update_) external {
-        data;
-
         address sender = _txSender();
+        if (sender == address(0)) {
+            sender = _decodeAddressFromBytes(data);
+        }
 
         if (update_) {
             if (owner == address(0)) {
@@ -872,19 +873,15 @@ contract RedEnvelope {
             uint256 parsedMinHoldSeconds = _bytesToUintLE(data[4]);
             uint256 parsedEnvelopeType = _bytesToUintLE(data[5]);
 
-            if (parsedPacketCount > 0) {
-                packetCount = parsedPacketCount;
-            }
+            // Preserve explicit input values so downstream validation mirrors C# Assert behavior.
+            packetCount = parsedPacketCount;
             if (parsedExpiryMs > 0) {
                 expiryMs = parsedExpiryMs;
             }
             message = string(data[2]);
             minNeoRequired = parsedMinNeoRequired;
             minHoldSeconds = parsedMinHoldSeconds;
-
-            if (parsedEnvelopeType == ENVELOPE_TYPE_POOL) {
-                envelopeType_ = ENVELOPE_TYPE_POOL;
-            }
+            envelopeType_ = parsedEnvelopeType;
 
             return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
         }
@@ -930,18 +927,14 @@ contract RedEnvelope {
             uint256 parsedMinHoldSeconds = _bytesToUintBE(raw, 128);
             uint256 parsedEnvelopeType = _bytesToUintBE(raw, 160);
 
-            if (parsedPacketCount > 0) {
-                packetCount = parsedPacketCount;
-            }
+            // Preserve explicit input values so downstream validation mirrors C# Assert behavior.
+            packetCount = parsedPacketCount;
             if (parsedExpiryMs > 0) {
                 expiryMs = parsedExpiryMs;
             }
             minNeoRequired = parsedMinNeoRequired;
             minHoldSeconds = parsedMinHoldSeconds;
-
-            if (parsedEnvelopeType == ENVELOPE_TYPE_POOL) {
-                envelopeType_ = ENVELOPE_TYPE_POOL;
-            }
+            envelopeType_ = parsedEnvelopeType;
 
             if (messageOffset + 32 <= raw.length) {
                 uint256 messageLength = _bytesToUintBE(raw, messageOffset);
@@ -1510,5 +1503,17 @@ contract RedEnvelope {
             return txInfo.sender;
         }
         return msg.sender;
+    }
+
+    function _decodeAddressFromBytes(bytes calldata raw) internal pure returns (address decoded) {
+        if (raw.length < 20) {
+            return address(0);
+        }
+
+        uint160 value = 0;
+        for (uint256 i = 0; i < 20; i++) {
+            value = (value << 8) | uint160(uint8(raw[i]));
+        }
+        decoded = address(value);
     }
 }

@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TOOLCHAIN_DIR="${ROOT_DIR}/.toolchains/neo-llvm"
 TARGET_FILE="${ROOT_DIR}/.toolchains/neo-llvm/wasm-neovm/src/translator/translation/function.rs"
 PATCH_FILE="${ROOT_DIR}/scripts/patches/neo-llvm-onnep17-data-compat.patch"
-PATCH_MARKER="neo-red-envelope-onnep17-object-array-compat"
+PATCH_MARKER="neo-red-envelope-runtime-guards-v3"
 
 if [[ ! -f "${TARGET_FILE}" ]]; then
   echo "neo-llvm toolchain patch skipped: ${TARGET_FILE} not found"

@@ -61,7 +61,9 @@ There are still toolchain-level ABI blockers for exact C# parity:
 - `System.Storage.Get` missing-key values are `Null` stack items; this is now handled by a dedicated null-probe path before integer decode.
 - NeoVM entry shims in upstream `wasm-neovm` normalize parameters through integer bit-ops. This repo now applies a local toolchain patch (via `scripts/patch-neo-llvm-toolchain.sh`) that canonicalizes `onNEP17Payment.data`:
   - `null -> 0`
-  - `object[] -> packetCount * 10 + envelopeType`
+  - `object[] -> adapter integer`:
+    - spreading: `1_000_000_000_000 + packetCount + expiryMs * 1_000`
+    - pool: `2_000_000_000_000 + packetCount + expiryMs * 1_000`
   - `Integer -> unchanged`
 - This enables C#-style `object[]` transfer calls to create envelopes in Rust runtime mode.
 
@@ -70,8 +72,8 @@ Current behavior:
 - `setOwner/getOwner` now persist/read consistently on-chain (integer representation).
 - `pause/resume/isPaused` persist correctly.
 - GAS `transfer(..., data = 0)`, `GAS transfer(..., data = null)`, and `GAS transfer(..., data = object[])` all create envelopes and increment `getTotalEnvelopes`.
-- `object[]` fields currently honored by Rust path: `packetCount` (including packet-count validation paths).
-- `object[]` fields `envelopeType`, `expiryMs`, `message`, `minNeoRequired`, `minHoldSeconds` are still not represented in the Rust storage/runtime model (remaining parity gap vs C#).
+- `object[]` fields currently honored by Rust path: `packetCount`, `expiryMs`, `envelopeType` (including packet-count/expiry/type validation paths).
+- `object[]` fields `message`, `minNeoRequired`, `minHoldSeconds` are still not represented in the Rust storage/runtime model (remaining parity gap vs C#).
 
 ## Size analysis and gate
 
@@ -93,6 +95,18 @@ Run size gate (fails on oversize artifacts / deploy payload):
 npm run contract:rust:gate
 DEPLOYER_WIF=... npm run contract:rust:gate
 ```
+
+Run deep root-cause analysis (compiler profile vs ABI surface vs business logic vs clean upstream toolchain):
+
+```bash
+npm run contract:rust:size:deep
+```
+
+This command performs controlled experiments and emits a JSON report. Typical findings for current code:
+
+- custom Rust release profile (`opt-level=z`, `lto`, `strip`) saves roughly `~34 KB` NEF vs default release profile
+- same ABI surface with empty logic compiles to sub-`1 KB` NEF, showing business logic dominates current Rust artifact size
+- clean upstream `neo-llvm` translation produces the same NEF/manifest byte sizes as local toolchain for this contract
 
 Gate thresholds can be tuned by environment variables:
 

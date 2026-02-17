@@ -28,7 +28,9 @@ const MAX_EXPIRY_MS: i64 = 604_800_000;
 const ENVELOPE_TYPE_SPREADING: i64 = 0;
 const ENVELOPE_TYPE_POOL: i64 = 1;
 const ENVELOPE_TYPE_CLAIM: i64 = 2;
-const ON_NEP17_ADAPTER_BASE: i64 = 1_000_000;
+const ON_NEP17_ADAPTER_BASE: i64 = 1_000_000_000_000;
+const ON_NEP17_ADAPTER_TYPE_MULTIPLIER: i64 = 1_000_000_000_000;
+const ON_NEP17_ADAPTER_EXPIRY_MULTIPLIER: i64 = 1_000;
 const ON_NEP17_LEGACY_PACK_BASE: i64 = 10;
 
 const ELIGIBILITY_OK: i64 = 0;
@@ -233,13 +235,30 @@ impl RedEnvelopeRustContract {
 
         let mut packet_count = 1;
         let mut envelope_type = ENVELOPE_TYPE_SPREADING;
+        let mut expiry_ms = DEFAULT_EXPIRY_MS;
 
-        // Adapter v2 object[] encoding:
-        // spread => +(BASE + packetCount), pool => -(BASE + packetCount)
+        // Adapter v3 object[] encoding:
+        // spread => BASE + packetCount + expiryMs * MULTIPLIER
+        // pool   => BASE + TYPE_MULTIPLIER + packetCount + expiryMs * MULTIPLIER
         if data >= ON_NEP17_ADAPTER_BASE {
-            packet_count = data - ON_NEP17_ADAPTER_BASE;
+            let mut packed = data - ON_NEP17_ADAPTER_BASE;
+            if packed >= ON_NEP17_ADAPTER_TYPE_MULTIPLIER {
+                packed -= ON_NEP17_ADAPTER_TYPE_MULTIPLIER;
+                envelope_type = ENVELOPE_TYPE_POOL;
+            }
+            packet_count = packed % ON_NEP17_ADAPTER_EXPIRY_MULTIPLIER;
+            let adapter_expiry = packed / ON_NEP17_ADAPTER_EXPIRY_MULTIPLIER;
+            if adapter_expiry > 0 {
+                expiry_ms = adapter_expiry;
+            }
+        // Backward-compat for older sign-based adapter payloads.
         } else if data <= -ON_NEP17_ADAPTER_BASE {
-            packet_count = data.saturating_abs() - ON_NEP17_ADAPTER_BASE;
+            let packed = data.saturating_abs() - ON_NEP17_ADAPTER_BASE;
+            packet_count = packed % ON_NEP17_ADAPTER_EXPIRY_MULTIPLIER;
+            let adapter_expiry = packed / ON_NEP17_ADAPTER_EXPIRY_MULTIPLIER;
+            if adapter_expiry > 0 {
+                expiry_ms = adapter_expiry;
+            }
             envelope_type = ENVELOPE_TYPE_POOL;
         } else if data > 0 {
             // Legacy packed-integer path for backward compatibility.
@@ -265,7 +284,7 @@ impl RedEnvelopeRustContract {
             from,
             amount,
             packet_count,
-            DEFAULT_EXPIRY_MS,
+            expiry_ms,
             envelope_type,
             true,
         );

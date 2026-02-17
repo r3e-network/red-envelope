@@ -28,7 +28,8 @@ const solidityArtifact = {
   label: "Solidity",
   nef: path.resolve(__dirname, "../contracts-solidity/build/RedEnvelope.nef"),
   manifest: path.resolve(__dirname, "../contracts-solidity/build/RedEnvelope.manifest.json"),
-  deployData: { type: "ByteArray", value: "" },
+  // neo-solidity _deploy sender fallback payload (20-byte script hash).
+  deployData: { type: "ByteArray", value: Buffer.from(deployer.scriptHash, "hex").toString("base64") },
 };
 
 function i(value) {
@@ -59,6 +60,39 @@ function configArray(packetCount, expiryMs, message, minNeoRequired, minHoldSeco
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientRpcError(err) {
+  const msg = String(err?.message || err || "").toLowerCase();
+  return (
+    msg.includes("etimedout") ||
+    msg.includes("timeout") ||
+    msg.includes("econnreset") ||
+    msg.includes("socket hang up") ||
+    msg.includes("network error") ||
+    msg.includes("failed to fetch") ||
+    msg.includes("503") ||
+    msg.includes("502") ||
+    msg.includes("504")
+  );
+}
+
+async function withRpcRetry(label, fn, attempts = 4, baseDelayMs = 1200) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientRpcError(err) || i === attempts - 1) {
+        throw err;
+      }
+      const waitMs = baseDelayMs * (i + 1);
+      console.warn(`[rpc-retry] ${label} failed (${errorMessage(err)}), retry in ${waitMs}ms...`);
+      await sleep(waitMs);
+    }
+  }
+  throw lastErr;
 }
 
 function fileSize(filePath) {
@@ -110,7 +144,12 @@ async function waitForTx(txid, timeoutMs = 150000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const res = await rpcClient.execute(new Neon.rpc.Query({ method: "getapplicationlog", params: [txid] }));
+      const res = await withRpcRetry(
+        `getapplicationlog ${txid}`,
+        () => rpcClient.execute(new Neon.rpc.Query({ method: "getapplicationlog", params: [txid] })),
+        3,
+        800,
+      );
       if (res) return res;
     } catch (err) {
       const message = String(err?.message || "");
@@ -188,7 +227,10 @@ function errorMessage(err) {
 
 async function ensureGasBalance(minGas = 20) {
   const scriptHash = Neon.wallet.getScriptHashFromAddress(deployer.address);
-  const res = await rpcClient.invokeFunction(GAS_HASH, "balanceOf", [{ type: "Hash160", value: scriptHash }]);
+  const res = await withRpcRetry(
+    "gas.balanceOf",
+    () => rpcClient.invokeFunction(GAS_HASH, "balanceOf", [{ type: "Hash160", value: scriptHash }]),
+  );
   const gas = Number(res.stack?.[0]?.value || 0) / 1e8;
   if (gas < minGas) {
     throw new Error(`insufficient GAS balance for deployment/testing: ${gas.toFixed(4)} GAS`);
@@ -197,8 +239,9 @@ async function ensureGasBalance(minGas = 20) {
 }
 
 async function invokeRead(contractHash, operation, args = []) {
-  const res = await rpcClient.execute(
-    new Neon.rpc.Query({ method: "invokefunction", params: [contractHash, operation, args] }),
+  const res = await withRpcRetry(
+    `invokefunction ${operation}`,
+    () => rpcClient.execute(new Neon.rpc.Query({ method: "invokefunction", params: [contractHash, operation, args] })),
   );
   if (res.state !== "HALT") {
     throw new Error(`read ${operation} fault: ${res.exception || res.state}`);
@@ -208,8 +251,9 @@ async function invokeRead(contractHash, operation, args = []) {
 
 async function invokeWrite(contractHash, operation, args = [], signerAccount = deployer) {
   const signer = { account: signerAccount.scriptHash, scopes: "CalledByEntry" };
-  const dryRun = await rpcClient.execute(
-    new Neon.rpc.Query({ method: "invokefunction", params: [contractHash, operation, args, [signer]] }),
+  const dryRun = await withRpcRetry(
+    `dryrun ${operation}`,
+    () => rpcClient.execute(new Neon.rpc.Query({ method: "invokefunction", params: [contractHash, operation, args, [signer]] })),
   );
 
   if (dryRun.state !== "HALT") {
@@ -217,7 +261,7 @@ async function invokeWrite(contractHash, operation, args = [], signerAccount = d
   }
 
   const scriptHex = Buffer.from(dryRun.script, "base64").toString("hex");
-  const currentHeight = await rpcClient.getBlockCount();
+  const currentHeight = await withRpcRetry("getBlockCount", () => rpcClient.getBlockCount());
   const tx = new Neon.tx.Transaction({
     signers: [{ account: signerAccount.scriptHash, scopes: Neon.tx.WitnessScope.CalledByEntry }],
     validUntilBlock: currentHeight + 100,
@@ -228,7 +272,7 @@ async function invokeWrite(contractHash, operation, args = [], signerAccount = d
   tx.networkFee = Neon.u.BigInteger.fromNumber(5000000);
   tx.sign(signerAccount, NETWORK_MAGIC);
 
-  const sendRes = await rpcClient.sendRawTransaction(tx);
+  const sendRes = await withRpcRetry(`sendRawTransaction ${operation}`, () => rpcClient.sendRawTransaction(tx));
   const txid = sendRes.hash || sendRes;
   const appLog = await waitForTx(txid);
   if (!appLog) {
@@ -262,11 +306,15 @@ async function buildDeployTx(nefBytes, manifestStr, deployData) {
   }
 
   const signer = { account: deployer.scriptHash, scopes: "CalledByEntry" };
-  const dryRun = await rpcClient.execute(
-    new Neon.rpc.Query({
-      method: "invokefunction",
-      params: [CONTRACT_MANAGEMENT, "deploy", callArgs, [signer]],
-    }),
+  const dryRun = await withRpcRetry(
+    "dryrun deploy",
+    () =>
+      rpcClient.execute(
+        new Neon.rpc.Query({
+          method: "invokefunction",
+          params: [CONTRACT_MANAGEMENT, "deploy", callArgs, [signer]],
+        }),
+      ),
   );
 
   if (dryRun.state !== "HALT") {
@@ -274,7 +322,7 @@ async function buildDeployTx(nefBytes, manifestStr, deployData) {
   }
 
   const scriptHex = Buffer.from(dryRun.script, "base64").toString("hex");
-  const currentHeight = await rpcClient.getBlockCount();
+  const currentHeight = await withRpcRetry("getBlockCount", () => rpcClient.getBlockCount());
   const tx = new Neon.tx.Transaction({
     signers: [{ account: deployer.scriptHash, scopes: Neon.tx.WitnessScope.CalledByEntry }],
     validUntilBlock: currentHeight + 100,
@@ -315,7 +363,7 @@ async function deployContract(artifact, { uniqueManifestName = false } = {}) {
 
   let sendRes;
   try {
-    sendRes = await rpcClient.sendRawTransaction(tx);
+    sendRes = await withRpcRetry(`sendRawTransaction deploy ${artifact.label}`, () => rpcClient.sendRawTransaction(tx));
   } catch (err) {
     const e = new Error(`${artifact.label} deploy send failed: ${errorMessage(err)}`);
     e.scriptBytes = scriptBytes;
@@ -362,6 +410,15 @@ async function tryDeployRust() {
     const deployed = await deployContract(rustArtifact, { uniqueManifestName: false });
     return { status: "deployed", deployed, details };
   } catch (err) {
+    const msg = String(err?.message || "");
+    if (msg.toLowerCase().includes("contract already exists")) {
+      try {
+        const deployed = await deployContract(rustArtifact, { uniqueManifestName: true });
+        return { status: "deployed", deployed, details };
+      } catch (retryErr) {
+        err = retryErr;
+      }
+    }
     return {
       status: "blocked",
       error: err.message || String(err),
@@ -378,10 +435,12 @@ async function runSolidityFlow(contractHash) {
   const receiverAccount = new Neon.wallet.Account(Neon.wallet.generatePrivateKey());
   const receiver = receiverAccount.scriptHash;
 
+  console.log(`[SolidityFlow] contract=${contractHash}`);
   let ownerRaw = parseStack((await invokeRead(contractHash, "getOwner", [])).stack?.[0]);
   let ownerHex = typeof ownerRaw === "string" ? ownerRaw : "";
   let ownerBootstrapTx = null;
   if (normalizeHash(ownerHex) === normalizeHash("0x0000000000000000000000000000000000000000")) {
+    console.log("[SolidityFlow] owner unset, bootstrapping setOwner...");
     const bootstrap = await invokeWrite(contractHash, "setOwner", [h(creator)]);
     ownerBootstrapTx = bootstrap.txid;
     ownerRaw = parseStack((await invokeRead(contractHash, "getOwner", [])).stack?.[0]);
@@ -390,22 +449,29 @@ async function runSolidityFlow(contractHash) {
   assertCondition(sameHash(ownerHex, creator), `Solidity owner mismatch: ${ownerHex} vs ${creator}`);
 
   const constants = parseStack((await invokeRead(contractHash, "getCalculationConstants", [])).stack?.[0]);
-  const expiryWindow = 90_000;
+  const expiryWindow = 180_000;
 
+  console.log("[SolidityFlow] create spreading envelope...");
   const spreadBefore = asNumber(parseStack((await invokeRead(contractHash, "getTotalEnvelopes", [])).stack?.[0]));
   const spreadConfig = configArray(3, expiryWindow, "spread", 0, 0, 0);
   const spreadCreate = await invokeGasTransfer(creator, contractHash, 300_000_000, spreadConfig);
   const spreadAfter = asNumber(parseStack((await invokeRead(contractHash, "getTotalEnvelopes", [])).stack?.[0]));
+  console.log(
+    `[SolidityFlow] spread create result=${String(spreadCreate.returnValue)} before=${spreadBefore} after=${spreadAfter}`,
+  );
 
   assertCondition(spreadAfter === spreadBefore + 1, "Spreading envelope creation did not increment total envelope count");
   const envId = spreadBefore + 1;
 
+  console.log(`[SolidityFlow] openEnvelope creator envId=${envId}...`);
   const open1 = asNumber((await invokeWrite(contractHash, "openEnvelope", [i(envId), h(creator)])).returnValue);
   assertCondition(open1 > 0, "openEnvelope(creator) returned non-positive amount");
 
   // Fund receiver so receiver-signed witness transactions can pay fees.
+  console.log("[SolidityFlow] fund receiver...");
   const fundReceiver = await invokeGasTransfer(creator, receiver, 50_000_000, { type: "Any" });
 
+  console.log("[SolidityFlow] transferEnvelope creator -> receiver...");
   const transferEnv = await invokeWrite(contractHash, "transferEnvelope", [
     i(envId),
     h(creator),
@@ -413,6 +479,7 @@ async function runSolidityFlow(contractHash) {
     b(Buffer.alloc(0)),
   ]);
 
+  console.log("[SolidityFlow] openEnvelope receiver...");
   const open2 = asNumber(
     (await invokeWrite(contractHash, "openEnvelope", [i(envId), h(receiver)], receiverAccount)).returnValue,
   );
@@ -423,18 +490,25 @@ async function runSolidityFlow(contractHash) {
   assertCondition(hasOpenedCreator === true, "hasOpened for creator should be true");
   assertCondition(hasOpenedReceiver === true, "hasOpened for receiver should be true");
 
+  console.log(`[SolidityFlow] wait ${expiryWindow + 5000}ms for reclaimEnvelope...`);
   await sleep(expiryWindow + 5000);
+  console.log("[SolidityFlow] reclaimEnvelope...");
   const reclaimTx = await invokeWrite(contractHash, "reclaimEnvelope", [i(envId), h(creator)]);
   const reclaim = asNumber(reclaimTx.returnValue);
 
+  console.log("[SolidityFlow] create pool envelope...");
   const poolBefore = asNumber(parseStack((await invokeRead(contractHash, "getTotalEnvelopes", [])).stack?.[0]));
   const poolConfig = configArray(2, expiryWindow, "pool", 0, 0, 1);
   const poolCreate = await invokeGasTransfer(creator, contractHash, 400_000_000, poolConfig);
   const poolAfter = asNumber(parseStack((await invokeRead(contractHash, "getTotalEnvelopes", [])).stack?.[0]));
+  console.log(
+    `[SolidityFlow] pool create result=${String(poolCreate.returnValue)} before=${poolBefore} after=${poolAfter}`,
+  );
 
   assertCondition(poolAfter === poolBefore + 1, "Pool envelope creation did not increment total envelope count");
   const poolId = poolBefore + 1;
 
+  console.log(`[SolidityFlow] claimFromPool poolId=${poolId}...`);
   const claim = await invokeWrite(contractHash, "claimFromPool", [i(poolId), h(receiver)], receiverAccount);
   const claimId = asNumber(claim.returnValue);
   assertCondition(claimId > poolId, "claimFromPool did not mint a valid claim id");
@@ -442,16 +516,20 @@ async function runSolidityFlow(contractHash) {
   const hasClaimed = parseStack((await invokeRead(contractHash, "hasClaimedFromPool", [i(poolId), h(receiver)])).stack?.[0]);
   assertCondition(hasClaimed === true, "hasClaimedFromPool should be true for receiver");
 
+  console.log("[SolidityFlow] transferClaim receiver -> creator...");
   const transferClaim = await invokeWrite(
     contractHash,
     "transferClaim",
     [i(claimId), h(receiver), h(creator)],
     receiverAccount,
   );
+  console.log("[SolidityFlow] openClaim creator...");
   const claimOpen = asNumber((await invokeWrite(contractHash, "openClaim", [i(claimId), h(creator)])).returnValue);
   assertCondition(claimOpen > 0, "openClaim returned non-positive amount");
 
+  console.log(`[SolidityFlow] wait ${expiryWindow + 5000}ms for reclaimPool...`);
   await sleep(expiryWindow + 5000);
+  console.log("[SolidityFlow] reclaimPool...");
   const poolReclaimTx = await invokeWrite(contractHash, "reclaimPool", [i(poolId), h(creator)]);
   const poolReclaim = asNumber(poolReclaimTx.returnValue);
 
