@@ -288,7 +288,7 @@ contract RedEnvelope {
         // Kept for ABI parity with the C# NEP-11 base contract surface.
     }
 
-    function onNEP17Payment(address from, uint256 amount, bytes calldata data) external {
+    function onNEP17Payment(address from, uint256 amount, bytes[] calldata data) external {
         require(Syscalls.getCallingScriptHash() == GAS_HASH, "only GAS accepted");
 
         if (from == address(0)) {
@@ -839,7 +839,7 @@ contract RedEnvelope {
         return envelopeId;
     }
 
-    function _parseOnPaymentConfig(bytes calldata data)
+    function _parseOnPaymentConfig(bytes[] calldata data)
         internal
         pure
         returns (
@@ -858,7 +858,64 @@ contract RedEnvelope {
         minHoldSeconds = DEFAULT_MIN_HOLD_SECONDS;
         envelopeType_ = ENVELOPE_TYPE_SPREADING;
 
-        bytes memory raw = data;
+        if (data.length == 0) {
+            return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
+        }
+
+        // C# onNEP17Payment object[] compatibility path:
+        // [packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType]
+        // When received through neo-solidity, each element is mapped into one bytes item.
+        if (data.length == 6 && !_allSingleByteItems(data)) {
+            uint256 parsedPacketCount = _bytesToUintLE(data[0]);
+            uint256 parsedExpiryMs = _bytesToUintLE(data[1]);
+            uint256 parsedMinNeoRequired = _bytesToUintLE(data[3]);
+            uint256 parsedMinHoldSeconds = _bytesToUintLE(data[4]);
+            uint256 parsedEnvelopeType = _bytesToUintLE(data[5]);
+
+            if (parsedPacketCount > 0) {
+                packetCount = parsedPacketCount;
+            }
+            if (parsedExpiryMs > 0) {
+                expiryMs = parsedExpiryMs;
+            }
+            message = string(data[2]);
+            minNeoRequired = parsedMinNeoRequired;
+            minHoldSeconds = parsedMinHoldSeconds;
+
+            if (parsedEnvelopeType == ENVELOPE_TYPE_POOL) {
+                envelopeType_ = ENVELOPE_TYPE_POOL;
+            }
+
+            return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
+        }
+
+        // Byte payload compatibility path:
+        // - ABI-encoded bytes config
+        // - packed-integer bytes config
+        // - Any->bytes[] bytewise bridge payload
+        bytes memory raw = _flattenItems(data);
+        return _parseOnPaymentConfigRaw(raw);
+    }
+
+    function _parseOnPaymentConfigRaw(bytes memory raw)
+        internal
+        pure
+        returns (
+            uint256 packetCount,
+            uint256 expiryMs,
+            string memory message,
+            uint256 minNeoRequired,
+            uint256 minHoldSeconds,
+            uint256 envelopeType_
+        )
+    {
+        packetCount = 1;
+        expiryMs = DEFAULT_EXPIRY_MS;
+        message = "";
+        minNeoRequired = DEFAULT_MIN_NEO;
+        minHoldSeconds = DEFAULT_MIN_HOLD_SECONDS;
+        envelopeType_ = ENVELOPE_TYPE_SPREADING;
+
         if (raw.length == 0) {
             return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
         }
@@ -919,6 +976,31 @@ contract RedEnvelope {
         return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
     }
 
+    function _allSingleByteItems(bytes[] calldata items) internal pure returns (bool) {
+        for (uint256 i = 0; i < items.length; i++) {
+            if (items[i].length != 1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function _flattenItems(bytes[] calldata items) internal pure returns (bytes memory out) {
+        uint256 total = 0;
+        for (uint256 i = 0; i < items.length; i++) {
+            total += items[i].length;
+        }
+
+        out = new bytes(total);
+        uint256 offset = 0;
+        for (uint256 i = 0; i < items.length; i++) {
+            bytes calldata item = items[i];
+            for (uint256 j = 0; j < item.length; j++) {
+                out[offset++] = item[j];
+            }
+        }
+    }
+
     function _bytesToUintBE(bytes memory raw, uint256 start) internal pure returns (uint256 value) {
         if (start + 32 > raw.length) {
             return 0;
@@ -942,6 +1024,17 @@ contract RedEnvelope {
     }
 
     function _bytesToUintLE(bytes memory raw) internal pure returns (uint256 value) {
+        uint256 len = raw.length;
+        if (len > 32) {
+            len = 32;
+        }
+
+        for (uint256 i = 0; i < len; i++) {
+            value |= uint256(uint8(raw[i])) << (8 * i);
+        }
+    }
+
+    function _bytesToUintLE(bytes calldata raw) internal pure returns (uint256 value) {
         uint256 len = raw.length;
         if (len > 32) {
             len = 32;

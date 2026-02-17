@@ -15,9 +15,11 @@ This directory contains a Neo N3 Red Envelope contract implemented in Solidity a
 
 - Neo-solidity currently emits Solidity struct/tuple returns as `Array` in manifest.  
   C# `Map`/`InteropInterface` return shapes are represented with array payloads here.
-- `onNEP17Payment` supports two config encodings:
-  - ABI-encoded payload for full C#-style fields (`packetCount`, `expiryMs`, `message`, `minNeoRequired`, `minHoldSeconds`, `envelopeType`)
-  - packed-integer fallback (`packetCount * 1_000_000_000 + expiryMs * 10 + envelopeType`) for compatibility.
+- `onNEP17Payment` now supports C#-style `object[]` layout directly via Neo Any-array bridging:
+  - `[packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType]`
+- It also keeps byte payload compatibility for:
+  - ABI-encoded full payload
+  - packed-integer fallback (`packetCount * 1_000_000_000 + expiryMs * 10 + envelopeType`)
 
 ## Build
 

@@ -43,6 +43,20 @@ function b(buffer) {
   return { type: "ByteArray", value: Buffer.from(buffer || []).toString("base64") };
 }
 
+function configArray(packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType) {
+  return {
+    type: "Array",
+    value: [
+      i(packetCount),
+      i(expiryMs),
+      { type: "String", value: String(message || "") },
+      i(minNeoRequired),
+      i(minHoldSeconds),
+      i(envelopeType),
+    ],
+  };
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -379,7 +393,7 @@ async function runSolidityFlow(contractHash) {
   const expiryWindow = 90_000;
 
   const spreadBefore = asNumber(parseStack((await invokeRead(contractHash, "getTotalEnvelopes", [])).stack?.[0]));
-  const spreadConfig = b(encodePaymentConfig(3, expiryWindow, "spread", 0, 0, 0));
+  const spreadConfig = configArray(3, expiryWindow, "spread", 0, 0, 0);
   const spreadCreate = await invokeGasTransfer(creator, contractHash, 300_000_000, spreadConfig);
   const spreadAfter = asNumber(parseStack((await invokeRead(contractHash, "getTotalEnvelopes", [])).stack?.[0]));
 
@@ -414,7 +428,7 @@ async function runSolidityFlow(contractHash) {
   const reclaim = asNumber(reclaimTx.returnValue);
 
   const poolBefore = asNumber(parseStack((await invokeRead(contractHash, "getTotalEnvelopes", [])).stack?.[0]));
-  const poolConfig = b(encodePaymentConfig(2, expiryWindow, "pool", 0, 0, 1));
+  const poolConfig = configArray(2, expiryWindow, "pool", 0, 0, 1);
   const poolCreate = await invokeGasTransfer(creator, contractHash, 400_000_000, poolConfig);
   const poolAfter = asNumber(parseStack((await invokeRead(contractHash, "getTotalEnvelopes", [])).stack?.[0]));
 
