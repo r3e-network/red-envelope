@@ -1,0 +1,547 @@
+{
+  "name": "RedEnvelopeRust",
+  "features": {
+    "storage": true
+  },
+  "supportedstandards": [
+    "NEP-11"
+  ],
+  "abi": {
+    "methods": [
+      {
+        "name": "symbol",
+        "parameters": [],
+        "returntype": "String"
+      },
+      {
+        "name": "decimals",
+        "parameters": [],
+        "returntype": "Integer"
+      },
+      {
+        "name": "balanceOf",
+        "parameters": [
+          {
+            "name": "owner",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "tokensOf",
+        "parameters": [
+          {
+            "name": "owner",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "InteropInterface"
+      },
+      {
+        "name": "ownerOf",
+        "parameters": [
+          {
+            "name": "tokenId",
+            "type": "ByteArray"
+          }
+        ],
+        "returntype": "Hash160"
+      },
+      {
+        "name": "properties",
+        "parameters": [
+          {
+            "name": "tokenId",
+            "type": "ByteArray"
+          }
+        ],
+        "returntype": "Map"
+      },
+      {
+        "name": "tokens",
+        "parameters": [],
+        "returntype": "InteropInterface"
+      },
+      {
+        "name": "totalSupply",
+        "parameters": [],
+        "returntype": "Integer"
+      },
+      {
+        "name": "getOwner",
+        "parameters": [],
+        "returntype": "Hash160"
+      },
+      {
+        "name": "setOwner",
+        "parameters": [
+          {
+            "name": "newOwner",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Void"
+      },
+      {
+        "name": "isOwner",
+        "parameters": [],
+        "returntype": "Boolean"
+      },
+      {
+        "name": "verify",
+        "parameters": [],
+        "returntype": "Boolean"
+      },
+      {
+        "name": "pause",
+        "parameters": [],
+        "returntype": "Void"
+      },
+      {
+        "name": "resume",
+        "parameters": [],
+        "returntype": "Void"
+      },
+      {
+        "name": "isPaused",
+        "parameters": [],
+        "returntype": "Boolean"
+      },
+      {
+        "name": "update",
+        "parameters": [
+          {
+            "name": "nef",
+            "type": "ByteArray"
+          },
+          {
+            "name": "manifest",
+            "type": "String"
+          }
+        ],
+        "returntype": "Void"
+      },
+      {
+        "name": "onNEP17Payment",
+        "parameters": [
+          {
+            "name": "from",
+            "type": "Hash160"
+          },
+          {
+            "name": "amount",
+            "type": "Integer"
+          },
+          {
+            "name": "data",
+            "type": "Any"
+          }
+        ],
+        "returntype": "Void"
+      },
+      {
+        "name": "tokenURI",
+        "parameters": [
+          {
+            "name": "tokenId",
+            "type": "Integer"
+          }
+        ],
+        "returntype": "String"
+      },
+      {
+        "name": "calculatePacketAmount",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "packetIndex",
+            "type": "Integer"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "claimFromPool",
+        "parameters": [
+          {
+            "name": "poolId",
+            "type": "Integer"
+          },
+          {
+            "name": "claimer",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "openClaim",
+        "parameters": [
+          {
+            "name": "claimId",
+            "type": "Integer"
+          },
+          {
+            "name": "opener",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "transferClaim",
+        "parameters": [
+          {
+            "name": "claimId",
+            "type": "Integer"
+          },
+          {
+            "name": "from",
+            "type": "Hash160"
+          },
+          {
+            "name": "to",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Void"
+      },
+      {
+        "name": "reclaimPool",
+        "parameters": [
+          {
+            "name": "poolId",
+            "type": "Integer"
+          },
+          {
+            "name": "creator",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "getEnvelopeState",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          }
+        ],
+        "returntype": "Map"
+      },
+      {
+        "name": "getClaimState",
+        "parameters": [
+          {
+            "name": "claimId",
+            "type": "Integer"
+          }
+        ],
+        "returntype": "Map"
+      },
+      {
+        "name": "checkEligibility",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "user",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Map"
+      },
+      {
+        "name": "checkOpenEligibility",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "user",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Map"
+      },
+      {
+        "name": "hasOpened",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "opener",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Boolean"
+      },
+      {
+        "name": "getOpenedAmount",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "opener",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "hasClaimedFromPool",
+        "parameters": [
+          {
+            "name": "poolId",
+            "type": "Integer"
+          },
+          {
+            "name": "claimer",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Boolean"
+      },
+      {
+        "name": "getPoolClaimedAmount",
+        "parameters": [
+          {
+            "name": "poolId",
+            "type": "Integer"
+          },
+          {
+            "name": "claimer",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "getCalculationConstants",
+        "parameters": [],
+        "returntype": "Map"
+      },
+      {
+        "name": "getTotalEnvelopes",
+        "parameters": [],
+        "returntype": "Integer"
+      },
+      {
+        "name": "getTotalDistributed",
+        "parameters": [],
+        "returntype": "Integer"
+      },
+      {
+        "name": "getPoolClaimIdByIndex",
+        "parameters": [
+          {
+            "name": "poolId",
+            "type": "Integer"
+          },
+          {
+            "name": "claimIndex",
+            "type": "Integer"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "transfer",
+        "parameters": [
+          {
+            "name": "to",
+            "type": "Hash160"
+          },
+          {
+            "name": "tokenId",
+            "type": "ByteArray"
+          },
+          {
+            "name": "data",
+            "type": "Any"
+          }
+        ],
+        "returntype": "Boolean"
+      },
+      {
+        "name": "openEnvelope",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "opener",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "transferEnvelope",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "from",
+            "type": "Hash160"
+          },
+          {
+            "name": "to",
+            "type": "Hash160"
+          },
+          {
+            "name": "data",
+            "type": "Any"
+          }
+        ],
+        "returntype": "Void"
+      },
+      {
+        "name": "reclaimEnvelope",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "creator",
+            "type": "Hash160"
+          }
+        ],
+        "returntype": "Integer"
+      },
+      {
+        "name": "_initialize",
+        "parameters": [],
+        "returntype": "Void"
+      },
+      {
+        "name": "destroy",
+        "parameters": [],
+        "returntype": "Void"
+      }
+    ],
+    "events": [
+      {
+        "name": "Transfer",
+        "parameters": [
+          {
+            "name": "from",
+            "type": "Hash160"
+          },
+          {
+            "name": "to",
+            "type": "Hash160"
+          },
+          {
+            "name": "amount",
+            "type": "Integer"
+          },
+          {
+            "name": "tokenId",
+            "type": "ByteArray"
+          }
+        ]
+      },
+      {
+        "name": "EnvelopeCreated",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "creator",
+            "type": "Hash160"
+          },
+          {
+            "name": "totalAmount",
+            "type": "Integer"
+          },
+          {
+            "name": "packetCount",
+            "type": "Integer"
+          },
+          {
+            "name": "envelopeType",
+            "type": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "EnvelopeOpened",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "opener",
+            "type": "Hash160"
+          },
+          {
+            "name": "amount",
+            "type": "Integer"
+          },
+          {
+            "name": "remainingPackets",
+            "type": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "EnvelopeRefunded",
+        "parameters": [
+          {
+            "name": "envelopeId",
+            "type": "Integer"
+          },
+          {
+            "name": "creator",
+            "type": "Hash160"
+          },
+          {
+            "name": "refundAmount",
+            "type": "Integer"
+          }
+        ]
+      },
+      {
+        "name": "OwnerChanged",
+        "parameters": [
+          {
+            "name": "oldOwner",
+            "type": "Hash160"
+          },
+          {
+            "name": "newOwner",
+            "type": "Hash160"
+          }
+        ]
+      },
+      {
+        "name": "ContractPaused",
+        "parameters": []
+      },
+      {
+        "name": "ContractResumed",
+        "parameters": []
+      }
+    ]
+  }
+}

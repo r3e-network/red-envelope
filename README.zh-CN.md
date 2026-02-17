@@ -60,12 +60,31 @@ npm run build
 
 # 构建 Neo N3 合约（.nef + .manifest）
 npm run contract:build
+
+# 通过 neo-llvm 构建 Rust 版 Neo N3 合约
+npm run contract:build:rust
+
+# 通过 neo-solidity 构建 Solidity 版 Neo N3 合约
+npm run contract:build:solidity
+
+# 一次性构建全部版本（C# + Rust + Solidity）
+npm run contract:build:all
 ```
 
 合约产物输出路径：
 
 - `contracts/bin/sc/RedEnvelope.nef`
 - `contracts/bin/sc/RedEnvelope.manifest.json`
+- `contracts-rust/red-envelope-neo/build/RedEnvelopeRust.nef`
+- `contracts-rust/red-envelope-neo/build/RedEnvelopeRust.manifest.json`
+- `contracts-solidity/build/RedEnvelope.nef`
+- `contracts-solidity/build/RedEnvelope.manifest.json`
+
+## 多语言合约版本
+
+- `contracts/`：C# Neo N3 主合约实现
+- `contracts-rust/red-envelope-neo/`：Rust Neo N3 合约（基于 `neo-llvm`）
+- `contracts-solidity/RedEnvelope.sol`：Solidity Neo N3 合约（基于 `neo-solidity`）
 
 ### 部署脚本
 

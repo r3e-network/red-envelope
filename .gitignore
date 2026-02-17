@@ -6,6 +6,9 @@ dist/
 frontend/dist/
 contracts/bin/
 contracts/obj/
+contracts-rust/red-envelope-neo/target/
+contracts-rust/red-envelope-neo/build/
+contracts-solidity/build/
 
 # Environment
 .env
@@ -34,6 +37,7 @@ Thumbs.db
 # Claude Code local config
 .claude/
 .mcp.json
+.toolchains/
 
 # Debug
 npm-debug.log*

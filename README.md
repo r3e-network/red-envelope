@@ -60,12 +60,31 @@ npm run build
 
 # Build Neo N3 contract (.nef + .manifest)
 npm run contract:build
+
+# Build Rust Neo N3 contract via neo-llvm
+npm run contract:build:rust
+
+# Build Solidity Neo N3 contract via neo-solidity
+npm run contract:build:solidity
+
+# Build all contract variants (C# + Rust + Solidity)
+npm run contract:build:all
 ```
 
 Contract artifacts are generated at:
 
 - `contracts/bin/sc/RedEnvelope.nef`
 - `contracts/bin/sc/RedEnvelope.manifest.json`
+- `contracts-rust/red-envelope-neo/build/RedEnvelopeRust.nef`
+- `contracts-rust/red-envelope-neo/build/RedEnvelopeRust.manifest.json`
+- `contracts-solidity/build/RedEnvelope.nef`
+- `contracts-solidity/build/RedEnvelope.manifest.json`
+
+## Multi-language Contracts
+
+- `contracts/`: C# Neo N3 production contract
+- `contracts-rust/red-envelope-neo/`: Rust Neo N3 contract (built via `neo-llvm`)
+- `contracts-solidity/RedEnvelope.sol`: Solidity Neo N3 contract (built via `neo-solidity`)
 
 ### Deployment Scripts
 

@@ -1,0 +1,249 @@
+diff --git a/wasm-neovm/src/translator/translation/function.rs b/wasm-neovm/src/translator/translation/function.rs
+index a333731..7b2e9b1 100644
+--- a/wasm-neovm/src/translator/translation/function.rs
++++ b/wasm-neovm/src/translator/translation/function.rs
+@@ -29,6 +29,206 @@ pub struct TranslationContext<'a> {
+     pub adapter: &'a dyn ChainAdapter,
+ }
+ 
++const ON_NEP17_PAYMENT_CONFIG_SLOT_COUNT: u32 = 1;
++const STACKITEMTYPE_ARRAY: u8 = 0x40;
++const STACKITEMTYPE_BYTESTRING: u8 = 0x28;
++const ON_NEP17_PACK_BASE: i128 = 10;
++
++fn emit_indexed_opcode(script: &mut Vec<u8>, base_opcode: &str, index: u32) -> Result<()> {
++    if index <= 6 {
++        let indexed_name = format!("{base_opcode}{index}");
++        if let Ok(opcode) = lookup_opcode(&indexed_name) {
++            script.push(opcode.byte);
++            return Ok(());
++        }
++    }
++
++    let opcode = lookup_opcode(base_opcode)
++        .map_err(|_| anyhow!("unknown opcode: {base_opcode}"))?;
++    if index > u8::MAX as u32 {
++        bail!(
++            "{} index {} exceeds NeoVM operand limit (0-255)",
++            base_opcode,
++            index
++        );
++    }
++    script.push(opcode.byte);
++    script.push(index as u8);
++    Ok(())
++}
++
++fn emit_load_local_slot(script: &mut Vec<u8>, slot: u32) -> Result<()> {
++    emit_indexed_opcode(script, "LDLOC", slot)
++}
++
++fn emit_store_local_slot(script: &mut Vec<u8>, slot: u32) -> Result<()> {
++    emit_indexed_opcode(script, "STLOC", slot)
++}
++
++// neo-red-envelope-onnep17-object-array-compat:
++// Canonicalize onNEP17Payment `data` (arg #2) so Rust handlers using `i64` can safely accept:
++// - `null`         -> 0
++// - `object[]`     -> packed integer:
++//                     packetCount * 10 + envelopeType
++// - `Integer`      -> unchanged (legacy packed-integer path)
++fn emit_on_nep17_payment_config_adapter(script: &mut Vec<u8>, base_temp_slot: u32) -> Result<()> {
++    let data_slot = base_temp_slot;
++
++    // if data is null -> data = 0, then exit adapter.
++    emit_load_arg(script, 2)?;
++    script.push(lookup_opcode("ISNULL")?.byte);
++    let non_null = emit_jump_placeholder(script, "JMPIFNOT_L")?;
++    let _ = emit_push_int(script, 0);
++    emit_store_arg(script, 2)?;
++    let adapter_end_fixup = emit_jump_placeholder(script, "JMP_L")?;
++
++    let non_null_label = script.len();
++    patch_jump(script, non_null, non_null_label)?;
++
++    // if data is not array -> keep original value untouched.
++    emit_load_arg(script, 2)?;
++    script.push(lookup_opcode("ISTYPE")?.byte);
++    script.push(STACKITEMTYPE_ARRAY);
++    let not_array_fixup = emit_jump_placeholder(script, "JMPIFNOT_L")?;
++
++    // temp0 = data(array), packetCount default = 1
++    emit_load_arg(script, 2)?;
++    emit_store_local_slot(script, data_slot)?;
++    let _ = emit_push_int(script, 1);
++    emit_store_arg(script, 2)?;
++
++    // object[0] => packetCount (Integer, >0)
++    emit_load_local_slot(script, data_slot)?;
++    script.push(lookup_opcode("SIZE")?.byte);
++    let _ = emit_push_int(script, 0);
++    script.push(lookup_opcode("GT")?.byte);
++    let skip_packet_parse = emit_jump_placeholder(script, "JMPIFNOT_L")?;
++
++    emit_load_local_slot(script, data_slot)?;
++    let _ = emit_push_int(script, 0);
++    script.push(lookup_opcode("PICKITEM")?.byte);
++
++    script.push(lookup_opcode("DUP")?.byte);
++    script.push(lookup_opcode("ISTYPE")?.byte);
++    script.push(STACKITEMTYPE_INTEGER);
++    let packet_int_ready_fixup = emit_jump_placeholder(script, "JMPIF_L")?;
++
++    script.push(lookup_opcode("DUP")?.byte);
++    script.push(lookup_opcode("ISTYPE")?.byte);
++    script.push(STACKITEMTYPE_BYTESTRING);
++    let packet_drop_fixup = emit_jump_placeholder(script, "JMPIFNOT_L")?;
++    script.push(lookup_opcode("CONVERT")?.byte);
++    script.push(STACKITEMTYPE_INTEGER);
++
++    let packet_int_ready_label = script.len();
++    patch_jump(script, packet_int_ready_fixup, packet_int_ready_label)?;
++
++    script.push(lookup_opcode("DUP")?.byte);
++    let _ = emit_push_int(script, 0);
++    script.push(lookup_opcode("GT")?.byte);
++    let packet_non_positive_fixup = emit_jump_placeholder(script, "JMPIFNOT_L")?;
++
++    emit_store_arg(script, 2)?;
++    let packet_done_fixup = emit_jump_placeholder(script, "JMP_L")?;
++
++    let packet_drop_label = script.len();
++    patch_jump(script, packet_drop_fixup, packet_drop_label)?;
++    patch_jump(script, packet_non_positive_fixup, packet_drop_label)?;
++    script.push(lookup_opcode("DROP")?.byte);
++
++    let packet_done_label = script.len();
++    patch_jump(script, skip_packet_parse, packet_done_label)?;
++    patch_jump(script, packet_done_fixup, packet_done_label)?;
++
++    // Base packed value: packetCount * 10
++    emit_load_arg(script, 2)?;
++    let _ = emit_push_int(script, ON_NEP17_PACK_BASE);
++    script.push(lookup_opcode("MUL")?.byte);
++    emit_store_arg(script, 2)?;
++
++    // envelopeType (Integer, 1 => pool; otherwise spreading):
++    // - size > 5: read last element (C# canonical layout)
++    // - size <= 5: read first element (fallback layout observed in some callers)
++    emit_load_local_slot(script, data_slot)?;
++    script.push(lookup_opcode("SIZE")?.byte);
++    let _ = emit_push_int(script, 0);
++    script.push(lookup_opcode("GT")?.byte);
++    let skip_type_parse = emit_jump_placeholder(script, "JMPIFNOT_L")?;
++
++    emit_load_local_slot(script, data_slot)?;
++    script.push(lookup_opcode("SIZE")?.byte);
++    let _ = emit_push_int(script, 5);
++    script.push(lookup_opcode("GT")?.byte);
++    let use_last_type_item_fixup = emit_jump_placeholder(script, "JMPIF_L")?;
++
++    // Fallback: first item
++    emit_load_local_slot(script, data_slot)?;
++    let _ = emit_push_int(script, 0);
++    script.push(lookup_opcode("PICKITEM")?.byte);
++    let type_item_ready_fixup = emit_jump_placeholder(script, "JMP_L")?;
++
++    // Canonical: last item
++    let use_last_type_item_label = script.len();
++    patch_jump(
++        script,
++        use_last_type_item_fixup,
++        use_last_type_item_label,
++    )?;
++    emit_load_local_slot(script, data_slot)?;
++    emit_load_local_slot(script, data_slot)?;
++    script.push(lookup_opcode("SIZE")?.byte);
++    let _ = emit_push_int(script, 1);
++    script.push(lookup_opcode("SUB")?.byte);
++    script.push(lookup_opcode("PICKITEM")?.byte);
++
++    let type_item_ready_label = script.len();
++    patch_jump(script, type_item_ready_fixup, type_item_ready_label)?;
++
++    script.push(lookup_opcode("DUP")?.byte);
++    script.push(lookup_opcode("ISTYPE")?.byte);
++    script.push(STACKITEMTYPE_INTEGER);
++    let type_int_ready_fixup = emit_jump_placeholder(script, "JMPIF_L")?;
++
++    script.push(lookup_opcode("DUP")?.byte);
++    script.push(lookup_opcode("ISTYPE")?.byte);
++    script.push(STACKITEMTYPE_BYTESTRING);
++    let type_drop_fixup = emit_jump_placeholder(script, "JMPIFNOT_L")?;
++    script.push(lookup_opcode("CONVERT")?.byte);
++    script.push(STACKITEMTYPE_INTEGER);
++
++    let type_int_ready_label = script.len();
++    patch_jump(script, type_int_ready_fixup, type_int_ready_label)?;
++
++    let _ = emit_push_int(script, 1);
++    script.push(lookup_opcode("EQUAL")?.byte);
++    let keep_default_type_fixup = emit_jump_placeholder(script, "JMPIFNOT_L")?;
++
++    emit_load_arg(script, 2)?;
++    let _ = emit_push_int(script, 1);
++    script.push(lookup_opcode("ADD")?.byte);
++    emit_store_arg(script, 2)?;
++    let type_done_fixup = emit_jump_placeholder(script, "JMP_L")?;
++
++    let type_drop_label = script.len();
++    patch_jump(script, type_drop_fixup, type_drop_label)?;
++    script.push(lookup_opcode("DROP")?.byte);
++    let type_drop_end_fixup = emit_jump_placeholder(script, "JMP_L")?;
++
++    let keep_default_type_label = script.len();
++    patch_jump(script, keep_default_type_fixup, keep_default_type_label)?;
++
++    let type_done_label = script.len();
++    patch_jump(script, skip_type_parse, type_done_label)?;
++    patch_jump(script, type_done_fixup, type_done_label)?;
++    patch_jump(script, type_drop_end_fixup, type_done_label)?;
++
++    let adapter_end_label = script.len();
++    patch_jump(script, not_array_fixup, adapter_end_label)?;
++    patch_jump(script, adapter_end_fixup, adapter_end_label)?;
++
++    Ok(())
++}
++
+ pub(super) fn translate_function(ctx: &mut TranslationContext<'_>) -> Result<String> {
+     let params = ctx.func_type.params();
+     for ty in params {
+@@ -72,6 +272,15 @@ pub(super) fn translate_function(ctx: &mut TranslationContext<'_>) -> Result<Str
+             .ok_or_else(|| anyhow!("function {} local count overflow", ctx.function_name))?;
+     }
+ 
++    let use_on_nep17_adapter = ctx.function_name.eq_ignore_ascii_case("onNEP17Payment")
++        && param_count >= 3;
++    let helper_local_base = local_count;
++    if use_on_nep17_adapter {
++        local_count = local_count
++            .checked_add(ON_NEP17_PAYMENT_CONFIG_SLOT_COUNT)
++            .ok_or_else(|| anyhow!("function {} local count overflow", ctx.function_name))?;
++    }
++
+     if param_count > u8::MAX as usize {
+         bail!(
+             "function {} has too many parameters ({}) for NeoVM INITSLOT",
+@@ -93,10 +302,19 @@ pub(super) fn translate_function(ctx: &mut TranslationContext<'_>) -> Result<Str
+         ctx.script.push(param_count as u8);
+     }
+ 
++    if use_on_nep17_adapter {
++        emit_on_nep17_payment_config_adapter(ctx.script, helper_local_base)?;
++    }
++
+     // NeoVM parameters are arbitrary-precision integers. Normalise them to the Wasm bit-width
+     // so arithmetic, comparisons, and shifts observe WebAssembly's i32/i64 semantics.
+-    // `_deploy` is invoked with (Any, Boolean) by Neo and must not force integer coercions.
+-    if !ctx.function_name.eq_ignore_ascii_case("_deploy") {
++    //
++    // Some Neo entry points carry non-integer stack items (`Any`/`Hash160`) in practice.
++    // For those methods, integer coercion can fault before contract logic runs.
++    let skip_param_normalization = ctx.function_name.eq_ignore_ascii_case("_deploy")
++        || ctx.function_name.eq_ignore_ascii_case("onNEP17Payment");
++
++    if !skip_param_normalization {
+         for (index, ty) in params.iter().enumerate() {
+             emit_load_arg(ctx.script, index as u32)?;
+             let value = StackValue {

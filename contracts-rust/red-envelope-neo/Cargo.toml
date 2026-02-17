@@ -1,0 +1,21 @@
+[package]
+name = "red-envelope-neo-rust"
+version = "0.1.0"
+edition = "2021"
+description = "Red Envelope Neo N3 contract implemented in Rust via neo-llvm"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+neo-devpack = { git = "https://github.com/r3e-network/neo-llvm.git", package = "neo-devpack", default-features = false }
+
+[workspace]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

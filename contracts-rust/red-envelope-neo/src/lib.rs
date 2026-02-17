@@ -62,6 +62,56 @@ const P_OPENED_AMOUNT: u8 = 0x21;
 const P_POOL_CLAIMED: u8 = 0x22;
 const P_POOL_CLAIM_INDEX: u8 = 0x23;
 const P_OWNER_BALANCE: u8 = 0x24;
+const NULL_PROBE_KEY: i64 = -9_223_372_036_854_775_000i64;
+
+#[cfg(target_arch = "wasm32")]
+#[link(wasm_import_module = "neo")]
+extern "C" {
+    #[link_name = "storage_get_context"]
+    fn neo_storage_get_context() -> i64;
+
+    // NOTE: argument order is reversed so NeoVM pops (ctx, key) in syscall order.
+    #[link_name = "storage_get"]
+    fn neo_storage_get(key: i64, ctx: i64) -> i64;
+
+    // NOTE: argument order is reversed so NeoVM pops (ctx, value, key) in syscall order.
+    #[link_name = "storage_put"]
+    fn neo_storage_put(key: i64, value: i64, ctx: i64);
+
+    #[link_name = "runtime_get_time"]
+    fn neo_get_time() -> i64;
+
+    #[link_name = "runtime_get_random"]
+    fn neo_get_random() -> i64;
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+unsafe fn neo_storage_get_context() -> i64 {
+    0
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+unsafe fn neo_storage_get(_key: i64, _ctx: i64) -> i64 {
+    0
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+unsafe fn neo_storage_put(_key: i64, _value: i64, _ctx: i64) {}
+
+#[cfg(not(target_arch = "wasm32"))]
+unsafe fn neo_get_time() -> i64 {
+    0
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+unsafe fn neo_get_random() -> i64 {
+    1
+}
+
+#[inline(never)]
+fn add1(v: i64) -> i64 {
+    v + 1
+}
 
 #[neo_contract]
 pub struct RedEnvelopeRustContract;
@@ -80,40 +130,28 @@ impl RedEnvelopeRustContract {
 
     #[neo_method(name = "totalSupply")]
     pub fn total_supply() -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_key_i64(&ctx, K_TOTAL_SUPPLY)
+        get_key_i64(K_TOTAL_SUPPLY)
     }
 
     #[neo_method(name = "balanceOf")]
     pub fn balance_of(account: i64) -> i64 {
-        if account <= 0 {
+        if account == 0 {
             return 0;
         }
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_i64(&ctx, k2(P_OWNER_BALANCE, account))
+        get_i64(k2(P_OWNER_BALANCE, account))
     }
 
     #[neo_method(name = "ownerOf")]
     pub fn owner_of(token_id: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_i64(&ctx, k2(P_TOKEN_OWNER, token_id))
+        get_i64(k2(P_TOKEN_OWNER, token_id))
     }
 
     #[neo_method(name = "properties")]
     pub fn properties(token_id: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        if !token_exists(&ctx, token_id) {
+        if !token_exists(token_id) {
             return 0;
         }
-        env(&ctx, P_TYPE, token_id)
+        env(P_TYPE, token_id)
     }
 
     #[neo_method(name = "tokens")]
@@ -128,29 +166,20 @@ impl RedEnvelopeRustContract {
 
     #[neo_method(name = "getOwner")]
     pub fn get_owner() -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_key_i64(&ctx, K_OWNER)
+        get_key_i64(K_OWNER)
     }
 
     #[neo_method(name = "setOwner")]
     pub fn set_owner(new_owner: i64) {
-        if new_owner <= 0 {
+        if new_owner == 0 {
             return;
         }
-        let Some(ctx) = ctx() else {
-            return;
-        };
-        put_key_i64(&ctx, K_OWNER, new_owner);
+        put_key_i64(K_OWNER, new_owner);
     }
 
     #[neo_method(name = "isOwner")]
     pub fn is_owner() -> bool {
-        let Some(ctx) = ctx() else {
-            return false;
-        };
-        get_key_i64(&ctx, K_OWNER) > 0
+        get_key_i64(K_OWNER) != 0
     }
 
     #[neo_method(name = "verify")]
@@ -160,26 +189,17 @@ impl RedEnvelopeRustContract {
 
     #[neo_method(name = "pause")]
     pub fn pause() {
-        let Some(ctx) = ctx() else {
-            return;
-        };
-        put_key_i64(&ctx, K_PAUSED, 1);
+        put_key_i64(K_PAUSED, 1);
     }
 
     #[neo_method(name = "resume")]
     pub fn resume() {
-        let Some(ctx) = ctx() else {
-            return;
-        };
-        put_key_i64(&ctx, K_PAUSED, 0);
+        put_key_i64(K_PAUSED, 0);
     }
 
     #[neo_method(name = "isPaused")]
     pub fn is_paused() -> bool {
-        let Some(ctx) = ctx() else {
-            return false;
-        };
-        get_key_i64(&ctx, K_PAUSED) != 0
+        get_key_i64(K_PAUSED) != 0
     }
 
     #[neo_method(name = "update")]
@@ -190,30 +210,22 @@ impl RedEnvelopeRustContract {
 
     #[neo_method(name = "_deploy")]
     pub fn contract_deploy(data: i64, update: bool) {
-        let Some(ctx) = ctx() else {
-            return;
-        };
-
         if !update {
-            put_key_i64(&ctx, K_OWNER, data);
-            put_key_i64(&ctx, K_NEXT_ID, 0);
-            put_key_i64(&ctx, K_TOTAL_ENVELOPES, 0);
-            put_key_i64(&ctx, K_TOTAL_DISTRIBUTED, 0);
-            put_key_i64(&ctx, K_TIME_OVERRIDE, 0);
-            put_key_i64(&ctx, K_TOTAL_SUPPLY, 0);
-            put_key_i64(&ctx, K_PAUSED, 0);
-        } else if get_key_i64(&ctx, K_OWNER) == 0 {
-            put_key_i64(&ctx, K_OWNER, data);
+            put_key_i64(K_OWNER, data);
+            put_key_i64(K_NEXT_ID, 0);
+            put_key_i64(K_TOTAL_ENVELOPES, 0);
+            put_key_i64(K_TOTAL_DISTRIBUTED, 0);
+            put_key_i64(K_TIME_OVERRIDE, 0);
+            put_key_i64(K_TOTAL_SUPPLY, 0);
+            put_key_i64(K_PAUSED, 0);
+        } else if get_key_i64(K_OWNER) == 0 {
+            put_key_i64(K_OWNER, data);
         }
     }
 
     #[neo_method(name = "onNEP17Payment")]
     pub fn on_nep17_payment(from: i64, amount: i64, data: i64) {
-        let Some(ctx) = ctx() else {
-            return;
-        };
-
-        if is_paused_flag(&ctx) || from <= 0 || amount < MIN_AMOUNT {
+        if is_paused_flag() || from == 0 || amount < MIN_AMOUNT {
             return;
         }
 
@@ -240,7 +252,6 @@ impl RedEnvelopeRustContract {
         }
 
         let _ = create_envelope(
-            &ctx,
             from,
             amount,
             packet_count,
@@ -252,10 +263,7 @@ impl RedEnvelopeRustContract {
 
     #[neo_method(name = "tokenURI")]
     pub fn token_uri(token_id: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        if token_exists(&ctx, token_id) {
+        if token_exists(token_id) {
             token_id
         } else {
             0
@@ -264,15 +272,12 @@ impl RedEnvelopeRustContract {
 
     #[neo_method(name = "calculatePacketAmount")]
     pub fn calculate_packet_amount(envelope_id: i64, packet_index: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        if !exists(&ctx, envelope_id) {
+        if !exists(envelope_id) {
             return 0;
         }
 
-        let packet = env(&ctx, P_PACKET, envelope_id);
-        let remaining = env(&ctx, P_REMAINING, envelope_id);
+        let packet = env(P_PACKET, envelope_id);
+        let remaining = env(P_REMAINING, envelope_id);
         let remaining_packets = packet.saturating_sub(packet_index);
 
         if remaining <= 0 || remaining_packets <= 0 {
@@ -283,146 +288,130 @@ impl RedEnvelopeRustContract {
             remaining,
             remaining_packets,
             0,
-            env(&ctx, P_TOTAL, envelope_id),
+            env(P_TOTAL, envelope_id),
             packet,
         )
     }
 
     #[neo_method(name = "claimFromPool")]
     pub fn claim_from_pool(pool_id: i64, claimer: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-
-        if is_paused_flag(&ctx)
-            || claimer <= 0
-            || !exists(&ctx, pool_id)
-            || env(&ctx, P_TYPE, pool_id) != ENVELOPE_TYPE_POOL
-            || env(&ctx, P_ACTIVE, pool_id) == 0
-            || env(&ctx, P_OPENED, pool_id) >= env(&ctx, P_PACKET, pool_id)
-            || now_ms(&ctx) > env(&ctx, P_EXPIRY, pool_id)
-            || get_i64(&ctx, k3(P_POOL_CLAIMED, pool_id, claimer)) > 0
+        if is_paused_flag()
+            || claimer == 0
+            || !exists(pool_id)
+            || env(P_TYPE, pool_id) != ENVELOPE_TYPE_POOL
+            || env(P_ACTIVE, pool_id) == 0
+            || env(P_OPENED, pool_id) >= env(P_PACKET, pool_id)
+            || now_ms() > env(P_EXPIRY, pool_id)
+            || get_i64(k3(P_POOL_CLAIMED, pool_id, claimer)) > 0
         {
             return 0;
         }
 
-        let opened = env(&ctx, P_OPENED, pool_id);
-        let packet = env(&ctx, P_PACKET, pool_id);
-        let remaining = env(&ctx, P_REMAINING, pool_id);
+        let opened = env(P_OPENED, pool_id);
+        let packet = env(P_PACKET, pool_id);
+        let remaining = env(P_REMAINING, pool_id);
         let amount = calc_packet(
             remaining,
             packet.saturating_sub(opened),
             0,
-            env(&ctx, P_TOTAL, pool_id),
+            env(P_TOTAL, pool_id),
             packet,
         );
         if amount <= 0 || amount > remaining {
             return 0;
         }
 
-        put_i64(&ctx, k3(P_POOL_CLAIMED, pool_id, claimer), amount);
+        put_i64(k3(P_POOL_CLAIMED, pool_id, claimer), amount);
 
         let opened2 = opened.saturating_add(1);
-        set_env(&ctx, P_OPENED, pool_id, opened2);
+        set_env(P_OPENED, pool_id, opened2);
 
         let rem2 = remaining.saturating_sub(amount);
-        set_env(&ctx, P_REMAINING, pool_id, rem2);
+        set_env(P_REMAINING, pool_id, rem2);
         if rem2 == 0 || opened2 >= packet {
-            set_env(&ctx, P_ACTIVE, pool_id, 0);
+            set_env(P_ACTIVE, pool_id, 0);
         }
 
-        let claim_id = alloc_id(&ctx);
-        set_env(&ctx, P_CREATOR, claim_id, env(&ctx, P_CREATOR, pool_id));
-        set_env(&ctx, P_TOTAL, claim_id, amount);
-        set_env(&ctx, P_PACKET, claim_id, 1);
-        set_env(&ctx, P_TYPE, claim_id, ENVELOPE_TYPE_CLAIM);
-        set_env(&ctx, P_PARENT, claim_id, pool_id);
-        set_env(&ctx, P_OPENED, claim_id, 0);
-        set_env(&ctx, P_REMAINING, claim_id, amount);
-        set_env(&ctx, P_ACTIVE, claim_id, 1);
-        set_env(&ctx, P_EXPIRY, claim_id, env(&ctx, P_EXPIRY, pool_id));
+        let claim_id = alloc_id();
+        set_env(P_CREATOR, claim_id, env(P_CREATOR, pool_id));
+        set_env(P_TOTAL, claim_id, amount);
+        set_env(P_PACKET, claim_id, 1);
+        set_env(P_TYPE, claim_id, ENVELOPE_TYPE_CLAIM);
+        set_env(P_PARENT, claim_id, pool_id);
+        set_env(P_OPENED, claim_id, 0);
+        set_env(P_REMAINING, claim_id, amount);
+        set_env(P_ACTIVE, claim_id, 1);
+        set_env(P_EXPIRY, claim_id, env(P_EXPIRY, pool_id));
 
-        mint_token(&ctx, claim_id, claimer);
-        put_i64(&ctx, k3(P_POOL_CLAIM_INDEX, pool_id, opened2), claim_id);
+        mint_token(claim_id, claimer);
+        put_i64(k3(P_POOL_CLAIM_INDEX, pool_id, opened2), claim_id);
 
         claim_id
     }
 
     #[neo_method(name = "openClaim")]
     pub fn open_claim(claim_id: i64, opener: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-
-        if is_paused_flag(&ctx)
-            || opener <= 0
-            || !exists(&ctx, claim_id)
-            || env(&ctx, P_TYPE, claim_id) != ENVELOPE_TYPE_CLAIM
-            || get_i64(&ctx, k2(P_TOKEN_OWNER, claim_id)) != opener
-            || env(&ctx, P_ACTIVE, claim_id) == 0
-            || env(&ctx, P_OPENED, claim_id) > 0
-            || env(&ctx, P_REMAINING, claim_id) <= 0
-            || now_ms(&ctx) > env(&ctx, P_EXPIRY, claim_id)
+        if is_paused_flag()
+            || opener == 0
+            || !exists(claim_id)
+            || env(P_TYPE, claim_id) != ENVELOPE_TYPE_CLAIM
+            || get_i64(k2(P_TOKEN_OWNER, claim_id)) != opener
+            || env(P_ACTIVE, claim_id) == 0
+            || env(P_OPENED, claim_id) > 0
+            || env(P_REMAINING, claim_id) <= 0
+            || now_ms() > env(P_EXPIRY, claim_id)
         {
             return 0;
         }
 
-        let amount = env(&ctx, P_REMAINING, claim_id);
-        set_env(&ctx, P_OPENED, claim_id, 1);
-        set_env(&ctx, P_REMAINING, claim_id, 0);
-        set_env(&ctx, P_ACTIVE, claim_id, 0);
+        let amount = env(P_REMAINING, claim_id);
+        set_env(P_OPENED, claim_id, 1);
+        set_env(P_REMAINING, claim_id, 0);
+        set_env(P_ACTIVE, claim_id, 0);
         amount
     }
 
     #[neo_method(name = "transferClaim")]
     pub fn transfer_claim(claim_id: i64, from: i64, to: i64) {
-        let Some(ctx) = ctx() else {
-            return;
-        };
-
-        if is_paused_flag(&ctx)
-            || from <= 0
-            || to <= 0
-            || !exists(&ctx, claim_id)
-            || env(&ctx, P_TYPE, claim_id) != ENVELOPE_TYPE_CLAIM
-            || get_i64(&ctx, k2(P_TOKEN_OWNER, claim_id)) != from
+        if is_paused_flag()
+            || from == 0
+            || to == 0
+            || !exists(claim_id)
+            || env(P_TYPE, claim_id) != ENVELOPE_TYPE_CLAIM
+            || get_i64(k2(P_TOKEN_OWNER, claim_id)) != from
         {
             return;
         }
 
-        transfer_token(&ctx, claim_id, from, to);
+        transfer_token(claim_id, from, to);
     }
 
     #[neo_method(name = "reclaimPool")]
     pub fn reclaim_pool(pool_id: i64, creator: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-
-        if is_paused_flag(&ctx)
-            || creator <= 0
-            || !exists(&ctx, pool_id)
-            || env(&ctx, P_TYPE, pool_id) != ENVELOPE_TYPE_POOL
-            || env(&ctx, P_CREATOR, pool_id) != creator
-            || now_ms(&ctx) <= env(&ctx, P_EXPIRY, pool_id)
+        if is_paused_flag()
+            || creator == 0
+            || !exists(pool_id)
+            || env(P_TYPE, pool_id) != ENVELOPE_TYPE_POOL
+            || env(P_CREATOR, pool_id) != creator
+            || now_ms() <= env(P_EXPIRY, pool_id)
         {
             return 0;
         }
 
-        let mut refund = env(&ctx, P_REMAINING, pool_id);
-        let opened = env(&ctx, P_OPENED, pool_id);
+        let mut refund = env(P_REMAINING, pool_id);
+        let opened = env(P_OPENED, pool_id);
         let mut i = 1;
         while i <= opened {
-            let claim_id = get_i64(&ctx, k3(P_POOL_CLAIM_INDEX, pool_id, i));
+            let claim_id = get_i64(k3(P_POOL_CLAIM_INDEX, pool_id, i));
             if claim_id > 0
-                && env(&ctx, P_TYPE, claim_id) == ENVELOPE_TYPE_CLAIM
-                && env(&ctx, P_ACTIVE, claim_id) != 0
+                && env(P_TYPE, claim_id) == ENVELOPE_TYPE_CLAIM
+                && env(P_ACTIVE, claim_id) != 0
             {
-                let rem = env(&ctx, P_REMAINING, claim_id);
+                let rem = env(P_REMAINING, claim_id);
                 if rem > 0 {
                     refund = refund.saturating_add(rem);
-                    set_env(&ctx, P_REMAINING, claim_id, 0);
-                    set_env(&ctx, P_ACTIVE, claim_id, 0);
+                    set_env(P_REMAINING, claim_id, 0);
+                    set_env(P_ACTIVE, claim_id, 0);
                 }
             }
             i += 1;
@@ -432,79 +421,55 @@ impl RedEnvelopeRustContract {
             return 0;
         }
 
-        set_env(&ctx, P_REMAINING, pool_id, 0);
-        set_env(&ctx, P_ACTIVE, pool_id, 0);
+        set_env(P_REMAINING, pool_id, 0);
+        set_env(P_ACTIVE, pool_id, 0);
         refund
     }
 
     #[neo_method(name = "getEnvelopeState")]
     pub fn get_envelope_state(envelope_id: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        if !exists(&ctx, envelope_id) {
+        if !exists(envelope_id) {
             return 0;
         }
-        env(&ctx, P_REMAINING, envelope_id)
+        env(P_REMAINING, envelope_id)
     }
 
     #[neo_method(name = "getClaimState")]
     pub fn get_claim_state(claim_id: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        if !exists(&ctx, claim_id) || env(&ctx, P_TYPE, claim_id) != ENVELOPE_TYPE_CLAIM {
+        if !exists(claim_id) || env(P_TYPE, claim_id) != ENVELOPE_TYPE_CLAIM {
             return 0;
         }
-        env(&ctx, P_REMAINING, claim_id)
+        env(P_REMAINING, claim_id)
     }
 
     #[neo_method(name = "checkEligibility")]
     pub fn check_eligibility(envelope_id: i64, user: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return E_NOT_FOUND;
-        };
-        eligibility_status(&ctx, envelope_id, user, false)
+        eligibility_status(envelope_id, user, false)
     }
 
     #[neo_method(name = "checkOpenEligibility")]
     pub fn check_open_eligibility(envelope_id: i64, user: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return E_NOT_FOUND;
-        };
-        eligibility_status(&ctx, envelope_id, user, true)
+        eligibility_status(envelope_id, user, true)
     }
 
     #[neo_method(name = "hasOpened")]
     pub fn has_opened(envelope_id: i64, opener: i64) -> bool {
-        let Some(ctx) = ctx() else {
-            return false;
-        };
-        get_i64(&ctx, k3(P_OPENED_AMOUNT, envelope_id, opener)) > 0
+        get_i64(k3(P_OPENED_AMOUNT, envelope_id, opener)) > 0
     }
 
     #[neo_method(name = "getOpenedAmount")]
     pub fn get_opened_amount(envelope_id: i64, opener: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_i64(&ctx, k3(P_OPENED_AMOUNT, envelope_id, opener))
+        get_i64(k3(P_OPENED_AMOUNT, envelope_id, opener))
     }
 
     #[neo_method(name = "hasClaimedFromPool")]
     pub fn has_claimed_from_pool(pool_id: i64, claimer: i64) -> bool {
-        let Some(ctx) = ctx() else {
-            return false;
-        };
-        get_i64(&ctx, k3(P_POOL_CLAIMED, pool_id, claimer)) > 0
+        get_i64(k3(P_POOL_CLAIMED, pool_id, claimer)) > 0
     }
 
     #[neo_method(name = "getPoolClaimedAmount")]
     pub fn get_pool_claimed_amount(pool_id: i64, claimer: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_i64(&ctx, k3(P_POOL_CLAIMED, pool_id, claimer))
+        get_i64(k3(P_POOL_CLAIMED, pool_id, claimer))
     }
 
     #[neo_method(name = "getCalculationConstants")]
@@ -514,74 +479,57 @@ impl RedEnvelopeRustContract {
 
     #[neo_method(name = "getTotalEnvelopes")]
     pub fn get_total_envelopes() -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_key_i64(&ctx, K_TOTAL_ENVELOPES)
+        get_key_i64(K_TOTAL_ENVELOPES)
     }
 
     #[neo_method(name = "getTotalDistributed")]
     pub fn get_total_distributed() -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_key_i64(&ctx, K_TOTAL_DISTRIBUTED)
+        get_key_i64(K_TOTAL_DISTRIBUTED)
     }
 
     #[neo_method(name = "getPoolClaimIdByIndex")]
     pub fn get_pool_claim_id_by_index(pool_id: i64, claim_index: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-        get_i64(&ctx, k3(P_POOL_CLAIM_INDEX, pool_id, claim_index))
+        get_i64(k3(P_POOL_CLAIM_INDEX, pool_id, claim_index))
     }
 
     #[neo_method(name = "transfer")]
     pub fn transfer(to: i64, token_id: i64, _data: i64) -> bool {
-        let Some(ctx) = ctx() else {
-            return false;
-        };
-
-        if is_paused_flag(&ctx) || to <= 0 || !token_exists(&ctx, token_id) {
+        if is_paused_flag() || to == 0 || !token_exists(token_id) {
             return false;
         }
 
-        let t = env(&ctx, P_TYPE, token_id);
+        let t = env(P_TYPE, token_id);
         if !(t == ENVELOPE_TYPE_SPREADING || t == ENVELOPE_TYPE_CLAIM) {
             return false;
         }
 
-        let from = get_i64(&ctx, k2(P_TOKEN_OWNER, token_id));
-        if from <= 0 {
+        let from = get_i64(k2(P_TOKEN_OWNER, token_id));
+        if from == 0 {
             return false;
         }
 
-        transfer_token(&ctx, token_id, from, to)
+        transfer_token(token_id, from, to)
     }
 
     #[neo_method(name = "openEnvelope")]
     pub fn open_envelope(envelope_id: i64, opener: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-
-        if is_paused_flag(&ctx)
-            || opener <= 0
-            || !exists(&ctx, envelope_id)
-            || env(&ctx, P_TYPE, envelope_id) != ENVELOPE_TYPE_SPREADING
-            || env(&ctx, P_ACTIVE, envelope_id) == 0
-            || env(&ctx, P_OPENED, envelope_id) >= env(&ctx, P_PACKET, envelope_id)
-            || now_ms(&ctx) > env(&ctx, P_EXPIRY, envelope_id)
-            || get_i64(&ctx, k2(P_TOKEN_OWNER, envelope_id)) != opener
-            || get_i64(&ctx, k3(P_OPENED_AMOUNT, envelope_id, opener)) > 0
+        if is_paused_flag()
+            || opener == 0
+            || !exists(envelope_id)
+            || env(P_TYPE, envelope_id) != ENVELOPE_TYPE_SPREADING
+            || env(P_ACTIVE, envelope_id) == 0
+            || env(P_OPENED, envelope_id) >= env(P_PACKET, envelope_id)
+            || now_ms() > env(P_EXPIRY, envelope_id)
+            || get_i64(k2(P_TOKEN_OWNER, envelope_id)) != opener
+            || get_i64(k3(P_OPENED_AMOUNT, envelope_id, opener)) > 0
         {
             return 0;
         }
 
-        let remaining = env(&ctx, P_REMAINING, envelope_id);
-        let opened = env(&ctx, P_OPENED, envelope_id);
-        let packet = env(&ctx, P_PACKET, envelope_id);
-        let total_amount = env(&ctx, P_TOTAL, envelope_id);
+        let remaining = env(P_REMAINING, envelope_id);
+        let opened = env(P_OPENED, envelope_id);
+        let packet = env(P_PACKET, envelope_id);
+        let total_amount = env(P_TOTAL, envelope_id);
         let amount = calc_packet(
             remaining,
             packet.saturating_sub(opened),
@@ -593,13 +541,13 @@ impl RedEnvelopeRustContract {
             return 0;
         }
 
-        put_i64(&ctx, k3(P_OPENED_AMOUNT, envelope_id, opener), amount);
-        set_env(&ctx, P_OPENED, envelope_id, opened.saturating_add(1));
+        put_i64(k3(P_OPENED_AMOUNT, envelope_id, opener), amount);
+        set_env(P_OPENED, envelope_id, opened.saturating_add(1));
 
         let rem2 = remaining.saturating_sub(amount);
-        set_env(&ctx, P_REMAINING, envelope_id, rem2);
+        set_env(P_REMAINING, envelope_id, rem2);
         if rem2 == 0 || opened.saturating_add(1) >= packet {
-            set_env(&ctx, P_ACTIVE, envelope_id, 0);
+            set_env(P_ACTIVE, envelope_id, 0);
         }
 
         amount
@@ -607,47 +555,39 @@ impl RedEnvelopeRustContract {
 
     #[neo_method(name = "transferEnvelope")]
     pub fn transfer_envelope(envelope_id: i64, from: i64, to: i64, _data: i64) {
-        let Some(ctx) = ctx() else {
-            return;
-        };
-
-        if is_paused_flag(&ctx)
-            || from <= 0
-            || to <= 0
-            || !exists(&ctx, envelope_id)
-            || env(&ctx, P_TYPE, envelope_id) != ENVELOPE_TYPE_SPREADING
-            || get_i64(&ctx, k2(P_TOKEN_OWNER, envelope_id)) != from
+        if is_paused_flag()
+            || from == 0
+            || to == 0
+            || !exists(envelope_id)
+            || env(P_TYPE, envelope_id) != ENVELOPE_TYPE_SPREADING
+            || get_i64(k2(P_TOKEN_OWNER, envelope_id)) != from
         {
             return;
         }
 
-        let _ = transfer_token(&ctx, envelope_id, from, to);
+        let _ = transfer_token(envelope_id, from, to);
     }
 
     #[neo_method(name = "reclaimEnvelope")]
     pub fn reclaim_envelope(envelope_id: i64, creator: i64) -> i64 {
-        let Some(ctx) = ctx() else {
-            return 0;
-        };
-
-        if is_paused_flag(&ctx)
-            || creator <= 0
-            || !exists(&ctx, envelope_id)
-            || env(&ctx, P_TYPE, envelope_id) != ENVELOPE_TYPE_SPREADING
-            || env(&ctx, P_CREATOR, envelope_id) != creator
-            || env(&ctx, P_ACTIVE, envelope_id) == 0
-            || now_ms(&ctx) <= env(&ctx, P_EXPIRY, envelope_id)
+        if is_paused_flag()
+            || creator == 0
+            || !exists(envelope_id)
+            || env(P_TYPE, envelope_id) != ENVELOPE_TYPE_SPREADING
+            || env(P_CREATOR, envelope_id) != creator
+            || env(P_ACTIVE, envelope_id) == 0
+            || now_ms() <= env(P_EXPIRY, envelope_id)
         {
             return 0;
         }
 
-        let refund = env(&ctx, P_REMAINING, envelope_id);
+        let refund = env(P_REMAINING, envelope_id);
         if refund <= 0 {
             return 0;
         }
 
-        set_env(&ctx, P_REMAINING, envelope_id, 0);
-        set_env(&ctx, P_ACTIVE, envelope_id, 0);
+        set_env(P_REMAINING, envelope_id, 0);
+        set_env(P_ACTIVE, envelope_id, 0);
         refund
     }
 
@@ -656,7 +596,6 @@ impl RedEnvelopeRustContract {
 }
 
 fn create_envelope(
-    ctx: &NeoStorageContext,
     from: i64,
     amount: i64,
     packet_count: i64,
@@ -664,7 +603,7 @@ fn create_envelope(
     envelope_type: i64,
     update_totals: bool,
 ) -> i64 {
-    if from <= 0
+    if from == 0
         || amount < MIN_AMOUNT
         || packet_count <= 0
         || packet_count > MAX_PACKETS
@@ -676,72 +615,70 @@ fn create_envelope(
         return 0;
     }
 
-    let id = alloc_id(ctx);
-    set_env(ctx, P_CREATOR, id, from);
-    set_env(ctx, P_TOTAL, id, amount);
-    set_env(ctx, P_PACKET, id, packet_count);
-    set_env(ctx, P_TYPE, id, envelope_type);
-    set_env(ctx, P_PARENT, id, 0);
-    set_env(ctx, P_OPENED, id, 0);
-    set_env(ctx, P_REMAINING, id, amount);
-    set_env(ctx, P_ACTIVE, id, 1);
-    set_env(ctx, P_EXPIRY, id, now_ms(ctx).saturating_add(expiry_ms));
+    let id = alloc_id();
+    set_env(P_CREATOR, id, from);
+    set_env(P_TOTAL, id, amount);
+    set_env(P_PACKET, id, packet_count);
+    set_env(P_TYPE, id, envelope_type);
+    set_env(P_PARENT, id, 0);
+    set_env(P_OPENED, id, 0);
+    set_env(P_REMAINING, id, amount);
+    set_env(P_ACTIVE, id, 1);
+    set_env(P_EXPIRY, id, now_ms().saturating_add(expiry_ms));
 
     if envelope_type == ENVELOPE_TYPE_SPREADING {
-        mint_token(ctx, id, from);
+        mint_token(id, from);
     }
 
     if update_totals {
         put_key_i64(
-            ctx,
             K_TOTAL_ENVELOPES,
-            get_key_i64(ctx, K_TOTAL_ENVELOPES).saturating_add(1),
+            get_key_i64(K_TOTAL_ENVELOPES).saturating_add(1),
         );
         put_key_i64(
-            ctx,
             K_TOTAL_DISTRIBUTED,
-            get_key_i64(ctx, K_TOTAL_DISTRIBUTED).saturating_add(amount),
+            get_key_i64(K_TOTAL_DISTRIBUTED).saturating_add(amount),
         );
     }
 
     id
 }
 
-fn eligibility_status(ctx: &NeoStorageContext, envelope_id: i64, user: i64, include_action_checks: bool) -> i64 {
-    if !exists(ctx, envelope_id) {
+fn eligibility_status(envelope_id: i64, user: i64, include_action_checks: bool) -> i64 {
+    if !exists(envelope_id) {
         return E_NOT_FOUND;
     }
 
-    if env(ctx, P_ACTIVE, envelope_id) == 0 {
+    if env(P_ACTIVE, envelope_id) == 0 {
         return E_NOT_ACTIVE;
     }
 
     if include_action_checks {
-        if now_ms(ctx) > env(ctx, P_EXPIRY, envelope_id) {
+        if now_ms() > env(P_EXPIRY, envelope_id) {
             return E_EXPIRED;
         }
 
-        if env(ctx, P_OPENED, envelope_id) >= env(ctx, P_PACKET, envelope_id)
-            || env(ctx, P_REMAINING, envelope_id) <= 0
+        if env(P_OPENED, envelope_id) >= env(P_PACKET, envelope_id)
+            || env(P_REMAINING, envelope_id) <= 0
         {
             return E_DEPLETED;
         }
 
-        let t = env(ctx, P_TYPE, envelope_id);
+        let t = env(P_TYPE, envelope_id);
         if t == ENVELOPE_TYPE_POOL {
-            if get_i64(ctx, k3(P_POOL_CLAIMED, envelope_id, user)) > 0 {
+            if get_i64(k3(P_POOL_CLAIMED, envelope_id, user)) > 0 {
                 return E_ALREADY_CLAIMED;
             }
         } else if t == ENVELOPE_TYPE_SPREADING || t == ENVELOPE_TYPE_CLAIM {
-            if get_i64(ctx, k2(P_TOKEN_OWNER, envelope_id)) != user {
+            if get_i64(k2(P_TOKEN_OWNER, envelope_id)) != user {
                 return E_NOT_HOLDER;
             }
 
-            if t == ENVELOPE_TYPE_SPREADING && get_i64(ctx, k3(P_OPENED_AMOUNT, envelope_id, user)) > 0 {
+            if t == ENVELOPE_TYPE_SPREADING && get_i64(k3(P_OPENED_AMOUNT, envelope_id, user)) > 0 {
                 return E_ALREADY_OPENED;
             }
 
-            if t == ENVELOPE_TYPE_CLAIM && env(ctx, P_OPENED, envelope_id) > 0 {
+            if t == ENVELOPE_TYPE_CLAIM && env(P_OPENED, envelope_id) > 0 {
                 return E_ALREADY_OPENED;
             }
         } else {
@@ -752,141 +689,151 @@ fn eligibility_status(ctx: &NeoStorageContext, envelope_id: i64, user: i64, incl
     ELIGIBILITY_OK
 }
 
-fn mint_token(ctx: &NeoStorageContext, token_id: i64, owner: i64) {
-    put_i64(ctx, k2(P_TOKEN_OWNER, token_id), owner);
+fn mint_token(token_id: i64, owner: i64) {
+    put_i64(k2(P_TOKEN_OWNER, token_id), owner);
 
     let bal_key = k2(P_OWNER_BALANCE, owner);
-    let bal = get_i64(ctx, bal_key.clone());
-    put_i64(ctx, bal_key, bal.saturating_add(1));
+    let bal = get_i64(bal_key);
+    put_i64(bal_key, bal.saturating_add(1));
 
     put_key_i64(
-        ctx,
         K_TOTAL_SUPPLY,
-        get_key_i64(ctx, K_TOTAL_SUPPLY).saturating_add(1),
+        get_key_i64(K_TOTAL_SUPPLY).saturating_add(1),
     );
 }
 
-fn transfer_token(ctx: &NeoStorageContext, token_id: i64, from: i64, to: i64) -> bool {
-    if from <= 0 || to <= 0 {
+fn transfer_token(token_id: i64, from: i64, to: i64) -> bool {
+    if from == 0 || to == 0 {
         return false;
     }
-    if get_i64(ctx, k2(P_TOKEN_OWNER, token_id)) != from {
+    if get_i64(k2(P_TOKEN_OWNER, token_id)) != from {
         return false;
     }
 
-    put_i64(ctx, k2(P_TOKEN_OWNER, token_id), to);
+    put_i64(k2(P_TOKEN_OWNER, token_id), to);
 
     let from_key = k2(P_OWNER_BALANCE, from);
     let to_key = k2(P_OWNER_BALANCE, to);
 
-    let from_bal = get_i64(ctx, from_key.clone());
+    let from_bal = get_i64(from_key);
     if from_bal > 0 {
-        put_i64(ctx, from_key, from_bal - 1);
+        put_i64(from_key, from_bal - 1);
     }
 
-    let to_bal = get_i64(ctx, to_key.clone());
-    put_i64(ctx, to_key, to_bal.saturating_add(1));
+    let to_bal = get_i64(to_key);
+    put_i64(to_key, to_bal.saturating_add(1));
 
     true
 }
 
-fn ctx() -> Option<NeoStorageContext> {
-    NeoRuntime::get_storage_context().ok()
+fn ctx() -> i64 {
+    unsafe { neo_storage_get_context() }
 }
 
-fn key(prefix: u8) -> NeoByteString {
-    NeoByteString::from_slice(&[prefix])
+#[inline(always)]
+fn key(prefix: u8) -> i64 {
+    prefix as i64
 }
 
-fn k2(prefix: u8, a: i64) -> NeoByteString {
-    let mut out = [0u8; 9];
-    out[0] = prefix;
-    out[1..9].copy_from_slice(&a.to_le_bytes());
-    NeoByteString::from_slice(&out)
+#[inline(always)]
+fn mix64(mut x: u64) -> u64 {
+    x ^= x >> 30;
+    x = x.wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    x ^= x >> 27;
+    x = x.wrapping_mul(0x94d0_49bb_1331_11eb);
+    x ^ (x >> 31)
 }
 
-fn k3(prefix: u8, a: i64, b: i64) -> NeoByteString {
-    let mut out = [0u8; 17];
-    out[0] = prefix;
-    out[1..9].copy_from_slice(&a.to_le_bytes());
-    out[9..17].copy_from_slice(&b.to_le_bytes());
-    NeoByteString::from_slice(&out)
-}
-
-fn put_key_i64(ctx: &NeoStorageContext, prefix: u8, v: i64) {
-    let _ = NeoStorage::put(ctx, &key(prefix), &NeoByteString::from_slice(&v.to_le_bytes()));
-}
-
-fn get_key_i64(ctx: &NeoStorageContext, prefix: u8) -> i64 {
-    get_i64(ctx, key(prefix))
-}
-
-fn put_i64(ctx: &NeoStorageContext, key: NeoByteString, v: i64) {
-    let _ = NeoStorage::put(ctx, &key, &NeoByteString::from_slice(&v.to_le_bytes()));
-}
-
-fn get_i64(ctx: &NeoStorageContext, key: NeoByteString) -> i64 {
-    let Ok(bytes) = NeoStorage::get(ctx, &key) else {
-        return 0;
-    };
-    let s = bytes.as_slice();
-    if s.is_empty() {
-        return 0;
+#[inline(always)]
+fn positive_key(x: u64) -> i64 {
+    let v = (x & 0x7fff_ffff_ffff_ffff) as i64;
+    if v == 0 {
+        1
+    } else {
+        v
     }
+}
 
-    let mut buf = [0u8; 8];
-    let mut i = 0;
-    while i < 8 && i < s.len() {
-        buf[i] = s[i];
-        i += 1;
+#[inline(always)]
+fn k2(prefix: u8, a: i64) -> i64 {
+    let seed = ((prefix as u64) << 56) ^ (a as u64);
+    positive_key(mix64(seed))
+}
+
+#[inline(always)]
+fn k3(prefix: u8, a: i64, b: i64) -> i64 {
+    let seed = ((prefix as u64) << 56) ^ mix64(a as u64) ^ mix64((b as u64).rotate_left(17));
+    positive_key(mix64(seed))
+}
+
+fn put_key_i64(prefix: u8, v: i64) {
+    put_i64(key(prefix), v);
+}
+
+fn get_key_i64(prefix: u8) -> i64 {
+    get_i64(key(prefix))
+}
+
+fn put_i64(key: i64, v: i64) {
+    let ctx = ctx();
+    unsafe {
+        neo_storage_put(key, v, ctx);
     }
-    i64::from_le_bytes(buf)
 }
 
-fn exists(ctx: &NeoStorageContext, id: i64) -> bool {
-    env(ctx, P_CREATOR, id) > 0
+fn get_i64(key: i64) -> i64 {
+    let ctx = ctx();
+    let raw = unsafe { neo_storage_get(key, ctx) };
+    let null_probe = unsafe { neo_storage_get(NULL_PROBE_KEY, ctx) };
+    // Missing keys materialize as Null stack items; compare against a guaranteed-missing probe.
+    if raw == null_probe {
+        0
+    } else {
+        add1(raw) - 1
+    }
 }
 
-fn token_exists(ctx: &NeoStorageContext, token_id: i64) -> bool {
-    get_i64(ctx, k2(P_TOKEN_OWNER, token_id)) > 0
+fn exists(id: i64) -> bool {
+    env(P_CREATOR, id) != 0
 }
 
-fn env(ctx: &NeoStorageContext, prefix: u8, id: i64) -> i64 {
-    get_i64(ctx, k2(prefix, id))
+fn token_exists(token_id: i64) -> bool {
+    get_i64(k2(P_TOKEN_OWNER, token_id)) != 0
 }
 
-fn set_env(ctx: &NeoStorageContext, prefix: u8, id: i64, v: i64) {
-    put_i64(ctx, k2(prefix, id), v)
+fn env(prefix: u8, id: i64) -> i64 {
+    get_i64(k2(prefix, id))
 }
 
-fn alloc_id(ctx: &NeoStorageContext) -> i64 {
-    let id = get_key_i64(ctx, K_NEXT_ID).saturating_add(1);
-    put_key_i64(ctx, K_NEXT_ID, id);
+fn set_env(prefix: u8, id: i64, v: i64) {
+    put_i64(k2(prefix, id), v)
+}
+
+fn alloc_id() -> i64 {
+    let id = get_key_i64(K_NEXT_ID).saturating_add(1);
+    put_key_i64(K_NEXT_ID, id);
     id
 }
 
-fn now_ms(ctx: &NeoStorageContext) -> i64 {
-    let t = get_key_i64(ctx, K_TIME_OVERRIDE);
+fn now_ms() -> i64 {
+    let t = get_key_i64(K_TIME_OVERRIDE);
     if t > 0 {
         return t;
     }
 
     #[cfg(target_arch = "wasm32")]
     {
-        NeoRuntime::get_time()
-            .map(|x| x.as_i64_saturating())
-            .unwrap_or(0)
+        unsafe { neo_get_time() }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let _ = ctx;
         0
     }
 }
 
-fn is_paused_flag(ctx: &NeoStorageContext) -> bool {
-    get_key_i64(ctx, K_PAUSED) != 0
+fn is_paused_flag() -> bool {
+    get_key_i64(K_PAUSED) != 0
 }
 
 fn calc_packet(
@@ -905,7 +852,8 @@ fn calc_packet(
     }
 
     let min_per_packet = MIN_PER_PACKET;
-    let feasible_max = remaining_amount.saturating_sub((packets_left - 1).saturating_mul(min_per_packet));
+    let feasible_max =
+        remaining_amount.saturating_sub((packets_left - 1).saturating_mul(min_per_packet));
     if feasible_max <= min_per_packet {
         return min_per_packet;
     }
@@ -914,16 +862,18 @@ fn calc_packet(
     let lower_band_bps = volatility_lower_bps(total_packets);
     let upper_band_bps = volatility_upper_bps(total_packets);
 
-    let mut min_for_this = dynamic_average
-        .saturating_mul(lower_band_bps)
-        / PERCENT_BASE;
+    let mut min_for_this = dynamic_average.saturating_mul(lower_band_bps) / PERCENT_BASE;
     if min_for_this < min_per_packet {
         min_for_this = min_per_packet;
     }
 
-    let mut max_for_this = ceiling_div(dynamic_average.saturating_mul(upper_band_bps), PERCENT_BASE);
+    let mut max_for_this =
+        ceiling_div(dynamic_average.saturating_mul(upper_band_bps), PERCENT_BASE);
 
-    let cap_by_percent = ceiling_div(total_amount.saturating_mul(MAX_SINGLE_PACKET_BPS), PERCENT_BASE);
+    let cap_by_percent = ceiling_div(
+        total_amount.saturating_mul(MAX_SINGLE_PACKET_BPS),
+        PERCENT_BASE,
+    );
     let cap_by_average = ceiling_div(
         dynamic_average.saturating_mul(MAX_SINGLE_PACKET_AVG_BPS),
         PERCENT_BASE,
@@ -993,9 +943,7 @@ fn calc_packet(
 fn runtime_entropy() -> i64 {
     #[cfg(target_arch = "wasm32")]
     {
-        let random = NeoRuntime::get_random()
-            .map(|x| x.as_i64_saturating())
-            .unwrap_or(1);
+        let random = unsafe { neo_get_random() };
 
         let mut entropy = if random < 0 {
             if random == i64::MIN {
