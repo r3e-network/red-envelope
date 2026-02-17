@@ -28,6 +28,8 @@ const MAX_EXPIRY_MS: i64 = 604_800_000;
 const ENVELOPE_TYPE_SPREADING: i64 = 0;
 const ENVELOPE_TYPE_POOL: i64 = 1;
 const ENVELOPE_TYPE_CLAIM: i64 = 2;
+const ON_NEP17_ADAPTER_BASE: i64 = 1_000_000;
+const ON_NEP17_LEGACY_PACK_BASE: i64 = 10;
 
 const ELIGIBILITY_OK: i64 = 0;
 const E_NOT_FOUND: i64 = 1;
@@ -232,12 +234,20 @@ impl RedEnvelopeRustContract {
         let mut packet_count = 1;
         let mut envelope_type = ENVELOPE_TYPE_SPREADING;
 
-        if data > 0 {
-            let packed_packets = data / 10;
+        // Adapter v2 object[] encoding:
+        // spread => +(BASE + packetCount), pool => -(BASE + packetCount)
+        if data >= ON_NEP17_ADAPTER_BASE {
+            packet_count = data - ON_NEP17_ADAPTER_BASE;
+        } else if data <= -ON_NEP17_ADAPTER_BASE {
+            packet_count = data.saturating_abs() - ON_NEP17_ADAPTER_BASE;
+            envelope_type = ENVELOPE_TYPE_POOL;
+        } else if data > 0 {
+            // Legacy packed-integer path for backward compatibility.
+            let packed_packets = data / ON_NEP17_LEGACY_PACK_BASE;
             if packed_packets > 0 {
                 packet_count = packed_packets;
             }
-            let packed_type = data % 10;
+            let packed_type = data - packed_packets * ON_NEP17_LEGACY_PACK_BASE;
             if packed_type == ENVELOPE_TYPE_POOL {
                 envelope_type = ENVELOPE_TYPE_POOL;
             }
