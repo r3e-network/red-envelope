@@ -391,8 +391,17 @@ namespace RedEnvelope.Contract
             c["maxPackets"] = MAX_PACKETS;
             c["minPerPacket"] = MIN_PER_PACKET;
             c["maxSinglePacketBps"] = MAX_SINGLE_PACKET_BPS;
+            c["maxSinglePacketAvgBps"] = MAX_SINGLE_PACKET_AVG_BPS;
             c["percentBase"] = PERCENT_BASE;
             c["maxSinglePacketPercent"] = (MAX_SINGLE_PACKET_BPS * 100) / PERCENT_BASE;
+            c["densePacketThreshold"] = DENSE_PACKET_THRESHOLD;
+            c["mediumPacketThreshold"] = MEDIUM_PACKET_THRESHOLD;
+            c["denseVolatilityLowBps"] = DENSE_VOLATILITY_LOW_BPS;
+            c["denseVolatilityHighBps"] = DENSE_VOLATILITY_HIGH_BPS;
+            c["mediumVolatilityLowBps"] = MEDIUM_VOLATILITY_LOW_BPS;
+            c["mediumVolatilityHighBps"] = MEDIUM_VOLATILITY_HIGH_BPS;
+            c["sparseVolatilityLowBps"] = SPARSE_VOLATILITY_LOW_BPS;
+            c["sparseVolatilityHighBps"] = SPARSE_VOLATILITY_HIGH_BPS;
             c["defaultExpiryMs"] = DEFAULT_EXPIRY_MS;
             c["maxExpiryMs"] = MAX_EXPIRY_MS;
             c["defaultMinNeo"] = DEFAULT_MIN_NEO;

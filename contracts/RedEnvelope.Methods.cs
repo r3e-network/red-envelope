@@ -66,12 +66,11 @@ namespace RedEnvelope.Contract
         }
 
         /// <summary>
-        /// Random packet amount with NEO-weighted luck boost.
-        /// Higher NEO balance → more rolls from the same entropy, keep the best.
-        ///   0–99 NEO  → 1 roll  (baseline uniform)
-        ///   100–999   → best of 2 rolls
-        ///   1000+     → best of 3 rolls
-        /// This is probabilistic: more NEO improves odds, never guarantees max.
+        /// Random packet amount with multi-layer probability control:
+        /// 1) Feasibility bounds guarantee the envelope can always complete.
+        /// 2) Dynamic volatility band keeps allocation near current average.
+        /// 3) Triangular-like sampling reduces tail risk vs. flat uniform.
+        /// 4) NEO luck boost uses best-of-N centered rolls, still bounded by the same band.
         /// </summary>
         private static BigInteger CalculateRuntimeRandomPacketAmount(
             BigInteger remainingAmount,
@@ -89,56 +88,86 @@ namespace RedEnvelope.Contract
                 return remainingAmount;
 
             BigInteger minPerPacket = MIN_PER_PACKET;
-            BigInteger maxForThis = remainingAmount - (packetsLeft - 1) * minPerPacket;
+            BigInteger feasibleMax = remainingAmount - (packetsLeft - 1) * minPerPacket;
 
-            if (maxForThis <= minPerPacket)
+            if (feasibleMax <= minPerPacket)
                 return minPerPacket;
 
-            // Cap single open/claim amount:
-            // - Base cap: 20% of envelope total amount
-            // - Feasibility floor: at least ceil(total/packetCount), otherwise low packet counts
-            //   would make strict 20% mathematically impossible.
+            BigInteger dynamicAverage = CeilingDiv(remainingAmount, packetsLeft);
+            BigInteger lowerBandBps = GetVolatilityLowerBps(totalPackets);
+            BigInteger upperBandBps = GetVolatilityUpperBps(totalPackets);
+
+            BigInteger minForThis = (dynamicAverage * lowerBandBps) / PERCENT_BASE;
+            if (minForThis < minPerPacket)
+                minForThis = minPerPacket;
+
+            BigInteger maxForThis = CeilingDiv(dynamicAverage * upperBandBps, PERCENT_BASE);
+
+            // Hard safety cap: still keep a legacy total-based ceiling, but also guard by
+            // dynamic average to avoid large outliers when packets are dense.
             BigInteger capByPercent = CeilingDiv(totalAmount * MAX_SINGLE_PACKET_BPS, PERCENT_BASE);
-            BigInteger capByAverage = CeilingDiv(totalAmount, totalPackets);
-            BigInteger effectiveCap = capByPercent > capByAverage ? capByPercent : capByAverage;
-            if (effectiveCap < minPerPacket)
-                effectiveCap = minPerPacket;
+            BigInteger capByAverage = CeilingDiv(dynamicAverage * MAX_SINGLE_PACKET_AVG_BPS, PERCENT_BASE);
+            BigInteger hardCap = capByPercent > capByAverage ? capByPercent : capByAverage;
+            if (hardCap < minPerPacket)
+                hardCap = minPerPacket;
+            if (maxForThis > hardCap)
+                maxForThis = hardCap;
 
-            if (effectiveCap < maxForThis)
-                maxForThis = effectiveCap;
+            if (maxForThis > feasibleMax)
+                maxForThis = feasibleMax;
 
-            // Keep enough room so remaining packets can still stay under the same cap.
-            BigInteger minForThis = minPerPacket;
-            BigInteger minToKeepCapFeasible = remainingAmount - (packetsLeft - 1) * effectiveCap;
-            if (minToKeepCapFeasible > minForThis)
-                minForThis = minToKeepCapFeasible;
+            // Fallback to pure feasibility window if volatility window becomes too tight.
             if (minForThis > maxForThis)
-                minForThis = maxForThis;
+            {
+                minForThis = minPerPacket;
+                maxForThis = feasibleMax;
+            }
 
             BigInteger range = maxForThis - minForThis + 1;
-            BigInteger randomValue = Runtime.GetRandom();
-            if (randomValue < 0)
-                randomValue = -randomValue;
+            BigInteger entropy = Runtime.GetRandom();
+            if (entropy < 0)
+                entropy = -entropy;
+            if (entropy == 0)
+                entropy = 1;
 
-            // Base roll — uniform random within range
-            BigInteger bestRoll = randomValue % range;
-
-            // NEO luck boost: extract additional rolls from higher bits of the
-            // same 256-bit random value and keep the best result.
-            if (neoBalance >= 100)
-            {
-                BigInteger roll2 = (randomValue / range) % range;
-                if (roll2 > bestRoll)
-                    bestRoll = roll2;
-            }
+            BigInteger divisor = 1;
+            BigInteger roll1 = (entropy / divisor) % range;
+            divisor = divisor * range;
+            BigInteger roll2 = (entropy / divisor) % range;
+            divisor = divisor * range;
+            BigInteger bestRoll = (roll1 + roll2) / 2;
+            int extraTrials = 0;
             if (neoBalance >= 1000)
+                extraTrials = 2;
+            else if (neoBalance >= 100)
+                extraTrials = 1;
+
+            for (int i = 0; i < extraTrials; i++)
             {
-                BigInteger roll3 = (randomValue / range / range) % range;
-                if (roll3 > bestRoll)
-                    bestRoll = roll3;
+                roll1 = (entropy / divisor) % range;
+                divisor = divisor * range;
+                roll2 = (entropy / divisor) % range;
+                divisor = divisor * range;
+                BigInteger candidateRoll = (roll1 + roll2) / 2;
+                if (candidateRoll > bestRoll)
+                    bestRoll = candidateRoll;
             }
 
             return minForThis + bestRoll;
+        }
+
+        private static BigInteger GetVolatilityLowerBps(BigInteger totalPackets)
+        {
+            if (totalPackets >= DENSE_PACKET_THRESHOLD) return DENSE_VOLATILITY_LOW_BPS;
+            if (totalPackets >= MEDIUM_PACKET_THRESHOLD) return MEDIUM_VOLATILITY_LOW_BPS;
+            return SPARSE_VOLATILITY_LOW_BPS;
+        }
+
+        private static BigInteger GetVolatilityUpperBps(BigInteger totalPackets)
+        {
+            if (totalPackets >= DENSE_PACKET_THRESHOLD) return DENSE_VOLATILITY_HIGH_BPS;
+            if (totalPackets >= MEDIUM_PACKET_THRESHOLD) return MEDIUM_VOLATILITY_HIGH_BPS;
+            return SPARSE_VOLATILITY_HIGH_BPS;
         }
 
         private static BigInteger CeilingDiv(BigInteger numerator, BigInteger denominator)

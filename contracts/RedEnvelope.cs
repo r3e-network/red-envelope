@@ -38,7 +38,16 @@ namespace RedEnvelope.Contract
         private const int MAX_PACKETS = 100;
         private const long MIN_PER_PACKET = 10_000_000;         // 0.1 GAS
         private const int PERCENT_BASE = 10_000;                // basis points (100.00%)
-        private const int MAX_SINGLE_PACKET_BPS = 2_000;        // 20.00%
+        private const int MAX_SINGLE_PACKET_BPS = 2_000;        // 20.00% hard safety cap by envelope total
+        private const int MAX_SINGLE_PACKET_AVG_BPS = 18_000;   // 180.00% hard safety cap by dynamic average
+        private const int DENSE_PACKET_THRESHOLD = 50;          // low-volatility mode
+        private const int MEDIUM_PACKET_THRESHOLD = 20;         // medium-volatility mode
+        private const int DENSE_VOLATILITY_LOW_BPS = 7_000;     // 70.00% of dynamic average
+        private const int DENSE_VOLATILITY_HIGH_BPS = 13_000;   // 130.00% of dynamic average
+        private const int MEDIUM_VOLATILITY_LOW_BPS = 5_000;    // 50.00% of dynamic average
+        private const int MEDIUM_VOLATILITY_HIGH_BPS = 17_000;  // 170.00% of dynamic average
+        private const int SPARSE_VOLATILITY_LOW_BPS = 3_000;    // 30.00% of dynamic average
+        private const int SPARSE_VOLATILITY_HIGH_BPS = 23_000;  // 230.00% of dynamic average
         private const long DEFAULT_EXPIRY_MS = 604_800_000;      // 7 days in ms
         private const long MAX_EXPIRY_MS = 604_800_000;         // 7 days in ms
         private const long DEFAULT_MIN_NEO = 0;
