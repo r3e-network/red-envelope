@@ -11,7 +11,9 @@ CSP_MANIFEST="${ROOT_DIR}/contracts/bin/sc/RedEnvelope.manifest.json"
 
 DEFAULT_RUSTFLAGS="-C opt-level=z -C strip=symbols -C panic=abort -C target-feature=-simd128,-reference-types,-multivalue,-tail-call"
 RUSTFLAGS_TO_USE="${NEO_WASM_RUSTFLAGS:-${DEFAULT_RUSTFLAGS}}"
-WASM_OPT_MODE="${NEO_WASM_OPT:-1}"
+# `auto` enables wasm-opt only when the local neo-llvm toolchain contains
+# the control-flow/local-initialization fixes required for parity-safe `-Oz`.
+WASM_OPT_MODE="${NEO_WASM_OPT:-auto}"
 WASM_OPT_LEVEL="${NEO_WASM_OPT_LEVEL:-Oz}"
 
 if [[ ! -d "${TOOLCHAIN_DIR}" ]]; then
@@ -22,6 +24,20 @@ if [[ ! -d "${TOOLCHAIN_DIR}" ]]; then
 fi
 
 "${ROOT_DIR}/scripts/patch-neo-llvm-toolchain.sh"
+
+if [[ "${WASM_OPT_MODE}" == "auto" ]]; then
+  OP_CONTROL_FILE="${TOOLCHAIN_DIR}/wasm-neovm/src/translator/translation/function/op_control.rs"
+  FUNCTION_FILE="${TOOLCHAIN_DIR}/wasm-neovm/src/translator/translation/function.rs"
+  if [[ -f "${OP_CONTROL_FILE}" ]] \
+    && [[ -f "${FUNCTION_FILE}" ]] \
+    && rg -q "False-condition path must land at the beginning of the ELSE body" "${OP_CONTROL_FILE}" \
+    && rg -q "WebAssembly locals are zero-initialized" "${FUNCTION_FILE}"; then
+    WASM_OPT_MODE=1
+  else
+    WASM_OPT_MODE=0
+    echo "wasm-opt auto-disabled: neo-llvm toolchain is missing required parity fixes"
+  fi
+fi
 
 rustup target add wasm32-unknown-unknown >/dev/null 2>&1 || true
 
