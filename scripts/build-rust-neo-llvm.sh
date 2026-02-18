@@ -6,6 +6,7 @@ TOOLCHAIN_DIR="${ROOT_DIR}/.toolchains/neo-llvm"
 CONTRACT_DIR="${ROOT_DIR}/contracts-rust/red-envelope-neo"
 BUILD_DIR="${CONTRACT_DIR}/build"
 WASM_PATH="${CONTRACT_DIR}/target/wasm32-unknown-unknown/release/red_envelope_neo_rust.wasm"
+CSP_MANIFEST="${ROOT_DIR}/contracts/bin/sc/RedEnvelope.manifest.json"
 
 if [[ ! -d "${TOOLCHAIN_DIR}" ]]; then
   mkdir -p "${ROOT_DIR}/.toolchains"
@@ -31,6 +32,14 @@ cargo run --manifest-path "${TOOLCHAIN_DIR}/wasm-neovm/Cargo.toml" -- \
   --manifest "${BUILD_DIR}/RedEnvelopeRust.manifest.json" \
   --name "RedEnvelopeRust" \
   --manifest-overlay "${CONTRACT_DIR}/manifest.overlay.json"
+
+if [[ -f "${CSP_MANIFEST}" ]]; then
+  node "${ROOT_DIR}/scripts/sync-manifest-abi-from-csharp.js" \
+    --source "${CSP_MANIFEST}" \
+    --target "${BUILD_DIR}/RedEnvelopeRust.manifest.json"
+else
+  echo "C# manifest not found (${CSP_MANIFEST}); skipping ABI shape sync"
+fi
 
 echo "Built Rust Neo N3 artifacts:"
 echo "  ${BUILD_DIR}/RedEnvelopeRust.nef"

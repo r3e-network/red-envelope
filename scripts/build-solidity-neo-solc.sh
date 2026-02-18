@@ -6,6 +6,7 @@ TOOLCHAIN_DIR="${ROOT_DIR}/.toolchains/neo-solidity"
 SOLC_BIN="${TOOLCHAIN_DIR}/target/release/neo-solc"
 CONTRACT_FILE="${ROOT_DIR}/contracts-solidity/RedEnvelope.sol"
 OUTPUT_BASE="${ROOT_DIR}/contracts-solidity/build/RedEnvelope"
+CSP_MANIFEST="${ROOT_DIR}/contracts/bin/sc/RedEnvelope.manifest.json"
 
 if [[ ! -d "${TOOLCHAIN_DIR}" ]]; then
   mkdir -p "${ROOT_DIR}/.toolchains"
@@ -16,6 +17,14 @@ cargo build --manifest-path "${TOOLCHAIN_DIR}/Cargo.toml" --release
 mkdir -p "${ROOT_DIR}/contracts-solidity/build"
 
 "${SOLC_BIN}" "${CONTRACT_FILE}" -O2 -o "${OUTPUT_BASE}"
+
+if [[ -f "${CSP_MANIFEST}" ]]; then
+  node "${ROOT_DIR}/scripts/sync-manifest-abi-from-csharp.js" \
+    --source "${CSP_MANIFEST}" \
+    --target "${OUTPUT_BASE}.manifest.json"
+else
+  echo "C# manifest not found (${CSP_MANIFEST}); skipping ABI shape sync"
+fi
 
 echo "Built Solidity Neo N3 artifacts:"
 echo "  ${OUTPUT_BASE}.nef"

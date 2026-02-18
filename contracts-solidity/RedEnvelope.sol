@@ -19,6 +19,7 @@ contract RedEnvelope {
     uint256 private constant MEDIUM_VOLATILITY_HIGH_BPS = 17_000;
     uint256 private constant SPARSE_VOLATILITY_LOW_BPS = 3_000;
     uint256 private constant SPARSE_VOLATILITY_HIGH_BPS = 23_000;
+    uint256 private constant NEO_INT_MAX = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     uint256 private constant DEFAULT_EXPIRY_MS = 604_800_000;
     uint256 private constant MAX_EXPIRY_MS = 604_800_000;
     uint256 private constant DEFAULT_MIN_NEO = 0;
@@ -1312,6 +1313,16 @@ contract RedEnvelope {
         return (numerator + denominator - 1) / denominator;
     }
 
+    function _mulClampMax(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0 || b == 0) {
+            return 0;
+        }
+        if (a > NEO_INT_MAX / b) {
+            return NEO_INT_MAX;
+        }
+        return a * b;
+    }
+
     function _getVolatilityLowerBps(uint256 totalPackets) internal pure returns (uint256) {
         if (totalPackets >= DENSE_PACKET_THRESHOLD) return DENSE_VOLATILITY_LOW_BPS;
         if (totalPackets >= MEDIUM_PACKET_THRESHOLD) return MEDIUM_VOLATILITY_LOW_BPS;
@@ -1386,19 +1397,9 @@ contract RedEnvelope {
         uint256 roll1;
         uint256 roll2;
         roll1 = (entropy / divisor) % range;
-        unchecked {
-            divisor = divisor * range;
-        }
-        if (divisor == 0) {
-            divisor = 1;
-        }
+        divisor = _mulClampMax(divisor, range);
         roll2 = (entropy / divisor) % range;
-        unchecked {
-            divisor = divisor * range;
-        }
-        if (divisor == 0) {
-            divisor = 1;
-        }
+        divisor = _mulClampMax(divisor, range);
         uint256 bestRoll = (roll1 + roll2) / 2;
 
         uint256 extraTrials = 0;
@@ -1410,19 +1411,9 @@ contract RedEnvelope {
 
         for (uint256 i = 0; i < extraTrials; i++) {
             roll1 = (entropy / divisor) % range;
-            unchecked {
-                divisor = divisor * range;
-            }
-            if (divisor == 0) {
-                divisor = 1;
-            }
+            divisor = _mulClampMax(divisor, range);
             roll2 = (entropy / divisor) % range;
-            unchecked {
-                divisor = divisor * range;
-            }
-            if (divisor == 0) {
-                divisor = 1;
-            }
+            divisor = _mulClampMax(divisor, range);
             uint256 candidateRoll = (roll1 + roll2) / 2;
             if (candidateRoll > bestRoll) {
                 bestRoll = candidateRoll;
