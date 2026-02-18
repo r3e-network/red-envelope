@@ -20,6 +20,7 @@
     "contract:rust:size:deep": "node scripts/analyze-rust-size-root-cause.js",
     "contract:rust:gate": "node scripts/check-rust-size-gate.js",
     "verify:local-manifest-parity": "node scripts/validate-local-manifest-parity.js",
+    "verify:csharp-solidity-parity": "node scripts/validate-csharp-solidity-parity.js",
     "smoke:testnet": "NETWORK=testnet node scripts/test-testnet.js",
     "smoke:mainnet": "NETWORK=mainnet node scripts/test-testnet.js",
     "verify:network-parity": "node scripts/verify-network-parity.js",

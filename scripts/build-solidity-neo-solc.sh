@@ -18,6 +18,14 @@ mkdir -p "${ROOT_DIR}/contracts-solidity/build"
 
 "${SOLC_BIN}" "${CONTRACT_FILE}" -O2 -o "${OUTPUT_BASE}"
 
+# When neo-solc detects multiple contracts in one compilation unit, it emits:
+#   <base>-<ContractName>.nef/.manifest.json
+# Normalize the primary wrapper contract output back to canonical paths.
+if [[ -f "${OUTPUT_BASE}-RedEnvelope.nef" && -f "${OUTPUT_BASE}-RedEnvelope.manifest.json" ]]; then
+  cp "${OUTPUT_BASE}-RedEnvelope.nef" "${OUTPUT_BASE}.nef"
+  cp "${OUTPUT_BASE}-RedEnvelope.manifest.json" "${OUTPUT_BASE}.manifest.json"
+fi
+
 if [[ -f "${CSP_MANIFEST}" ]]; then
   node "${ROOT_DIR}/scripts/sync-manifest-abi-from-csharp.js" \
     --source "${CSP_MANIFEST}" \
