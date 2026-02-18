@@ -19,7 +19,6 @@ abstract contract RedEnvelopeStorage {
     uint256 internal constant MEDIUM_VOLATILITY_HIGH_BPS = 17_000;
     uint256 internal constant SPARSE_VOLATILITY_LOW_BPS = 3_000;
     uint256 internal constant SPARSE_VOLATILITY_HIGH_BPS = 23_000;
-    uint256 internal constant NEO_INT_MAX = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     uint256 internal constant DEFAULT_EXPIRY_MS = 604_800_000;
     uint256 internal constant MAX_EXPIRY_MS = 604_800_000;
     uint256 internal constant DEFAULT_MIN_NEO = 0;

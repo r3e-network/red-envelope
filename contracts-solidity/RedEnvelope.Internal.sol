@@ -2,8 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "./RedEnvelope.Storage.sol";
+import "../.toolchains/neo-solidity/devpack/contracts/NeoBytes.sol";
+import "../.toolchains/neo-solidity/devpack/contracts/NeoMath.sol";
 
-abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
+abstract contract RedEnvelopeInternal is RedEnvelopeStorage, NeoBytes, NeoMath {
     function _createEnvelope(
         address from,
         uint256 amount,
@@ -78,12 +80,12 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
         // C# onNEP17Payment object[] compatibility path:
         // [packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType]
         // When received through neo-solidity, each element is mapped into one bytes item.
-        if (data.length == 6 && !_allSingleByteItems(data)) {
-            uint256 parsedPacketCount = _bytesToUintLE(data[0]);
-            uint256 parsedExpiryMs = _bytesToUintLE(data[1]);
-            uint256 parsedMinNeoRequired = _bytesToUintLE(data[3]);
-            uint256 parsedMinHoldSeconds = _bytesToUintLE(data[4]);
-            uint256 parsedEnvelopeType = _bytesToUintLE(data[5]);
+        if (data.length == 6 && !nbAllSingleByteItems(data)) {
+            uint256 parsedPacketCount = nbBytesToUintLE(data[0]);
+            uint256 parsedExpiryMs = nbBytesToUintLE(data[1]);
+            uint256 parsedMinNeoRequired = nbBytesToUintLE(data[3]);
+            uint256 parsedMinHoldSeconds = nbBytesToUintLE(data[4]);
+            uint256 parsedEnvelopeType = nbBytesToUintLE(data[5]);
 
             // Preserve explicit input values so downstream validation mirrors C# Assert behavior.
             packetCount = parsedPacketCount;
@@ -102,7 +104,7 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
         // - ABI-encoded bytes config
         // - packed-integer bytes config
         // - Any->bytes[] bytewise bridge payload
-        bytes memory raw = _flattenItems(data);
+        bytes memory raw = nbFlattenItems(data);
         return _parseOnPaymentConfigRaw(raw);
     }
 
@@ -132,12 +134,12 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
         // ABI-encoded config:
         // [packetCount, expiryMs, messageOffset, minNeoRequired, minHoldSeconds, envelopeType, messageLength, message...]
         if (raw.length >= 192) {
-            uint256 parsedPacketCount = _bytesToUintBE(raw, 0);
-            uint256 parsedExpiryMs = _bytesToUintBE(raw, 32);
-            uint256 messageOffset = _bytesToUintBE(raw, 64);
-            uint256 parsedMinNeoRequired = _bytesToUintBE(raw, 96);
-            uint256 parsedMinHoldSeconds = _bytesToUintBE(raw, 128);
-            uint256 parsedEnvelopeType = _bytesToUintBE(raw, 160);
+            uint256 parsedPacketCount = nbBytesToUintBE(raw, 0);
+            uint256 parsedExpiryMs = nbBytesToUintBE(raw, 32);
+            uint256 messageOffset = nbBytesToUintBE(raw, 64);
+            uint256 parsedMinNeoRequired = nbBytesToUintBE(raw, 96);
+            uint256 parsedMinHoldSeconds = nbBytesToUintBE(raw, 128);
+            uint256 parsedEnvelopeType = nbBytesToUintBE(raw, 160);
 
             // Preserve explicit input values so downstream validation mirrors C# Assert behavior.
             packetCount = parsedPacketCount;
@@ -149,9 +151,9 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
             envelopeType_ = parsedEnvelopeType;
 
             if (messageOffset + 32 <= raw.length) {
-                uint256 messageLength = _bytesToUintBE(raw, messageOffset);
+                uint256 messageLength = nbBytesToUintBE(raw, messageOffset);
                 if (messageOffset + 32 + messageLength <= raw.length) {
-                    message = _bytesToString(raw, messageOffset + 32, messageLength);
+                    message = nbBytesToString(raw, messageOffset + 32, messageLength);
                 }
             }
 
@@ -160,7 +162,7 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
 
         // Packed integer config:
         // dataConfig = packetCount * 1_000_000_000 + expiryMs * 10 + envelopeType
-        uint256 dataConfig = _bytesToUintLE(raw);
+        uint256 dataConfig = nbBytesToUintLE(raw);
         if (dataConfig > 0) {
             uint256 packedCount = dataConfig / 1_000_000_000;
             if (packedCount > 0) {
@@ -179,75 +181,6 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
         }
 
         return (packetCount, expiryMs, message, minNeoRequired, minHoldSeconds, envelopeType_);
-    }
-
-    function _allSingleByteItems(bytes[] calldata items) internal pure returns (bool) {
-        for (uint256 i = 0; i < items.length; i++) {
-            if (items[i].length != 1) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    function _flattenItems(bytes[] calldata items) internal pure returns (bytes memory out) {
-        uint256 total = 0;
-        for (uint256 i = 0; i < items.length; i++) {
-            total += items[i].length;
-        }
-
-        out = new bytes(total);
-        uint256 offset = 0;
-        for (uint256 i = 0; i < items.length; i++) {
-            bytes calldata item = items[i];
-            for (uint256 j = 0; j < item.length; j++) {
-                out[offset++] = item[j];
-            }
-        }
-    }
-
-    function _bytesToUintBE(bytes memory raw, uint256 start) internal pure returns (uint256 value) {
-        if (start + 32 > raw.length) {
-            return 0;
-        }
-
-        for (uint256 i = 0; i < 32; i++) {
-            value = (value << 8) | uint256(uint8(raw[start + i]));
-        }
-    }
-
-    function _bytesToString(bytes memory raw, uint256 start, uint256 len) internal pure returns (string memory) {
-        if (start + len > raw.length) {
-            return "";
-        }
-
-        bytes memory out = new bytes(len);
-        for (uint256 i = 0; i < len; i++) {
-            out[i] = raw[start + i];
-        }
-        return string(out);
-    }
-
-    function _bytesToUintLE(bytes memory raw) internal pure returns (uint256 value) {
-        uint256 len = raw.length;
-        if (len > 32) {
-            len = 32;
-        }
-
-        for (uint256 i = 0; i < len; i++) {
-            value |= uint256(uint8(raw[i])) << (8 * i);
-        }
-    }
-
-    function _bytesToUintLE(bytes calldata raw) internal pure returns (uint256 value) {
-        uint256 len = raw.length;
-        if (len > 32) {
-            len = 32;
-        }
-
-        for (uint256 i = 0; i < len; i++) {
-            value |= uint256(uint8(raw[i])) << (8 * i);
-        }
     }
 
     function _mintToken(uint256 tokenId, address to) internal {
@@ -516,24 +449,6 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
         return value;
     }
 
-    function _ceilingDiv(uint256 numerator, uint256 denominator) internal pure returns (uint256) {
-        require(denominator > 0, "invalid denominator");
-        if (numerator == 0) {
-            return 0;
-        }
-        return (numerator + denominator - 1) / denominator;
-    }
-
-    function _mulClampMax(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a == 0 || b == 0) {
-            return 0;
-        }
-        if (a > NEO_INT_MAX / b) {
-            return NEO_INT_MAX;
-        }
-        return a * b;
-    }
-
     function _getVolatilityLowerBps(uint256 totalPackets) internal pure returns (uint256) {
         if (totalPackets >= DENSE_PACKET_THRESHOLD) return DENSE_VOLATILITY_LOW_BPS;
         if (totalPackets >= MEDIUM_PACKET_THRESHOLD) return MEDIUM_VOLATILITY_LOW_BPS;
@@ -568,7 +483,7 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
             return minPerPacket;
         }
 
-        uint256 dynamicAverage = _ceilingDiv(remainingAmount, packetsLeft);
+        uint256 dynamicAverage = nmCeilingDiv(remainingAmount, packetsLeft);
         uint256 lowerBandBps = _getVolatilityLowerBps(totalPackets);
         uint256 upperBandBps = _getVolatilityUpperBps(totalPackets);
 
@@ -577,10 +492,10 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
             minForThis = minPerPacket;
         }
 
-        uint256 maxForThis = _ceilingDiv(dynamicAverage * upperBandBps, PERCENT_BASE);
+        uint256 maxForThis = nmCeilingDiv(dynamicAverage * upperBandBps, PERCENT_BASE);
 
-        uint256 capByPercent = _ceilingDiv(totalAmount * MAX_SINGLE_PACKET_BPS, PERCENT_BASE);
-        uint256 capByAverage = _ceilingDiv(dynamicAverage * MAX_SINGLE_PACKET_AVG_BPS, PERCENT_BASE);
+        uint256 capByPercent = nmCeilingDiv(totalAmount * MAX_SINGLE_PACKET_BPS, PERCENT_BASE);
+        uint256 capByAverage = nmCeilingDiv(dynamicAverage * MAX_SINGLE_PACKET_AVG_BPS, PERCENT_BASE);
         uint256 hardCap = capByPercent > capByAverage ? capByPercent : capByAverage;
 
         if (hardCap < minPerPacket) {
@@ -608,9 +523,9 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
         uint256 roll1;
         uint256 roll2;
         roll1 = (entropy / divisor) % range;
-        divisor = _mulClampMax(divisor, range);
+        divisor = nmMulClampMax(divisor, range);
         roll2 = (entropy / divisor) % range;
-        divisor = _mulClampMax(divisor, range);
+        divisor = nmMulClampMax(divisor, range);
         uint256 bestRoll = (roll1 + roll2) / 2;
 
         uint256 extraTrials = 0;
@@ -622,9 +537,9 @@ abstract contract RedEnvelopeInternal is RedEnvelopeStorage {
 
         for (uint256 i = 0; i < extraTrials; i++) {
             roll1 = (entropy / divisor) % range;
-            divisor = _mulClampMax(divisor, range);
+            divisor = nmMulClampMax(divisor, range);
             roll2 = (entropy / divisor) % range;
-            divisor = _mulClampMax(divisor, range);
+            divisor = nmMulClampMax(divisor, range);
             uint256 candidateRoll = (roll1 + roll2) / 2;
             if (candidateRoll > bestRoll) {
                 bestRoll = candidateRoll;
