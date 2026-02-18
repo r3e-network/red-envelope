@@ -9,6 +9,7 @@
  * 3) Same ABI surface, empty business logic (stub contract).
  * 4) Minimal contract baseline.
  * 5) Same optimized WASM translated by clean upstream neo-llvm toolchain.
+ * 6) (Optional) same optimized WASM after `wasm-opt -Oz`.
  *
  * Usage:
  *   node scripts/analyze-rust-size-root-cause.js
@@ -43,6 +44,15 @@ function run(cmd, args, options = {}) {
     throw new Error(`command failed: ${cmd} ${args.join(" ")}\n${out}`.trim());
   }
   return (proc.stdout || "").trim();
+}
+
+function commandExists(cmd, args = ["--version"]) {
+  const proc = cp.spawnSync(cmd, args, {
+    cwd: ROOT,
+    encoding: "utf8",
+    stdio: ["ignore", "ignore", "ignore"],
+  });
+  return proc.status === 0;
 }
 
 function fileSize(filePath) {
@@ -209,7 +219,27 @@ function extractRustMethodsFromSource(sourceCode) {
   return methods;
 }
 
-function createStubSurfaceContract(tempDir, sourceContractPath) {
+function listRustSourceFiles(rootDir) {
+  const files = [];
+  const queue = [rootDir];
+
+  while (queue.length > 0) {
+    const dir = queue.pop();
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.resolve(dir, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(full);
+      } else if (entry.isFile() && full.endsWith(".rs")) {
+        files.push(full);
+      }
+    }
+  }
+
+  files.sort();
+  return files;
+}
+
+function createStubSurfaceContract(tempDir, sourceDir) {
   fs.mkdirSync(path.resolve(tempDir, "src"), { recursive: true });
   fs.writeFileSync(
     path.resolve(tempDir, "Cargo.toml"),
@@ -235,10 +265,26 @@ strip = "symbols"
 `,
   );
 
-  const source = fs.readFileSync(sourceContractPath, "utf8");
-  const methods = extractRustMethodsFromSource(source);
+  const methodFiles = listRustSourceFiles(sourceDir);
+  const methods = [];
+  const seen = new Set();
+
+  for (const methodFile of methodFiles) {
+    const source = fs.readFileSync(methodFile, "utf8");
+    for (const method of extractRustMethodsFromSource(source)) {
+      const key = `${method.exportName}::${method.functionName}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      methods.push(method);
+    }
+  }
+
   if (methods.length === 0) {
-    throw new Error("failed to parse neo_method entries from Rust contract source");
+    throw new Error(
+      `failed to parse neo_method entries from Rust contract sources under: ${sourceDir}`,
+    );
   }
 
   const lines = [];
@@ -315,6 +361,24 @@ function main() {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "red-envelope-rust-size-"));
 
   const optimized = collectArtifactMetrics("optimized_current", CURRENT_ARTIFACTS);
+  let wasmOpt = null;
+  if (commandExists("wasm-opt")) {
+    const wasmOptArtifacts = {
+      wasm: path.resolve(workspace, "red_envelope_neo_rust.oz.wasm"),
+      nef: path.resolve(workspace, "RedEnvelopeRust.oz.nef"),
+      manifest: path.resolve(workspace, "RedEnvelopeRust.oz.manifest.json"),
+    };
+    run("wasm-opt", ["-Oz", CURRENT_ARTIFACTS.wasm, "-o", wasmOptArtifacts.wasm]);
+    translateWithToolchain(
+      TOOLCHAIN_DIR,
+      wasmOptArtifacts.wasm,
+      wasmOptArtifacts.nef,
+      wasmOptArtifacts.manifest,
+      "RedEnvelopeRust",
+      OVERLAY_PATH,
+    );
+    wasmOpt = collectArtifactMetrics("optimized_wasm_opt_oz", wasmOptArtifacts);
+  }
 
   const defaultProfileDir = path.resolve(workspace, "default-profile");
   copyDir(CONTRACT_DIR, defaultProfileDir);
@@ -338,7 +402,7 @@ function main() {
   const defaultProfile = collectArtifactMetrics("default_release_profile", defaultProfileArtifacts);
 
   const stubDir = path.resolve(workspace, "stub-surface");
-  createStubSurfaceContract(stubDir, path.resolve(CONTRACT_DIR, "src/lib.rs"));
+  createStubSurfaceContract(stubDir, path.resolve(CONTRACT_DIR, "src"));
   rustBuild(stubDir);
   const stubArtifacts = {
     wasm: path.resolve(stubDir, "target/wasm32-unknown-unknown/release/neo_rust_size_probe_stub.wasm"),
@@ -394,12 +458,16 @@ function main() {
     workspace,
     experiments: {
       optimized,
+      wasmOpt,
       defaultProfile,
       stubSurface,
       minimal,
       cleanTranslation,
     },
     comparisons: {
+      wasmOptVsOptimized: wasmOpt
+        ? reportComparison("wasm_opt_vs_optimized", optimized, wasmOpt)
+        : null,
       defaultVsOptimized: reportComparison("default_vs_optimized", optimized, defaultProfile),
       stubVsOptimized: reportComparison("stub_vs_optimized", optimized, stubSurface),
       minimalVsOptimized: reportComparison("minimal_vs_optimized", optimized, minimal),
@@ -411,6 +479,8 @@ function main() {
       businessLogicNefBytesApprox: optimized.nefBytes - stubSurface.nefBytes,
       compilerProfileSavingsNefBytes: defaultProfile.nefBytes - optimized.nefBytes,
       compilerProfileSavingsWasmBytes: defaultProfile.wasmBytes - optimized.wasmBytes,
+      wasmOptSavingsNefBytes: wasmOpt ? optimized.nefBytes - wasmOpt.nefBytes : null,
+      wasmOptSavingsWasmBytes: wasmOpt ? optimized.wasmBytes - wasmOpt.wasmBytes : null,
       cleanToolchainNefByteDelta: cleanTranslation.nefBytes - optimized.nefBytes,
       cleanToolchainManifestByteDelta: cleanTranslation.manifestBytes - optimized.manifestBytes,
       cleanToolchainSameManifestHash:
@@ -427,4 +497,3 @@ try {
   console.error("ERROR:", err && err.message ? err.message : err);
   process.exit(1);
 }
-
